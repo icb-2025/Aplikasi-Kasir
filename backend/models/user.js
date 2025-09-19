@@ -1,10 +1,11 @@
-import mongoose from "mongoose";
+import {Schema, model} from "mongoose";
 import bcrypt from "bcrypt";
 
-const userSchema = new mongoose.Schema({
+const userSchema = new Schema({
   nama_lengkap: { type: String, required: true },
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  status: { type: String, enum: ["aktif", "nonaktif"], default: "aktif" },
   role: {
     type: String,
     enum: ["admin", "kasir", "manajer"],
@@ -30,6 +31,7 @@ userSchema.methods.comparePassword = async function (inputPassword) {
 };
 
 // Model
-const User = mongoose.model("User", userSchema, "Users");
+const User = model("User", userSchema, "Users");
 
 export default User;
+

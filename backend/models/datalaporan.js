@@ -1,28 +1,10 @@
-import mongoose from "mongoose";
+import {Schema, model} from "mongoose";
 
-const laporanSchema = new mongoose.Schema({
+const laporanSchema = new Schema({
   laporan_penjualan: {
-    harian: [
-      {
-        tanggal: { type: Date },
-        jumlah_transaksi: { type: Number },
-        total_penjualan: { type: Number }
-      }
-    ],
-    mingguan: [
-      {
-        minggu_ke: { type: Number },
-        jumlah_transaksi: { type: Number },
-        total_penjualan: { type: Number }
-      }
-    ],
-    bulanan: [
-      {
-        bulan: { type: String },
-        jumlah_transaksi: { type: Number },
-        total_penjualan: { type: Number }
-      }
-    ]
+    harian: [{ tanggal: Date, jumlah_transaksi: Number, total_penjualan: Number }],
+    mingguan: [{ minggu_ke: Number, jumlah_transaksi: Number, total_penjualan: Number }],
+    bulanan: [{ bulan: String, jumlah_transaksi: Number, total_penjualan: Number }]
   },
   periode: {
     start: { type: Date, required: true },
@@ -33,9 +15,15 @@ const laporanSchema = new mongoose.Schema({
     detail: [
       {
         produk: { type: String },
-        laba: { type: Number }
+        harga_jual: { type: Number },
+        harga_beli: { type: Number },
+        laba: { type: Number } // harga_jual - harga_beli
       }
     ]
+  },
+  biaya_operasional_id: { // 🔹 tambahkan ini
+    type: Schema.Types.ObjectId,
+    ref: "BiayaOperasional"
   },
   pengeluaran: [
     {
@@ -44,33 +32,13 @@ const laporanSchema = new mongoose.Schema({
       jumlah: { type: Number }
     }
   ],
-  stok_barang: {
-    masuk: [
-      {
-        tanggal: { type: Date },
-        produk: { type: String },
-        jumlah: { type: Number }
-      }
-    ],
-    keluar: [
-      {
-        tanggal: { type: Date },
-        produk: { type: String },
-        jumlah: { type: Number }
-      }
-    ]
-  },
   rekap_metode_pembayaran: [
     {
-      metode: {
-        type: String,
-        enum: ["cash", "kartu kredit/debit", "dompet digital", "QRIS", "transfer bank", "virtual account"]
-      },
+      metode: { type: String, required: true },
       total: { type: Number }
     }
   ]
 }, { timestamps: true });
 
-const Laporan = mongoose.model("Laporan", laporanSchema, "Data-Laporan");
-
+const Laporan = model("Laporan", laporanSchema, "Data-Laporan");
 export default Laporan;

@@ -1,13 +1,27 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { createServer } from "http";
+import { Server } from "socket.io";
 import connectDB from "./database/db.js";
-import userRoutes from "./routes/userRoutes.js";
 import barangRoutes from "./routes/BarangRoutes.js";
 import transaksiRoutes from "./routes/TransaksiRoutes.js";
-import laporanRoutes from "./routes/LaporanRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import authMiddleware from "./middleware/api.js";
+import { getDashboard } from "./controllers/manager/dashboardcontroller.js";
+import riwayatRoutes from "./routes/manager/riwayat.js";
+import stokBarang from "./routes/manager/stokbarang.js";
+import laporanManagerRoutes from "./routes/manager/laporan.js";
+import biayaoperasional from "./routes/manager/biayaoperasional.js";//
+import managerSettingsRoutes from "./routes/manager/settings.js";
+import adminSettingsRoutes from "./routes/admin/settings.js";
+import adminDashboardRoutes from "./routes/admin/dashboard.js";
+import adminStatusPesanan from "./routes/admin/status.js";
+import adminRiwayat from "./routes/admin/riwayat.js"
+import adminStok from "./routes/admin/stok.js"
+import adminLaporan from "./routes/admin/laporan.js"
+import adminUsers from "./routes/admin/user.js"
+import adminbiayaoperasional from "./routes/admin/biayaoperasional.js";//
+import apiMiddleware from "./middleware/api.js";
 
 dotenv.config();
 
@@ -15,24 +29,40 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(express.json());
-
-app.use(cors({
-  origin: "http://localhost:5173", 
-  methods: ["GET", "POST", "PUT", "DELETE"], 
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+app.use(cors());
 
 connectDB();
 
-// Routes
-app.use("/api/users", authMiddleware, userRoutes); 
+// ================== ROUTES ================== //
+
+// pelanggan, kasir
+// app.use("/api/users", authMiddleware, userRoutes);
 app.use("/api/barang", barangRoutes);
 app.use("/api/transaksi", transaksiRoutes);
-app.use("/api/laporan", laporanRoutes);
-app.use("/auth", authRoutes); // login, register
+app.use("/auth", authRoutes);
+
+// manager
+app.use("/api/manager/dashboard", getDashboard);
+app.use("/api/manager/riwayat", riwayatRoutes);
+app.use("/api/manager/stok-barang", stokBarang);
+app.use("/api/manager/laporan", laporanManagerRoutes);
+app.use("/api/manager/biaya-operasional", biayaoperasional);
+app.use("/api/manager/settings", managerSettingsRoutes)
+
+
+// admin
+app.use("/api/admin/dashboard", adminDashboardRoutes);
+app.use("/api/admin/status-pesanan", adminStatusPesanan);
+app.use("/api/admin/riwayat", adminRiwayat)
+app.use("/api/admin/stok-barang", adminStok)
+app.use("/api/admin/laporan", adminLaporan )
+app.use("/api/admin/users", adminUsers)
+app.use("/api/admin/settings", adminSettingsRoutes)
+app.use("/api/admin/biaya-operasional", adminbiayaoperasional);
+
 
 app.get("/", (req, res) => {
-  res.json({ message: "API Aplikasi Kasir berjalan 🚀" });
+  res.json({ message: "Welcome To API" });
 });
 
 // Error handler
@@ -41,6 +71,25 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Terjadi kesalahan pada server" });
 });
 
-app.listen(port, "0.0.0.0", () => {
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: "*"
+  },
+});
+
+// io.on("connection", (socket) => {
+//   console.log("Client terhubung:", socket.id);
+
+//   socket.on("disconnect", () => {
+//     console.log("Client terputus:", socket.id);
+//   });
+// });
+
+export { io };
+
+httpServer.listen(port, "0.0.0.0", () => {
   console.log(`Server running at http://0.0.0.0:${port}`);
 });
