@@ -5,7 +5,7 @@ const userSchema = new Schema({
   nama_lengkap: { type: String, required: true },
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  status: { type: String, enum: ["aktif", "nonaktif"], default: "aktif" },
+  status: { type: String, enum: ["aktif", "nonaktif"], default: "nonaktif" },
   role: {
     type: String,
     enum: ["admin", "kasir", "manajer"],

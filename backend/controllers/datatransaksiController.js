@@ -9,11 +9,92 @@ import User from "../models/user.js"; // asumsi model user/masuk sebagai User
 import Counter from "../models/counter.js";
 import Settings from "../models/settings.js";
 import BiayaOperasional from "../models/biayaoperasional.js"; // sesuaikan path
+import { v4 as uuidv4 } from "uuid"; // Untuk membuat session ID unik
+// import redis from "redis"; // Gunakan Redis untuk menyimpan session sementara
+// import { promisify } from "util";
 
 /**
  * Pilih kasir aktif secara round-robin.
  * Menggunakan counter di DB untuk keandalan terhadap restart & concurrent requests.
  */
+
+
+// // Buat koneksi Redis
+// const redisClient = redis.createClient();
+// const getAsync = promisify(redisClient.get).bind(redisClient);
+// const setAsync = promisify(redisClient.set).bind(redisClient);
+
+// // Endpoint untuk membuat session ID
+// export const createSession = async (req, res) => {
+//   try {
+//     const sessionId = uuidv4(); // Buat session ID unik
+//     await setAsync(sessionId, JSON.stringify([])); // Simpan session kosong di Redis
+//     res.json({ sessionId, message: "Session berhasil dibuat" });
+//   } catch (err) {
+//     console.error("Error createSession:", err);
+//     res.status(500).json({ message: "Gagal membuat session" });
+//   }
+// };
+
+// // Endpoint untuk menambahkan produk ke keranjang berdasarkan session ID
+// export const addToCart = async (req, res) => {
+//   try {
+//     const { sessionId, produk } = req.body;
+
+//     // Ambil data keranjang dari Redis
+//     const cartData = await getAsync(sessionId);
+//     let cart = cartData ? JSON.parse(cartData) : [];
+
+//     // Tambahkan produk ke keranjang
+//     cart.push(produk);
+
+//     // Simpan kembali ke Redis
+//     await setAsync(sessionId, JSON.stringify(cart));
+
+//     res.json({ message: "Produk berhasil ditambahkan ke keranjang", cart });
+//   } catch (err) {
+//     console.error("Error addToCart:", err);
+//     res.status(500).json({ message: "Gagal menambahkan produk ke keranjang" });
+//   }
+// };
+
+// // Endpoint untuk mengambil data keranjang berdasarkan session ID
+// export const getCart = async (req, res) => {
+//   try {
+//     const { sessionId } = req.params;
+
+//     // Ambil data keranjang dari Redis
+//     const cartData = await getAsync(sessionId);
+//     const cart = cartData ? JSON.parse(cartData) : [];
+
+//     res.json({ cart });
+//   } catch (err) {
+//     console.error("Error getCart:", err);
+//     res.status(500).json({ message: "Gagal mengambil data keranjang" });
+//   }
+// };
+
+// // Endpoint untuk menghapus produk dari keranjang berdasarkan session ID
+// export const removeFromCart = async (req, res) => {
+//   try {
+//     const { sessionId, produkId } = req.body;
+
+//     // Ambil data keranjang dari Redis
+//     const cartData = await getAsync(sessionId);
+//     let cart = cartData ? JSON.parse(cartData) : [];
+
+//     // Hapus produk berdasarkan ID
+//     cart = cart.filter((item) => item.id !== produkId);
+
+//     // Simpan kembali ke Redis
+//     await setAsync(sessionId, JSON.stringify(cart));
+
+//     res.json({ message: "Produk berhasil dihapus dari keranjang", cart });
+//   } catch (err) {
+//     console.error("Error removeFromCart:", err);
+//     res.status(500).json({ message: "Gagal menghapus produk dari keranjang" });
+//   }
+// };
 
 
 async function pilihKasirRoundRobin() {
@@ -173,37 +254,77 @@ laporan.laba.total_laba =
 
 // export const getAllTransaksi = async (req, res) => {
 //   try {
+//     // Pastikan user sudah login
+//     if (!req.user) {
+//       return res.status(401).json({ message: "Unauthorized, silakan login dulu" });
+//     }
+
 //     let filter = {};
 
+//     // Filter transaksi berdasarkan role user
 //     if (req.user.role === "kasir") {
-//       // hanya lihat transaksi miliknya
-//       filter = { kasir_id: req.user._id }; 
+//       // Kasir hanya dapat melihat transaksi miliknya
+//       filter = { kasir_id: req.user.id };
 //     } else if (req.user.role === "manajer") {
-//       // kalau ada sistem cabang, misalnya simpan di req.user.cabang
-//       // filter = { cabang: req.user.cabang };
-//       filter = {}; // sementara bisa lihat semua, tapi bukan level admin penuh
+//       // Manajer dapat melihat semua transaksi (bisa disesuaikan jika ada cabang)
+//       filter = {}; // sementara bisa lihat semua
 //     } else if (req.user.role === "admin") {
-//       // bisa lihat semua transaksi
+//       // Admin dapat melihat semua transaksi
 //       filter = {};
 //     }
 
+//     // Ambil transaksi berdasarkan filter
 //     const transaksi = await Transaksi.find(filter);
 //     res.json(transaksi);
 //   } catch (error) {
+//     console.error("Error getAllTransaksi:", error);
 //     res.status(500).json({ message: error.message });
 //   }
 // };
 
-//Bisa diakses semua termasuk belum login
+
+// // FIX ini harus login
 export const getAllTransaksi = async (req, res) => {
   try {
-    // Semua orang bisa lihat semua transaksi
-    const transaksi = await Transaksi.find();
+    console.log("🔑 User dari JWT:", req.user); // cek isi user
+
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({ message: "Unauthorized, silakan login dulu" });
+    }
+
+    let filter = {};
+
+    if (req.user.role === "kasir") {
+      filter.kasir_id = req.user.id; // pastikan field di schema sama    
+    }
+
+    const transaksi = await Transaksi.find(filter);
+    console.log("Jumlah transaksi ditemukan:", transaksi.length);
+
     res.json(transaksi);
   } catch (error) {
+    console.error("Error getAllTransaksi:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
+// FIX ini gak perlu login
+export const getAllTransaksiPublic = async (req, res) => {
+  try {
+    console.log("User dari JWT:", req.user); // bisa aja kosong/null
+
+    // langsung ambil semua transaksi tanpa filter dan tanpa cek user
+    const transaksi = await Transaksi.find({});
+    console.log("Jumlah transaksi ditemukan:", transaksi.length);
+
+    res.json(transaksi);
+  } catch (error) {
+    console.error("Error getAllTransaksi:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 
 
 
@@ -227,7 +348,6 @@ export const getAllTransaksi = async (req, res) => {
 // };
 
 // migrateTransaksiSelesai();
-
 function formatDateForMidtrans(date = new Date()) {
   const yyyy = date.getFullYear();
   const MM = String(date.getMonth() + 1).padStart(2, "0");
@@ -240,9 +360,7 @@ function formatDateForMidtrans(date = new Date()) {
 
 export const createTransaksi = async (req, res) => {
   try {
-    const { barang_dibeli, metode_pembayaran, total_harga, payment_channel } = req.body;
-
-    // 🔹 Validasi metode pembayaran
+    const { barang_dibeli, metode_pembayaran, total_harga } = req.body;
     const settings = await Settings.findOne();
     const allowedMethods = settings ? settings.payment_methods.map((pm) => pm.method) : ["Tunai"];
 
@@ -286,13 +404,14 @@ export const createTransaksi = async (req, res) => {
         return res.status(400).json({ message: `Stok ${item.nama_barang} tidak mencukupi!` });
       }
 
-      barang.stok = Number(barang.stok) - jumlah;
+      barang.stok -= jumlah;
       await barang.save();
     }
 
-    // 🔹 Buat nomor transaksi
-    const nomorTransaksi = "TRX" + Date.now();
-
+    // 🔹 Buat nomor transaksi unik (tanpa spasi/simbol aneh)
+    // const nomorTransaksi = "APK" + "-" +  Date.now().toString() + "-" + Math.floor(1000 + Math.random() * 9000);
+    // const nomorTransaksi = "TRX-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+    const nomorTransaksi = uuidv4();
     // 🔹 Assign kasir (manual atau round robin)
     let kasirIdToUse = req.body.kasir_id || null;
     if (!kasirIdToUse) {
@@ -304,12 +423,19 @@ export const createTransaksi = async (req, res) => {
       }
     }
 
-    // 🔹 Simpan transaksi dulu (status pending)
+    // 🔹 Hitung subtotal per barang
+    const barangFinal = barang_dibeli.map((item) => ({
+      ...item,
+      subtotal: item.jumlah * item.harga_satuan,
+    }));
+
+    // 🔹 Simpan transaksi awal
     const transaksi = new Transaksi({
       ...req.body,
+      barang_dibeli: barangFinal,
       order_id: nomorTransaksi,
       nomor_transaksi: nomorTransaksi,
-      status: baseMethod === "Tunai" ? "success" : "pending",
+      status: baseMethod === "Tunai" ? "selesai" : "pending",
       tanggal_transaksi: new Date(),
       kasir_id: kasirIdToUse,
     });
@@ -317,141 +443,161 @@ export const createTransaksi = async (req, res) => {
 
     let midtransResponse = {};
 
-// 🔹 Logika per metode pembayaran
-if (baseMethod === "Virtual Account") {
-  // VA → Core API
-  const bankMapping = {
-    "bca": "bca",
-    "bni": "bni",
-    "bri": "bri",
-    "permata": "permata",
-    "cimb niaga": "cimb",
-  };
+    // 🔹 Logika pembayaran
+    if (baseMethod === "Virtual Account") {
+      const bankMapping = {
+        bca: "bca",
+        bni: "bni",
+        bri: "bri",
+        permata: "permata",
+        "cimb niaga": "cimb",
+      };
 
-  const bankCode = bankMapping[channel?.toLowerCase()] || "permata"; // fallback ke permata
+      const bankCode = bankMapping[channel?.toLowerCase()] || "permata";
 
-  const vaChargeParams = {
-    payment_type: "bank_transfer",
-    transaction_details: {
-      order_id: nomorTransaksi,
-      gross_amount: total_harga,
-    },
-    bank_transfer: { bank: bankCode },
-  };
+      const vaChargeParams = {
+  payment_type: "bank_transfer",
+  transaction_details: {
+    order_id: nomorTransaksi,
+    gross_amount: total_harga,
+  },
+  bank_transfer: { bank: bankCode },
+};
 
-  const vaTransaction = await core.charge(vaChargeParams);
+      const vaTransaction = await core.charge(vaChargeParams);
 
-  let noVA = null;
-  let bankName = channel || null;
+      let noVA = null;
+      let bankName = channel || null;
 
-  if (vaTransaction.va_numbers && vaTransaction.va_numbers.length > 0) {
-    noVA = vaTransaction.va_numbers[0].va_number;
-    bankName = vaTransaction.va_numbers[0].bank;
-  } else if (vaTransaction.permata_va_number) {
-    noVA = vaTransaction.permata_va_number;
-    bankName = "permata";
-  } else if (vaTransaction.cimb_va_number) {
-    noVA = vaTransaction.cimb_va_number;
-    bankName = "cimb";
-  }
+      if (vaTransaction.va_numbers && vaTransaction.va_numbers.length > 0) {
+        noVA = vaTransaction.va_numbers[0].va_number;
+        bankName = vaTransaction.va_numbers[0].bank;
+      } else if (vaTransaction.permata_va_number) {
+        noVA = vaTransaction.permata_va_number;
+        bankName = "permata";
+      } else if (vaTransaction.cimb_va_number) {
+        noVA = vaTransaction.cimb_va_number;
+        bankName = "cimb";
+      }
 
-  transaksi.no_va = noVA;
-  transaksi.metode_pembayaran = `Virtual Account (${bankName?.toUpperCase() || "BANK"})`;
-  await transaksi.save();
+      transaksi.no_va = noVA;
+      transaksi.metode_pembayaran = `Virtual Account (${bankName?.toUpperCase() || "BANK"})`;
+      await transaksi.save();
 
-  midtransResponse = {
-    transaction_id: vaTransaction.transaction_id,
-    order_id: vaTransaction.order_id,
-    gross_amount: vaTransaction.gross_amount,
-    payment_type: vaTransaction.payment_type,
-    transaction_status: vaTransaction.transaction_status,
-    va_numbers: vaTransaction.va_numbers,
-    permata_va_number: vaTransaction.permata_va_number,
-    cimb_va_number: vaTransaction.cimb_va_number,
-  };
+      midtransResponse = vaTransaction;
 
-} else if (baseMethod === "Tunai") {
-  // Tunai → tanpa Midtrans
-  midtransResponse = {
-    status: "success",
-    message: "Pembayaran tunai dicatat",
-  };
+    } else if (baseMethod === "Tunai") {
+      midtransResponse = {
+        status: "success",
+        message: "Pembayaran tunai dicatat",
+      };
 
-} else if (baseMethod === "E-Wallet") {
-  // 🔹 E-Wallet pakai QRIS Core API
-  const qrisChargeParams = {
-    payment_type: "qris",
-    transaction_details: {
-      order_id: nomorTransaksi,
-      gross_amount: total_harga,
+    } else if (baseMethod === "E-Wallet") {
+      const qrisChargeParams = {
+        payment_type: "qris",
+        transaction_details: {
+          order_id: nomorTransaksi,
+          gross_amount: total_harga,
+        },
+      };
+
+      const qrisTransaction = await core.charge(qrisChargeParams);
+
+      transaksi.metode_pembayaran = "E-Wallet (QRIS)";
+      await transaksi.save();
+
+      midtransResponse = qrisTransaction;
+
+    } else if (baseMethod === "Credit Card") {
+      const snapParams = {
+        transaction_details: {
+          order_id: nomorTransaksi,
+          gross_amount: total_harga,
+        },
+        credit_card: { secure: true },
+        customer_details: { first_name: "Pelanggan" },
+        enabled_payments: ["credit_card"],
+      };
+
+      const snapTransaction = await snap.createTransaction(snapParams);
+
+      transaksi.metode_pembayaran = "Credit Card";
+      await transaksi.save();
+
+      midtransResponse = snapTransaction;
+
+    } else {
+      const snapParams = {
+        transaction_details: {
+          order_id: nomorTransaksi,
+          gross_amount: total_harga,
+        },
+        customer_details: { first_name: "Pelanggan" },
+      };
+
+      midtransResponse = await snap.createTransaction(snapParams);
     }
-  };
 
-  const qrisTransaction = await core.charge(qrisChargeParams);
-
-  midtransResponse = {
-    transaction_id: qrisTransaction.transaction_id,
-    order_id: qrisTransaction.order_id,
-    gross_amount: qrisTransaction.gross_amount,
-    payment_type: qrisTransaction.payment_type,
-    transaction_status: qrisTransaction.transaction_status,
-    qr_string: qrisTransaction.qr_string,
-    actions: qrisTransaction.actions
-  };
-
-  transaksi.metode_pembayaran = "E-Wallet (QRIS)";
-  await transaksi.save();
-
-} else if (baseMethod === "Credit Card") {
-  // 🔹 Credit Card → Snap (token + redirect_url untuk 3DS)
-  const snapParams = {
-    transaction_details: {
-      order_id: nomorTransaksi,
-      gross_amount: total_harga,
-    },
-    credit_card: {
-      secure: true, // aktifkan 3DS Secure
-    },
-    customer_details: { first_name: "Pelanggan" },
-    enabled_payments: ["credit_card"], // hanya CC yang aktif
-  };
-
-  const snapTransaction = await snap.createTransaction(snapParams);
-
-  midtransResponse = {
-    token: snapTransaction.token,
-    redirect_url: snapTransaction.redirect_url,
-  };
-
-  transaksi.metode_pembayaran = "Credit Card";
-  await transaksi.save();
-
-} else {
-  // 🔹 Default selain VA, Tunai, E-Wallet, Credit Card → Snap juga
-  const snapParams = {
-    transaction_details: {
-      order_id: nomorTransaksi,
-      gross_amount: total_harga,
-    },
-    customer_details: { first_name: "Pelanggan" },
-  };
-
-  const snapTransaction = await snap.createTransaction(snapParams);
-
-  midtransResponse = {
-    token: snapTransaction.token,
-    redirect_url: snapTransaction.redirect_url,
-  };
-}
     res.status(201).json({
       message: "Transaksi berhasil dibuat",
       transaksi,
       midtrans: midtransResponse,
     });
-
   } catch (error) {
-    console.error("Error createTransaksi:", error);
-    res.status(400).json({ message: error.message });
+    console.error("Error createTransaksi:", error.response?.data || error.message);
+    res.status(400).json({
+      message: "Gagal membuat transaksi",
+      error: error.response?.data || error.message,
+    });
+  }
+};
+
+export const cancelTransaksi = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Cari transaksi berdasarkan ID
+    const transaksi = await Transaksi.findById(id);
+
+    if (!transaksi) {
+      return res.status(404).json({ message: "Transaksi tidak ditemukan!" });
+    }
+
+    // Jika status transaksi sudah selesai, tidak bisa dibatalkan
+    if (transaksi.status === "selesai") {
+      return res.status(400).json({ message: "Transaksi yang sudah selesai tidak dapat dibatalkan!" });
+    }
+
+    // Update status transaksi menjadi "dibatalkan"
+    transaksi.status = "dibatalkan";
+
+    for (const item of transaksi.barang_dibeli) {
+      const barang = await Barang.findById(item.kode_barang); // ✅ pakai kode_barang (ObjectId)
+      if (barang) {
+        barang.stok = Number(barang.stok) + Number(item.jumlah);
+        await barang.save();
+        console.log(
+          `Stok ${barang.nama_barang} dikembalikan sebanyak ${item.jumlah}, total sekarang: ${barang.stok}`
+        );
+      } else {
+        console.warn(
+          `Barang dengan _id ${item.kode_barang} tidak ditemukan untuk rollback stok!`
+        );
+      }
+    }
+
+    await transaksi.save();
+
+    // Emit event ke semua client yang terhubung
+    io.emit("statusUpdated", transaksi);
+
+    res.json({
+      message: "Transaksi berhasil dibatalkan!",
+      transaksi,
+    });
+  } catch (err) {
+    console.error("Error cancelTransaksi:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -466,7 +612,6 @@ export const midtransCallback = async (req, res) => {
     const transactionStatus = notification.transaction_status;
     const fraudStatus = notification.fraud_status;
 
-    // Tentukan status baru
     let status = "pending";
     if (transactionStatus === "capture") {
       status = fraudStatus === "accept" ? "selesai" : "pending";
@@ -480,46 +625,42 @@ export const midtransCallback = async (req, res) => {
       status = "pending";
     }
 
-    // Cari transaksi dulu
     const transaksi = await Transaksi.findOne({ order_id: notification.order_id });
     if (!transaksi) {
-  console.warn(`Transaksi dengan order_id ${orderId} tidak ditemukan, simpan ke log untuk cek ulang!`);
-  return res.json({ message: "Callback diterima, transaksi belum ada" });
-}
-
+      console.warn(`Transaksi dengan order_id ${orderId} tidak ditemukan, simpan ke log untuk cek ulang!`);
+      return res.json({ message: "Callback diterima, transaksi belum ada" });
+    }
 
     console.log("Order ID dari Midtrans:", notification.order_id);
-console.log("Transaksi ditemukan:", transaksi);
+    console.log("Transaksi ditemukan:", transaksi);
 
-// Update status transaksi
-transaksi.status = status;
+    transaksi.status = status;
 
-// ✅ Jangan overwrite metode_pembayaran kalau sudah ada
-if (!transaksi.metode_pembayaran || transaksi.metode_pembayaran === "Transfer Bank") {
-  const mapping = mapMidtransToSettings(notification);
-  if (mapping.channel) {
-    transaksi.metode_pembayaran = `${mapping.method} (${mapping.channel})`;
-  } else {
-    transaksi.metode_pembayaran = mapping.method;
-  }
-}
+    // ✅ Jangan overwrite metode_pembayaran kalau sudah ada
+    if (!transaksi.metode_pembayaran || transaksi.metode_pembayaran === "Transfer Bank") {
+      const mapping = mapMidtransToSettings(notification);
+      if (mapping.channel) {
+        transaksi.metode_pembayaran = `${mapping.method} (${mapping.channel})`;
+      } else {
+        transaksi.metode_pembayaran = mapping.method;
+      }
+    }
 
-// ✅ Simpan nomor VA kalau ada (ini boleh overwrite biar selalu update terbaru)
-if (notification.va_numbers && notification.va_numbers.length > 0) {
-  transaksi.no_va = notification.va_numbers[0].va_number;
-  transaksi.bank = notification.va_numbers[0].bank.toUpperCase();
-} else if (notification.permata_va_number) {
-  transaksi.no_va = notification.permata_va_number;
-  transaksi.bank = "PERMATA";
-}
+    // ✅ Simpan nomor VA kalau ada (ini boleh overwrite biar selalu update terbaru)
+    if (notification.va_numbers && notification.va_numbers.length > 0) {
+      transaksi.no_va = notification.va_numbers[0].va_number;
+      transaksi.bank = notification.va_numbers[0].bank.toUpperCase();
+    } else if (notification.permata_va_number) {
+      transaksi.no_va = notification.permata_va_number;
+      transaksi.bank = "PERMATA";
+    }
 
-
-// ✅ Simpan detail lain (opsional)
-if (notification.payment_type === "credit_card") {
-  transaksi.card_type = notification.card_type;
-  transaksi.masked_card = notification.masked_card;
-  transaksi.bank = notification.bank;
-}
+    // ✅ Simpan detail lain (opsional)
+    if (notification.payment_type === "credit_card") {
+      transaksi.card_type = notification.card_type;
+      transaksi.masked_card = notification.masked_card;
+      transaksi.bank = notification.bank;
+    }
 
     await transaksi.save();
     console.log(
@@ -529,24 +670,24 @@ if (notification.payment_type === "credit_card") {
     if (status === "selesai") {
       await addTransaksiToLaporan(transaksi);
     }
-
-    // Jika status expire, kembalikan stok barang
-    if (status === "expire") {
-      for (const item of transaksi.barang_dibeli) {
-        const barang = await Barang.findOne({ kode_barang: item.kode_barang });
-        if (barang) {
-          barang.stok = Number(barang.stok) + Number(item.jumlah);
-          await barang.save();
-          console.log(
-            `Stok ${barang.nama_barang} dikembalikan sebanyak ${item.jumlah}, total sekarang: ${barang.stok}`
-          );
-        } else {
-          console.warn(
-            `Barang dengan kode ${item.kode_barang} tidak ditemukan untuk rollback stok!`
-          );
-        }
-      }
+    // Jika status expire, kembalikan stok barang berdasarkan _id
+if (status === "expire" || status === "dibatalkan") {
+  for (const item of transaksi.barang_dibeli) {
+    const barang = await Barang.findById(item.kode_barang); 
+    if (barang) {
+      barang.stok = Number(barang.stok) + Number(item.jumlah);
+      await barang.save();
+      console.log(
+        `Stok ${barang.nama_barang} dikembalikan sebanyak ${item.jumlah}, total sekarang: ${barang.stok}`
+      );
+    } else {
+      console.warn(
+        `Barang dengan _id ${item.kode_barang} tidak ditemukan untuk rollback stok!`
+      );
     }
+  }
+}
+
 
     res.json({ message: "Notifikasi Midtrans diproses", status });
   } catch (err) {
@@ -612,12 +753,24 @@ export const updateStatusTransaksi = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
+// //FIX STATUS
 export const getStatusTransaksi = async (req, res) => {
   try {
     const { order_id } = req.params;
 
-    const transaksi = await Transaksi.findOne({ order_id });
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized, silakan login dulu" });
+    }
+
+    let filter = { order_id };
+
+    if (req.user.role === "kasir") {
+      filter.kasir_id = req.user.id;
+    }
+
+    console.log("Filter query:", filter);
+
+    const transaksi = await Transaksi.findOne(filter);
 
     if (!transaksi) {
       return res.status(404).json({ message: "Transaksi tidak ditemukan!" });
@@ -631,6 +784,32 @@ export const getStatusTransaksi = async (req, res) => {
       no_va: transaksi.no_va || null,
     });
   } catch (err) {
+    console.error("❌ Error getStatusTransaksi:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// User Public
+
+export const getStatusTransaksiPublic = async (req, res) => {
+  try {
+    const { order_id } = req.params;
+
+    const transaksi = await Transaksi.findOne({ order_id });
+
+    if (!transaksi) {
+      return res.status(404).json({ message: "Transaksi tidak ditemukan!" });
+    }
+
+    // Pembeli hanya boleh lihat status dasar, bukan semua detail sensitif
+    res.json({
+      order_id: transaksi.order_id,
+      status: transaksi.status,
+      metode_pembayaran: transaksi.metode_pembayaran,
+      total_harga: transaksi.total_harga,
+    });
+  } catch (err) {
+    console.error("❌ Error getStatusTransaksiPublic:", err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -643,7 +822,6 @@ function mapMidtransToSettings(notification) {
     return { method: "Virtual Account", channel: bank };
   }
 
-  // Case: berdasarkan payment_type
   switch (notification.payment_type) {
     case "credit_card":
       return { method: "Kartu Kredit", channel: notification.card_type || "Visa/MasterCard" };
@@ -676,4 +854,3 @@ function mapMidtransToSettings(notification) {
       return { method: notification.payment_type, channel: null };
   }
 }
-

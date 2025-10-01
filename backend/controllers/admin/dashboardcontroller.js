@@ -20,26 +20,20 @@ export const getDashboardOmzet = async (req, res) => {
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
 
-    // Range bulan ini
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    // Ambil transaksi selesai
     const trx = await Transaksi.find({ status: "selesai" });
 
-    // Hitung omzet berdasarkan range (pakai tanggal_transaksi)
     const omzetHarian = trx
       .filter(t => t.tanggal_transaksi >= startOfDay && t.tanggal_transaksi <= endOfDay)
       .reduce((sum, t) => sum + t.total_harga, 0);
-
     const omzetMingguan = trx
       .filter(t => t.tanggal_transaksi >= startOfWeek && t.tanggal_transaksi <= endOfWeek)
       .reduce((sum, t) => sum + t.total_harga, 0);
-
     const omzetBulanan = trx
       .filter(t => t.tanggal_transaksi >= startOfMonth && t.tanggal_transaksi <= endOfMonth)
       .reduce((sum, t) => sum + t.total_harga, 0);
-
     res.json({
       omzet: {
         hari_ini: omzetHarian,

@@ -5,25 +5,20 @@ export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // cek user
     const user = await User.findOne({ username });
     if (!user) {
       return res.status(404).json({ message: "User tidak ditemukan" });
     }
 
-    // cek password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(400).json({ message: "Password salah" });
     }
 
-    // update status jadi aktif kalau role kasir
-    if (user.role === "kasir") {
-      user.status = "aktif";
-      await user.save();
-    }
+    // update status jadi aktif untuk semua role
+    user.status = "aktif";
+    await user.save();
 
-    // generate token
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -44,17 +39,25 @@ export const login = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 export const logout = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-
-    if (user && user.role === "kasir") {
-      user.status = "nonaktif";
-      await user.save();
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized, silakan login dulu" });
     }
 
-    res.json({ message: "Logout berhasil, kasir dinonaktifkan" });
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User tidak ditemukan" });
+    }
+
+    // update status jadi nonaktif untuk semua role
+    user.status = "nonaktif";
+    await user.save();
+
+    res.json({ message: "Logout berhasil, status user dinonaktifkan" });
   } catch (err) {
+    console.error("Error saat logout:", err.message);
     res.status(500).json({ message: err.message });
   }
 };

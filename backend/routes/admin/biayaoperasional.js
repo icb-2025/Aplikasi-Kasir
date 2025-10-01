@@ -6,7 +6,6 @@ import {
   deleteBiaya 
 } from "../../controllers/admin/biayaoperasionalcontroller.js";
 
-
 const router = express.Router();
 
 // hanya manager & admin yang boleh

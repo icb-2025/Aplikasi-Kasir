@@ -4,7 +4,7 @@ const transaksiSchema = new Schema({
   order_id: {
     type: String,
     required: true,
-    unique: true, // biar sama persis dengan Midtrans
+    unique: true, 
     maxlength: 64
   },
   nomor_transaksi: { 
@@ -23,8 +23,8 @@ const transaksiSchema = new Schema({
     kode_barang: { type: String },
     nama_barang: { type: String, required: true },
     jumlah: { type: Number, required: true },
-    harga_satuan: { type: Number, required: true }, // harga jual per pcs
-    harga_beli: { type: Number, required: true },   // 🔹 penting untuk hitung laba
+    harga_satuan: { type: Number, required: true }, 
+    harga_beli: { type: Number, required: true }, 
     subtotal: { type: Number, required: true }
   }
 ],
