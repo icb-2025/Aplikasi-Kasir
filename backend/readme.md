@@ -39,6 +39,6 @@ Backend untuk aplikasi kasir yang mendukung berbagai fitur seperti manajemen tra
 ### **1. Clone Repository**
 
 ```bash
-git clone https://github.com/username/aplikasi-kasir-backend.git
-cd aplikasi-kasir-backend
+git clone https://github.com/icb-2025/aplikasi-kasir.git
+cd aplikasi-kasir
 ```
