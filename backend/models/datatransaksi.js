@@ -50,6 +50,10 @@ const transaksiSchema = new Schema({
   },
   no_va: {
     type: String
+  },
+  stok_dikembalikan: {
+    type: Boolean,
+    default: false
   }
 
 }, { timestamps: true });

@@ -286,7 +286,7 @@ laporan.laba.total_laba =
 // // FIX ini harus login
 export const getAllTransaksi = async (req, res) => {
   try {
-    console.log("🔑 User dari JWT:", req.user); // cek isi user
+    console.log("User dari JWT:", req.user); // cek isi user
 
     if (!req.user || !req.user.role) {
       return res.status(401).json({ message: "Unauthorized, silakan login dulu" });
@@ -568,9 +568,15 @@ export const cancelTransaksi = async (req, res) => {
       return res.status(400).json({ message: "Transaksi yang sudah selesai tidak dapat dibatalkan!" });
     }
 
+    // Cek apakah stok sudah dikembalikan sebelumnya
+    if (transaksi.stok_dikembalikan) {
+      return res.status(400).json({ message: "Stok sudah dikembalikan untuk transaksi ini!" });
+    }
+
     // Update status transaksi menjadi "dibatalkan"
     transaksi.status = "dibatalkan";
 
+    // Kembalikan stok barang
     for (const item of transaksi.barang_dibeli) {
       const barang = await Barang.findById(item.kode_barang); // ✅ pakai kode_barang (ObjectId)
       if (barang) {
@@ -586,13 +592,15 @@ export const cancelTransaksi = async (req, res) => {
       }
     }
 
+    // Tandai bahwa stok sudah dikembalikan
+    transaksi.stok_dikembalikan = true;
     await transaksi.save();
 
     // Emit event ke semua client yang terhubung
     io.emit("statusUpdated", transaksi);
 
     res.json({
-      message: "Transaksi berhasil dibatalkan!",
+      message: "Transaksi berhasil dibatalkan dan stok dikembalikan!",
       transaksi,
     });
   } catch (err) {
@@ -600,7 +608,6 @@ export const cancelTransaksi = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 export const midtransCallback = async (req, res) => {
   console.log("Callback diterima:", req.body);
