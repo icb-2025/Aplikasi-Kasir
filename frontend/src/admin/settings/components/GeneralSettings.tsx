@@ -1,4 +1,3 @@
-// src/admin/settings/components/GeneralSettings.tsx
 import React, { useState, useRef } from 'react';
 
 interface PaymentChannel {
@@ -36,23 +35,33 @@ interface FormData {
 interface GeneralSettingsProps {
   formData: FormData;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
-  handleLogoChange: (logoUrl: string, file?: File) => void; // Tambahkan parameter file
+  handleLogoChange: (logoUrl: string, file?: File) => void;
+  defaultProfilePictureUrl: string;
+  onDefaultProfilePictureChange: (file: File) => void;
+  onUploadDefaultProfilePicture: () => void;
 }
 
 const GeneralSettings: React.FC<GeneralSettingsProps> = ({ 
   formData, 
   handleInputChange, 
-  handleLogoChange
+  handleLogoChange,
+  defaultProfilePictureUrl,
+  onDefaultProfilePictureChange,
+  onUploadDefaultProfilePicture
 }) => {
   const [isEditingLogo, setIsEditingLogo] = useState<boolean>(false);
   const [logoUrl, setLogoUrl] = useState<string>(formData.storeLogo);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null); // Tambahkan state untuk file
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [isEditingDefaultProfile, setIsEditingDefaultProfile] = useState<boolean>(false);
+  const [defaultProfilePreview, setDefaultProfilePreview] = useState<string>(defaultProfilePictureUrl);
+  const defaultProfileFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedFile(file); // Simpan file asli
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
         const result = event.target?.result as string;
@@ -63,7 +72,6 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
   };
 
   const handleLogoSave = () => {
-    // Kirim base64 untuk preview dan file asli untuk upload
     handleLogoChange(logoUrl, selectedFile || undefined);
     setIsEditingLogo(false);
   };
@@ -76,6 +84,32 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
 
   const triggerFileInput = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleDefaultProfileFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onDefaultProfilePictureChange(file);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setDefaultProfilePreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerDefaultProfileFileInput = () => {
+    defaultProfileFileInputRef.current?.click();
+  };
+
+  const handleDefaultProfileSave = () => {
+    onUploadDefaultProfilePicture();
+    setIsEditingDefaultProfile(false);
+  };
+
+  const handleDefaultProfileCancel = () => {
+    setDefaultProfilePreview(defaultProfilePictureUrl);
+    setIsEditingDefaultProfile(false);
   };
 
   return (
@@ -220,6 +254,104 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
             />
           </div>
         </div>
+      </div>
+      
+      <div>
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Gambar Profil Default</h2>
+        
+        {isEditingDefaultProfile ? (
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <div className="flex-shrink-0">
+                {defaultProfilePreview ? (
+                  <img 
+                    src={defaultProfilePreview} 
+                    alt="Default Profile Preview" 
+                    className="h-16 w-16 object-contain border border-gray-200 rounded-full"
+                  />
+                ) : (
+                  <div className="h-16 w-16 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center">
+                    <span className="text-gray-400 text-xs">No Image</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex-1">
+                <input
+                  type="file"
+                  ref={defaultProfileFileInputRef}
+                  onChange={handleDefaultProfileFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={triggerDefaultProfileFileInput}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Pilih Gambar
+                </button>
+                <p className="mt-1 text-xs text-gray-500">
+                  PNG, JPG, atau GIF. Maksimal 2MB.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={handleDefaultProfileSave}
+                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Simpan
+              </button>
+              <button
+                type="button"
+                onClick={handleDefaultProfileCancel}
+                className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center space-x-4">
+            <div className="flex-shrink-0">
+              {defaultProfilePictureUrl ? (
+                <img 
+                  src={defaultProfilePictureUrl} 
+                  alt="Default Profile" 
+                  className="h-16 w-16 object-contain border border-gray-200 rounded-full"
+                />
+              ) : (
+                <div className="h-16 w-16 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center">
+                  <span className="text-gray-400 text-xs">No Image</span>
+                </div>
+              )}
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => setIsEditingDefaultProfile(true)}
+                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {defaultProfilePictureUrl ? 'Ganti Gambar' : 'Tambah Gambar'}
+              </button>
+              {defaultProfilePictureUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDefaultProfilePreview('');
+                    onDefaultProfilePictureChange(new File([], ''));
+                  }}
+                  className="ml-2 px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  Hapus
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,8 +1,5 @@
-// src/auth/pages/register.tsx
 import RegisterForm from '../components/RegisterForm';
 
-const RegisterPage = () => {
+export default function RegisterPage() {
   return <RegisterForm />;
-};
-
-export default RegisterPage;
+}

@@ -1,5 +1,5 @@
 // src/admin/layout/Sidebar.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 interface SidebarProps {
@@ -20,9 +20,44 @@ interface SubMenuItem {
   path: string;
 }
 
+interface SettingsResponse {
+  storeLogo: string;
+}
+
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [marqueeKey, setMarqueeKey] = useState(0);
+  const [storeLogo, setStoreLogo] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState<boolean>(false);
   const location = useLocation();
+
+  // Fetch store logo from API
+  useEffect(() => {
+    const fetchStoreLogo = async () => {
+      try {
+        const response = await fetch('http://192.168.110.16:5000/api/admin/settings');
+        if (!response.ok) {
+          throw new Error('Failed to fetch store logo');
+        }
+        const data: SettingsResponse = await response.json();
+        if (data.storeLogo) {
+          setStoreLogo(data.storeLogo);
+        }
+      } catch (error) {
+        console.error('Error fetching store logo:', error);
+        setLogoError(true);
+      }
+    };
+
+    fetchStoreLogo();
+  }, []);
+
+  // Reset animasi ketika sidebar dibuka/tutup
+  useEffect(() => {
+    if (isOpen) {
+      setMarqueeKey(prev => prev + 1);
+    }
+  }, [isOpen]);
 
   const toggleDropdown = (menu: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -49,48 +84,48 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
   };
 
   const menuItems: MenuItem[] = [
-  {
-    name: 'Dashboard',
-    icon: '📊',
-    submenu: [
-      { name: 'Dashboard Utama', path: '/admin/dashboard' },
-      { name: 'Top Barang', path: '/admin/dashboard/top-barang' },
-      { name: 'Omzet', path: '/admin/dashboard/omzet' },
-      { name: 'Laporan Penjualan', path: '/admin/dashboard/laporan-penjualan' },
-      { name: 'Breakdown Pembayaran', path: '/admin/dashboard/breakdown-pembayaran' },
-      { name: 'Transaksi', path: '/admin/dashboard/transaksi' },
-    ],
-  },
-  // Menu Stok Barang
-  {
-    name: 'Stok Barang',
-    icon: '📦',
-    path: '/admin/stok-barang',
-  },
-  // Menu Status Pesanan
-  {
-    name: 'Status Pesanan',
-    icon: '📋',
-    path: '/admin/status-pesanan',
-  },
-  // Menu User - ditambahkan di sini
-  {
-    name: 'User',
-    icon: '👤',
-    path: '/admin/users',
-  },
-  // Menu Profile - ditambahkan di sini
-  {
-    name: 'Profile',
-    icon: '👤',
-    path: '/admin/profile',
-  },
-  {
-    name: 'Settings',
-    icon: '⚙️',
-    path: '/admin/settings',
-  },
-];
+    {
+      name: 'Dashboard',
+      icon: '📊',
+      submenu: [
+        { name: 'Dashboard Utama', path: '/admin/dashboard' },
+        { name: 'Top Barang', path: '/admin/dashboard/top-barang' },
+        { name: 'Omzet', path: '/admin/dashboard/omzet' },
+        { name: 'Laporan Penjualan', path: '/admin/dashboard/laporan-penjualan' },
+        { name: 'Breakdown Pembayaran', path: '/admin/dashboard/breakdown-pembayaran' },
+        { name: 'Transaksi', path: '/admin/dashboard/transaksi' },
+      ],
+    },
+    // Menu Stok Barang
+    {
+      name: 'Stok Barang',
+      icon: '📦',
+      path: '/admin/stok-barang',
+    },
+    // Menu Status Pesanan
+    {
+      name: 'Status Pesanan',
+      icon: '📋',
+      path: '/admin/status-pesanan',
+    },
+    // Menu User - ditambahkan di sini
+    {
+      name: 'User',
+      icon: '👤',
+      path: '/admin/users',
+    },
+    // Menu Profile - ditambahkan di sini
+    {
+      name: 'Profile',
+      icon: '👤',
+      path: '/admin/profile',
+    },
+    {
+      name: 'Settings',
+      icon: '⚙️',
+      path: '/admin/settings',
+    },
+  ];
 
   return (
     <>
@@ -107,9 +142,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
         {/* Logo dengan animasi */}
         <div className="text-white flex items-center justify-between px-4 py-5 flex-shrink-0">
           <div className="flex items-center space-x-2">
-            <div className="bg-white p-1.5 rounded-lg shadow-md">
-              <span className="text-blue-800 text-xl font-bold">K+</span>
-            </div>
+            {storeLogo && !logoError ? (
+              <div className="bg-white p-1 rounded-lg shadow-md">
+                <img 
+                  src={storeLogo} 
+                  alt="Store Logo" 
+                  className="h-8 w-8 object-contain"
+                  onError={() => setLogoError(true)}
+                />
+              </div>
+            ) : (
+              <div className="bg-white p-1.5 rounded-lg shadow-md">
+                <span className="text-blue-800 text-xl font-bold">K+</span>
+              </div>
+            )}
             <div className="overflow-hidden">
               <h1 className="text-xl font-bold whitespace-nowrap">
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-blue-400">
@@ -151,9 +197,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
           </button>
         </div>
 
-        {/* Judul Bergerak di Sidebar */}
-        <div className="px-4 py-3 bg-blue-700/30 rounded-lg mx-2 mb-4 overflow-hidden flex-shrink-0">
-          <div className="text-sm text-blue-200 whitespace-nowrap animate-marquee">
+        {/* Judul Bergerak di Sidebar dengan Animasi yang Diperbaiki */}
+        <div className="px-4 py-3 bg-blue-700/30 rounded-lg mx-2 mb-4 overflow-hidden flex-shrink-0 relative">
+          <div 
+            key={marqueeKey}
+            className="text-sm text-blue-200 whitespace-nowrap animate-marquee-smooth"
+          >
             🚀 Selamat datang di Panel Admin KasirPlus - Kelola bisnis Anda dengan mudah!
           </div>
         </div>
@@ -229,6 +278,44 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
           ))}
         </nav>       
       </div>
+
+      {/* Tambahkan style untuk animasi marquee yang smooth */}
+      <style>{`
+        @keyframes marquee-smooth {
+          0% {
+            transform: translateX(-100%);
+            opacity: 0;
+          }
+          10% {
+            opacity: 1;
+          }
+          90% {
+            opacity: 1;
+          }
+          100% {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+        }
+        
+        .animate-marquee-smooth {
+          animation: marquee-smooth 15s linear infinite;
+          display: inline-block;
+          padding-left: 100%;
+        }
+
+        /* Untuk mobile, kurangi durasi animasi */
+        @media (max-width: 768px) {
+          .animate-marquee-smooth {
+            animation-duration: 12s;
+          }
+        }
+
+        /* Efek hover pause */
+        .bg-blue-700\\/30:hover .animate-marquee-smooth {
+          animation-play-state: paused;
+        }
+      `}</style>
     </>
   );
 };

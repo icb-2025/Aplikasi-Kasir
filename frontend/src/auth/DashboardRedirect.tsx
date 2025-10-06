@@ -15,13 +15,12 @@ const DashboardRedirect: React.FC<DashboardRedirectProps> = ({ dataBarang }) => 
   useEffect(() => {
     if (!auth.isLoading) {
       if (auth.user) {
-        // Redirect ke dashboard sesuai role
         switch (auth.user.role) {
           case 'admin':
             navigate('/admin/dashboard');
             break;
-          case 'manajer': // Perbaikan: manajer bukan manager
-            navigate('/meneger/dashboard');
+          case 'manajer':
+            navigate('/manajer/dashboard');
             break;
           case 'kasir':
             navigate('/kasir/dashboard');
@@ -41,7 +40,6 @@ const DashboardRedirect: React.FC<DashboardRedirectProps> = ({ dataBarang }) => 
     );
   }
 
-  // Tampilkan halaman publik jika tidak login
   return <PublicHome dataBarang={dataBarang} />;
 };
 

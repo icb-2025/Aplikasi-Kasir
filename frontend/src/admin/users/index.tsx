@@ -1,7 +1,7 @@
 // src/admin/users/index.tsx
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
 import LoadingSpinner from '../../components/LoadingSpinner'; // Adjust path as needed
+import SweetAlert from '../../components/SweetAlert'; // Import SweetAlert
 
 interface User {
   _id: string;
@@ -43,7 +43,7 @@ const UsersPage: React.FC = () => {
       const data = await response.json();
       setUsers(data);
     } catch (error) {
-      toast.error('Gagal memuat data user');
+      SweetAlert.error('Gagal memuat data user');
       console.error(error);
     } finally {
       setLoading(false);
@@ -68,6 +68,8 @@ const UsersPage: React.FC = () => {
     e.preventDefault();
     
     try {
+      SweetAlert.loading(editingUser ? 'Mengupdate user...' : 'Menambah user...');
+      
       const payload = {
         ...formData,
         umur: formData.umur ? parseInt(formData.umur) : undefined
@@ -98,19 +100,25 @@ const UsersPage: React.FC = () => {
         throw new Error(editingUser ? 'Gagal mengupdate user' : 'Gagal menambah user');
       }
 
-      toast.success(editingUser ? 'User berhasil diupdate' : 'User berhasil ditambahkan');
+      SweetAlert.success(editingUser ? 'User berhasil diupdate' : 'User berhasil ditambahkan');
       fetchUsers();
       resetForm();
     } catch (error) {
-      toast.error(editingUser ? 'Gagal mengupdate user' : 'Gagal menambah user');
+      SweetAlert.error(editingUser ? 'Gagal mengupdate user' : 'Gagal menambah user');
       console.error(error);
+    } finally {
+      SweetAlert.close();
     }
   };
 
   // Delete user
   const handleDelete = async (id: string) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus user ini?')) {
+    const result = await SweetAlert.confirmDelete();
+    
+    if (result.isConfirmed) {
       try {
+        SweetAlert.loading('Menghapus user...');
+        
         const response = await fetch(`${API_URL}/${id}`, {
           method: 'DELETE',
         });
@@ -119,11 +127,13 @@ const UsersPage: React.FC = () => {
           throw new Error('Gagal menghapus user');
         }
 
-        toast.success('User berhasil dihapus');
+        SweetAlert.success('User berhasil dihapus');
         fetchUsers();
       } catch (error) {
-        toast.error('Gagal menghapus user');
+        SweetAlert.error('Gagal menghapus user');
         console.error(error);
+      } finally {
+        SweetAlert.close();
       }
     }
   };
@@ -217,13 +227,13 @@ const UsersPage: React.FC = () => {
                       onClick={() => handleEdit(user)}
                       className="text-blue-600 hover:text-blue-900 mr-3"
                     >
-                      Edit
+                      ✏️
                     </button>
                     <button
                       onClick={() => handleDelete(user._id)}
                       className="text-red-600 hover:text-red-900"
                     >
-                      Hapus
+                      🗑️
                     </button>
                   </td>
                 </tr>

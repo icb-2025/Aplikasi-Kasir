@@ -43,6 +43,14 @@ interface ListBarangProps {
 
 const API_URL = "http://192.168.110.16:5000/api/admin/stok-barang";
 
+// Daftar kategori yang tersedia
+const KATEGORI = [
+  "Makanan",
+  "Minuman", 
+  "Cemilan",
+  "Signature"
+];
+
 interface ApiError extends Error {
   message: string;
 }
@@ -60,7 +68,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
   const [formData, setFormData] = useState<BarangFormData>({
     kode: "",
     nama: "",
-    kategori: "",
+    kategori: KATEGORI[0], // Default kategori
     hargaBeli: "",
     hargaJual: "",
     stok: "",
@@ -115,7 +123,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     setFormData({
       kode: "",
       nama: "",
-      kategori: "",
+      kategori: KATEGORI[0], // Reset ke kategori default
       hargaBeli: "",
       hargaJual: "",
       stok: "",
@@ -139,7 +147,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       setFormData({
         kode: barang.kode || "",
         nama: barang.nama || "",
-        kategori: barang.kategori || "",
+        kategori: barang.kategori || KATEGORI[0],
         hargaBeli: barang.hargaBeli?.toString() || "",
         hargaJual: barang.hargaJual?.toString() || "",
         stok: barang.stok?.toString() || "",
@@ -176,8 +184,45 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     }
   };
 
+  const validateForm = () => {
+    if (!formData.kode.trim()) {
+      SweetAlert.error("Kode barang harus diisi");
+      return false;
+    }
+    if (!formData.nama.trim()) {
+      SweetAlert.error("Nama barang harus diisi");
+      return false;
+    }
+    if (!formData.kategori) {
+      SweetAlert.error("Kategori harus dipilih");
+      return false;
+    }
+    if (!formData.hargaBeli || isNaN(Number(formData.hargaBeli)) || Number(formData.hargaBeli) <= 0) {
+      SweetAlert.error("Harga beli harus berupa angka yang valid");
+      return false;
+    }
+    if (!formData.hargaJual || isNaN(Number(formData.hargaJual)) || Number(formData.hargaJual) <= 0) {
+      SweetAlert.error("Harga jual harus berupa angka yang valid");
+      return false;
+    }
+    if (!formData.stok || isNaN(Number(formData.stok)) || Number(formData.stok) < 0) {
+      SweetAlert.error("Stok harus berupa angka yang valid");
+      return false;
+    }
+    if (!isEditing && !formData.gambar) {
+      SweetAlert.error("Gambar barang harus diunggah untuk barang baru");
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     setActionLoading(true);
     
     try {
@@ -189,10 +234,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       payload.append("harga_jual", formData.hargaJual);
       payload.append("stok", formData.stok);
       payload.append("stok_minimal", "5");
-
-      if (!isEditing && !formData.gambar) {
-        throw new Error("Gambar barang harus diunggah untuk barang baru");
-      }
 
       if (formData.gambar) {
         payload.append("gambar", formData.gambar);
@@ -333,6 +374,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
           resetForm();
         }}
         loading={actionLoading || isReloading}
+        kategoriOptions={KATEGORI}
       />
     </div>
   );

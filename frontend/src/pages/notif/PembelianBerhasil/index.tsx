@@ -1,4 +1,3 @@
-// src/pages/notif/PembelianBerhasil.tsx
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import MainLayout from "../../../components/MainLayout";
@@ -19,6 +18,7 @@ interface TransactionResponse {
   total_harga: number;
   metode_pembayaran: string;
   status: string;
+  kasir_id: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,12 +28,20 @@ interface SettingsResponse {
   receiptFooter?: string;
 }
 
+interface KasirResponse {
+  _id: string;
+  nama: string;
+  username: string;
+  role: string;
+}
+
 const PembelianBerhasil = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { token } = useParams<{ token: string }>();
   const [transaksi, setTransaksi] = useState<TransactionResponse | null>(null);
   const [settings, setSettings] = useState<SettingsResponse>({});
+  const [kasir, setKasir] = useState<KasirResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +53,6 @@ const PembelianBerhasil = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Cek apakah ada parameter query dari Midtrans
         const queryParams = new URLSearchParams(location.search);
         const orderId = queryParams.get('order_id');
         const statusCode = queryParams.get('status_code');
@@ -54,7 +61,6 @@ const PembelianBerhasil = () => {
         console.log("Query params:", { orderId, statusCode, transactionStatus });
         console.log("Token dari URL:", token);
         
-        // Ambil transaksiId dari state atau dari query parameter
         const state = location.state as { 
           transaksiId?: string, 
           transaksiTerbaru?: TransactionResponse,
@@ -64,91 +70,86 @@ const PembelianBerhasil = () => {
         
         let transaksiId = state?.transaksiId;
         
-        // Jika tidak ada di state tapi ada orderId dari Midtrans, gunakan orderId
         if (!transaksiId && orderId) {
           transaksiId = orderId;
         }
         
         console.log("Transaksi ID:", transaksiId);
         
-        // Prioritas 1: Gunakan transaksiTerbaru dari state jika ada
         if (state?.transaksiTerbaru) {
           console.log("Menggunakan transaksiTerbaru dari state:", state.transaksiTerbaru);
-          // Ubah status menjadi 'selesai' secara otomatis
           const transaksiData = {
             ...state.transaksiTerbaru,
             status: 'selesai'
           };
           setTransaksi(transaksiData);
           
-          // Update status di backend
+          if (transaksiData.kasir_id) {
+            fetchKasirData(transaksiData.kasir_id);
+          }
+          
           try {
             await fetch(`http://192.168.110.16:5000/api/transaksi/${transaksiData._id}/status`, {
               method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ status: 'selesai' }),
             });
           } catch (err) {
             console.error("Gagal update status transaksi:", err);
           }
         } 
-        // Prioritas 2: Jika ada transaksiId, fetch dari API
         else if (transaksiId) {
           console.log("Mengambil transaksi dengan order_id:", transaksiId);
           const resTransaksi = await fetch(`http://192.168.110.16:5000/api/transaksi/${transaksiId}`);
           if (!resTransaksi.ok) throw new Error("Gagal fetch transaksi");
           const dataTransaksi = await resTransaksi.json();
           console.log("Data transaksi dari API:", dataTransaksi);
-          // Ubah status menjadi 'selesai' secara otomatis
           const transaksiData = {
             ...dataTransaksi,
             status: 'selesai'
           };
           setTransaksi(transaksiData);
           
-          // Update status di backend
+          if (transaksiData.kasir_id) {
+            fetchKasirData(transaksiData.kasir_id);
+          }
+          
           try {
             await fetch(`http://192.168.110.16:5000/api/transaksi/${transaksiId}/status`, {
               method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ status: 'selesai' }),
             });
           } catch (err) {
             console.error("Gagal update status transaksi:", err);
           }
         } 
-        // Prioritas 3: Jika ada token, fetch dengan token
         else if (token) {
           console.log("Mengambil transaksi dengan token:", token);
           const resTransaksi = await fetch(`http://192.168.110.16:5000/api/transaksi/token/${token}`);
           if (!resTransaksi.ok) throw new Error("Gagal fetch transaksi dengan token");
           const dataTransaksi = await resTransaksi.json();
           console.log("Data transaksi dari API dengan token:", dataTransaksi);
-          // Ubah status menjadi 'selesai' secara otomatis
           const transaksiData = {
             ...dataTransaksi,
             status: 'selesai'
           };
           setTransaksi(transaksiData);
           
-          // Update status di backend
+          if (transaksiData.kasir_id) {
+            fetchKasirData(transaksiData.kasir_id);
+          }
+          
           try {
             await fetch(`http://192.168.110.16:5000/api/transaksi/${transaksiData._id}/status`, {
               method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ status: 'selesai' }),
             });
           } catch (err) {
             console.error("Gagal update status transaksi:", err);
           }
         } 
-        // Prioritas 4: Ambil transaksi terbaru
         else {
           console.log("Mengambil transaksi terbaru");
           const resTransaksi = await fetch("http://192.168.110.16:5000/api/transaksi");
@@ -160,14 +161,15 @@ const PembelianBerhasil = () => {
             : { ...dataTransaksi, status: 'selesai' };
           setTransaksi(transaksiData);
           
-          // Update status di backend
+          if (transaksiData.kasir_id) {
+            fetchKasirData(transaksiData.kasir_id);
+          }
+          
           try {
             const transaksiId = transaksiData._id;
             await fetch(`http://192.168.110.16:5000/api/transaksi/${transaksiId}/status`, {
               method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ status: 'selesai' }),
             });
           } catch (err) {
@@ -175,21 +177,17 @@ const PembelianBerhasil = () => {
           }
         }
 
-        // Fetch settings
         const resSettings = await fetch("http://192.168.110.16:5000/api/manager/settings");
         if (resSettings.ok) {
           const dataSettings = await resSettings.json();
           setSettings(dataSettings);
         }
         
-        // Jika pembayaran berhasil dari Midtrans, update status transaksi
         if (statusCode === '200' && transactionStatus === 'settlement' && transaksiId) {
           try {
             await fetch(`http://192.168.110.16:5000/api/transaksi/${transaksiId}/status`, {
               method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ status: 'selesai' }),
             });
           } catch (err) {
@@ -201,6 +199,18 @@ const PembelianBerhasil = () => {
         setError("Gagal memuat data transaksi. Silakan coba lagi.");
       } finally {
         setLoading(false);
+      }
+    };
+
+    const fetchKasirData = async (kasirId: string) => {
+      try {
+        const resKasir = await fetch(`http://192.168.110.16:5000/api/kasir/${kasirId}`);
+        if (resKasir.ok) {
+          const dataKasir = await resKasir.json();
+          setKasir(dataKasir);
+        }
+      } catch (err) {
+        console.error("Gagal fetch data kasir:", err);
       }
     };
 
@@ -225,16 +235,9 @@ const PembelianBerhasil = () => {
       <MainLayout>
         <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
           <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">
-              Terjadi Kesalahan
-            </h1>
-            <p className="text-gray-600 mb-6">
-              {error}
-            </p>
-            <button
-              onClick={() => navigate("/")}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full"
-            >
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Terjadi Kesalahan</h1>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <button onClick={() => navigate("/")} className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full">
               Kembali ke Beranda
             </button>
           </div>
@@ -248,16 +251,9 @@ const PembelianBerhasil = () => {
       <MainLayout>
         <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
           <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">
-              Tidak ada data transaksi
-            </h1>
-            <p className="text-gray-600 mb-6">
-              Data transaksi tidak ditemukan. Silakan kembali ke beranda.
-            </p>
-            <button
-              onClick={() => navigate("/")}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full"
-            >
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">Tidak ada data transaksi</h1>
+            <p className="text-gray-600 mb-6">Data transaksi tidak ditemukan. Silakan kembali ke beranda.</p>
+            <button onClick={() => navigate("/")} className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full">
               Kembali ke Beranda
             </button>
           </div>
@@ -269,18 +265,15 @@ const PembelianBerhasil = () => {
   return (
     <MainLayout>
       <div className="max-w-md mx-auto bg-white shadow-lg rounded-lg p-6 mt-8 print:w-full print:shadow-none print:mt-0">
-        {/* Tanda pembayaran berhasil */}
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Pembelian Berhasil!</h1>
           <p className="text-gray-600">Terima kasih telah melakukan pembelian</p>
         </div>
 
-        {/* HEADER STRUK */}
         {settings.receiptHeader && (
           <pre className="text-center font-bold mb-4 whitespace-pre-line">
             {settings.receiptHeader}
@@ -293,23 +286,17 @@ const PembelianBerhasil = () => {
         </p>
 
         <div className="border-t border-b py-2 mb-4 text-sm">
-          <p>
-            <span className="font-semibold">Tanggal:</span>{" "}
+          <p><span className="font-semibold">Tanggal:</span>{" "}
             {transaksi.tanggal_transaksi
               ? new Date(transaksi.tanggal_transaksi).toLocaleString("id-ID")
               : transaksi.createdAt
                 ? new Date(transaksi.createdAt).toLocaleString("id-ID")
                 : "-"}
           </p>
-          <p>
-            <span className="font-semibold">Metode:</span>{" "}
-            {transaksi.metode_pembayaran || "-"}
-          </p>
-          <p>
-            <span className="font-semibold">Status:</span>{" "}
-            <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-              Selesai
-            </span>
+          <p><span className="font-semibold">Metode:</span> {transaksi.metode_pembayaran || "-"}</p>
+          <p><span className="font-semibold">Kasir:</span> {kasir ? kasir.nama : (transaksi.kasir_id || "-")}</p>
+          <p><span className="font-semibold">Status:</span>{" "}
+            <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">Selesai</span>
           </p>
         </div>
 
@@ -328,12 +315,8 @@ const PembelianBerhasil = () => {
                 <tr key={idx} className="border-b">
                   <td className="py-1">{item.nama_barang}</td>
                   <td className="py-1 text-center">{item.jumlah}</td>
-                  <td className="py-1 text-right">
-                    {formatCurrency(item.harga_satuan)}
-                  </td>
-                  <td className="py-1 text-right">
-                    {formatCurrency(item.subtotal)}
-                  </td>
+                  <td className="py-1 text-right">{formatCurrency(item.harga_satuan)}</td>
+                  <td className="py-1 text-right">{formatCurrency(item.subtotal)}</td>
                 </tr>
               ))
             ) : (
@@ -348,12 +331,9 @@ const PembelianBerhasil = () => {
 
         <div className="flex justify-between items-center text-lg font-bold mb-6">
           <span>Total</span>
-          <span className="text-green-600">
-            {formatCurrency(transaksi.total_harga)}
-          </span>
+          <span className="text-green-600">{formatCurrency(transaksi.total_harga)}</span>
         </div>
 
-        {/* FOOTER STRUK */}
         {settings.receiptFooter && (
           <pre className="text-center text-sm text-gray-600 mt-4 whitespace-pre-line">
             {settings.receiptFooter}
@@ -361,16 +341,13 @@ const PembelianBerhasil = () => {
         )}
 
         <div className="flex gap-3 mt-6 print:hidden">
-          <button
-            onClick={() => navigate("/")}
-            className="w-1/2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
+          <button onClick={() => navigate("/")} className="w-1/3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             Beranda
           </button>
-          <button
-            onClick={() => window.print()}
-            className="w-1/2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-          >
+          <button onClick={() => navigate("/riwayat")} className="w-1/3 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+            Riwayat
+          </button>
+          <button onClick={() => window.print()} className="w-1/3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
             Cetak
           </button>
         </div>

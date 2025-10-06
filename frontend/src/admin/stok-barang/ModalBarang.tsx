@@ -19,6 +19,7 @@ interface ModalBarangProps {
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
   loading?: boolean;
+  kategoriOptions: string[];
 }
 
 const ModalBarang: React.FC<ModalBarangProps> = ({
@@ -29,6 +30,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
   onSubmit,
   onClose,
   loading = false,
+  kategoriOptions
 }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -117,11 +119,11 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
                 disabled={loading}
               >
                 <option value="">Pilih Kategori</option>
-                <option value="Elektronik">Elektronik</option>
-                <option value="Aksesoris">Aksesoris</option>
-                <option value="Gaming/Console">Gaming/Console</option>
-                <option value="Phones">Phones</option>
-                <option value="Makanan">Makanan</option>
+                {kategoriOptions.map((kategori) => (
+                  <option key={kategori} value={kategori}>
+                    {kategori}
+                  </option>
+                ))}
               </select>
             </div>
 

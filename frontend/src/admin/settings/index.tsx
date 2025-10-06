@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// src/admin/settings/SettingsPage.tsx
+import React, { useState, useEffect, useCallback } from 'react';
 import SweetAlert from '../../components/SweetAlert';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
@@ -7,7 +8,11 @@ import Tabs from './components/Tabs';
 import GeneralSettings from './components/GeneralSettings';
 import ReceiptSettings from './components/ReceiptSettings';
 import PaymentSettings from './components/PaymentSettings';
+import BiayaOperasionalSettings from './components/biaya-operasional';
 import AdvancedSettings from './components/AdvancedSettings';
+
+// Import interface with type-only import
+import type { BiayaOperasionalData } from './components/biaya-operasional';
 
 interface PaymentChannel {
   name: string;
@@ -49,6 +54,8 @@ const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('general');
   const [storeLogoFile, setStoreLogoFile] = useState<File | null>(null);
   const [channelLogoFiles, setChannelLogoFiles] = useState<Record<string, File>>({});
+  const [defaultProfilePictureFile, setDefaultProfilePictureFile] = useState<File | null>(null);
+  const [defaultProfilePictureUrl, setDefaultProfilePictureUrl] = useState<string>('');
   const [formData, setFormData] = useState<FormData>({
     storeName: '',
     storeAddress: '',
@@ -70,11 +77,29 @@ const SettingsPage: React.FC = () => {
   });
 
   const BASE_API_URL = 'http://192.168.110.16:5000/api/admin/settings';
+  const BIAYA_OPERASIONAL_API_URL = 'http://192.168.110.16:5000/api/admin/biaya-operasional';
+  const API_KEY = 'GPJbke7X3vAP0IBiiP8A'; // Ganti dengan API key yang sesuai
 
-  const fetchSettings = async () => {
+  // Fungsi untuk mendapatkan token dari localStorage
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
+
+  const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(BASE_API_URL);
+      const token = getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-api-key'] = API_KEY;
+      }
+
+      const response = await fetch(BASE_API_URL, { headers });
+      
       if (!response.ok) {
         throw new Error('Gagal mengambil data pengaturan');
       }
@@ -99,17 +124,19 @@ const SettingsPage: React.FC = () => {
         paymentMethods: data.paymentMethods,
         payment_methods: data.payment_methods,
       });
+
+      setDefaultProfilePictureUrl(data.defaultProfilePicture || '');
     } catch (error) {
       SweetAlert.error('Gagal memuat data pengaturan');
       console.error(error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [BASE_API_URL, API_KEY]);
 
   useEffect(() => {
     fetchSettings();
-  }, []);
+  }, [fetchSettings]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -199,9 +226,19 @@ const SettingsPage: React.FC = () => {
     try {
       SweetAlert.loading('Mengubah status metode pembayaran...');
       
+      const token = getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-api-key'] = API_KEY;
+      }
+      
       const response = await fetch(`${BASE_API_URL}/payment-methods/toggle`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ methodName, isActive })
       });
       
@@ -225,9 +262,19 @@ const SettingsPage: React.FC = () => {
     try {
       SweetAlert.loading('Mengubah status channel...');
       
+      const token = getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-api-key'] = API_KEY;
+      }
+      
       const response = await fetch(`${BASE_API_URL}/payment-methods/channel-toggle`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ methodName, channelName, isActive })
       });
       
@@ -261,9 +308,19 @@ const SettingsPage: React.FC = () => {
         throw new Error('Channel tidak ditemukan');
       }
       
+      const token = getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-api-key'] = API_KEY;
+      }
+      
       const response = await fetch(`${BASE_API_URL}/payment-methods/channel-name`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ 
           methodName: paymentMethod.method, 
           oldChannelName: channel.name, 
@@ -287,14 +344,23 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  // Fungsi untuk menambah payment method baru
   const handleAddPaymentMethod = async (methodName: string, channels: { name: string }[] = []) => {
     try {
       SweetAlert.loading('Menambah metode pembayaran...');
       
+      const token = getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-api-key'] = API_KEY;
+      }
+      
       const response = await fetch(`${BASE_API_URL}/payment-methods/add`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ 
           method: methodName,
           channels: channels.length > 0 ? channels : []
@@ -317,15 +383,23 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  // Fungsi untuk menambah channel baru
   const handleAddChannelToMethod = async (methodName: string, channelName: string, logoFile?: File) => {
     try {
       SweetAlert.loading('Menambah channel...');
       
-      // Tambah channel tanpa logo terlebih dahulu
+      const token = getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-api-key'] = API_KEY;
+      }
+      
       const response = await fetch(`${BASE_API_URL}/payment-methods/add-channel`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ 
           methodName, 
           channelName 
@@ -338,22 +412,28 @@ const SettingsPage: React.FC = () => {
         throw new Error(errorData.message || 'Gagal menambah channel');
       }
       
-      // Jika ada logo file, upload logo
       if (logoFile) {
         const formData = new FormData();
         formData.append('methodName', methodName);
         formData.append('channelName', channelName);
         formData.append('logo', logoFile);
         
+        const uploadHeaders: Record<string, string> = {};
+        
+        if (token) {
+          uploadHeaders['Authorization'] = `Bearer ${token}`;
+          uploadHeaders['x-api-key'] = API_KEY;
+        }
+        
         const logoResponse = await fetch(`${BASE_API_URL}/payment-methods/channel-logo`, {
           method: 'PUT',
+          headers: uploadHeaders,
           body: formData
         });
         
         if (!logoResponse.ok) {
           const errorData = await logoResponse.json();
           console.error('Server error uploading logo:', errorData);
-          // Jangan throw error di sini karena channel sudah berhasil ditambahkan
         }
       }
       
@@ -367,10 +447,8 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  // Fungsi untuk menghapus channel
   const handleDeleteChannel = async (methodName: string, channelName: string) => {
     try {
-      // Tampilkan konfirmasi sebelum menghapus menggunakan SweetAlert.fire
       const result = await SweetAlert.fire({
         title: 'Apakah Anda yakin?',
         text: `Channel "${channelName}" akan dihapus dari metode "${methodName}"`,
@@ -385,9 +463,19 @@ const SettingsPage: React.FC = () => {
       if (result.isConfirmed) {
         SweetAlert.loading('Menghapus channel...');
         
+        const token = getToken();
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+          headers['x-api-key'] = API_KEY;
+        }
+        
         const response = await fetch(`${BASE_API_URL}/payment-methods/channel`, {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ 
             methodName, 
             channelName 
@@ -411,22 +499,122 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleDefaultProfilePictureChange = (file: File) => {
+    setDefaultProfilePictureFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setDefaultProfilePictureUrl(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadDefaultProfilePicture = async () => {
+    if (!defaultProfilePictureFile) return;
+
+    try {
+      SweetAlert.loading('Mengupload gambar profil default...');
+      const formData = new FormData();
+      formData.append('profilePicture', defaultProfilePictureFile);
+
+      const token = getToken();
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-api-key'] = API_KEY;
+      }
+
+      const response = await fetch(`${BASE_API_URL}/default`, {
+        method: 'PUT',
+        headers,
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Gagal mengupload gambar profil default');
+      }
+
+      SweetAlert.close();
+      SweetAlert.success('Gambar profil default berhasil diupload');
+      setDefaultProfilePictureFile(null);
+      fetchSettings();
+    } catch (error) {
+      SweetAlert.close();
+      SweetAlert.error(error instanceof Error ? error.message : 'Gagal mengupload gambar profil default');
+      console.error(error);
+    }
+  };
+
+  const handleSaveBiayaOperasional = async (data: BiayaOperasionalData) => {
+    try {
+      setSaving(true);
+      SweetAlert.loading('Menyimpan biaya operasional...');
+      
+      const token = getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-api-key'] = API_KEY;
+      }
+      
+      const response = await fetch(BIAYA_OPERASIONAL_API_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Server error:', errorData);
+        throw new Error(errorData.message || 'Gagal menyimpan biaya operasional');
+      }
+      
+      SweetAlert.close();
+      SweetAlert.success('Biaya operasional berhasil disimpan');
+    } catch (error) {
+      SweetAlert.close();
+      SweetAlert.error(error instanceof Error ? error.message : 'Gagal menyimpan biaya operasional');
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Jika tab aktif adalah biaya-operasional, tidak perlu menjalankan handleSubmit utama
+    if (activeTab === 'biaya-operasional') {
+      return;
+    }
     
     try {
       setSaving(true);
       SweetAlert.loading('Menyimpan pengaturan...');
       
-      const taxPayload = { taxRate: formData.taxRate };
-      const discountPayload = { globalDiscount: formData.globalDiscount };
-      const serviceChargePayload = { serviceCharge: formData.serviceCharge };
+      // Validate numeric fields
+      if (isNaN(formData.taxRate) || isNaN(formData.globalDiscount) || isNaN(formData.serviceCharge)) {
+        throw new Error('Nilai pajak, diskon, atau biaya layanan tidak valid');
+      }
+      
+      // Create payloads with proper validation
+      const taxPayload = { 
+        taxRate: typeof formData.taxRate === 'number' ? formData.taxRate : parseFloat(formData.taxRate) || 0 
+      };
+      const discountPayload = { 
+        globalDiscount: typeof formData.globalDiscount === 'number' ? formData.globalDiscount : parseFloat(formData.globalDiscount) || 0 
+      };
+      const serviceChargePayload = { 
+        serviceCharge: typeof formData.serviceCharge === 'number' ? formData.serviceCharge : parseFloat(formData.serviceCharge) || 0 
+      };
       const receiptPayload = { 
         receiptHeader: formData.receiptHeader,
         receiptFooter: formData.receiptFooter
       };
       
-      // Buat FormData untuk store logo
       const storeFormData = new FormData();
       storeFormData.append('storeName', formData.storeName);
       storeFormData.append('storeAddress', formData.storeAddress);
@@ -435,7 +623,6 @@ const SettingsPage: React.FC = () => {
       if (storeLogoFile) {
         storeFormData.append('storeLogo', storeLogoFile);
       } else if (formData.storeLogo) {
-        // Jika tidak ada file baru tapi ada logo lama, kirim URL-nya
         storeFormData.append('storeLogo', formData.storeLogo);
       }
       
@@ -458,42 +645,13 @@ const SettingsPage: React.FC = () => {
         `${BASE_API_URL}/general`
       ];
       
-      // Buat salinan data payment methods tanpa base64 yang terlalu panjang
-      const cleanedPaymentMethods = formData.payment_methods.map(pm => {
-        const cleanedChannels = pm.channels.map(channel => {
-          // Hapus logo base64 yang terlalu panjang
-          if (channel.logo && channel.logo.startsWith('data:image') && channel.logo.length > 100) {
-            return { ...channel, logo: '' };
-          }
-          return channel;
-        });
-        return { 
-          ...pm, 
-          channels: cleanedChannels,
-          // Pastikan isActive adalah boolean
-          isActive: Boolean(pm.isActive)
-        };
-      });
-      
-      // Pastikan payload yang dikirim adalah objek JSON yang valid
-      const paymentPayload = { 
-        payment_methods: cleanedPaymentMethods,
-        paymentMethods: formData.paymentMethods
-      };
-      
-      // Debug: Log payload yang akan dikirim
-      console.log('Payment payload:', JSON.stringify(paymentPayload));
-      
-      // Buat FormData terpisah untuk upload logo channel
       const channelLogoFormData = new FormData();
       let hasChannelLogos = false;
       
       Object.entries(channelLogoFiles).forEach(([key, file]) => {
-        if (file) { // Pastikan file ada
-          // Parse key untuk mendapatkan methodId dan channelId
+        if (file) {
           const [methodId, channelId] = key.split('-');
           
-          // Cari nama method dan channel berdasarkan ID
           const paymentMethod = formData.payment_methods.find(pm => pm._id === methodId);
           if (paymentMethod) {
             const channel = paymentMethod.channels.find(c => c._id === channelId);
@@ -507,44 +665,72 @@ const SettingsPage: React.FC = () => {
         }
       });
       
+      const token = getToken();
+      
       const requests = [
         fetch(requestUrls[0], {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-api-key': API_KEY
+          },
           body: JSON.stringify(taxPayload)
         }),
         fetch(requestUrls[1], {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-api-key': API_KEY
+          },
           body: JSON.stringify(discountPayload)
         }),
         fetch(requestUrls[2], {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-api-key': API_KEY
+          },
           body: JSON.stringify(serviceChargePayload)
         }),
         fetch(requestUrls[3], {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-api-key': API_KEY
+          },
           body: JSON.stringify(receiptPayload)
         }),
-        // Gunakan FormData untuk store
         fetch(requestUrls[5], {
           method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'x-api-key': API_KEY
+          },
           body: storeFormData
         }),
         fetch(requestUrls[6], {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'x-api-key': API_KEY
+          },
           body: JSON.stringify(generalPayload)
         })
       ];
       
-      // Jika ada logo channel yang perlu diupload, tambahkan request
       if (hasChannelLogos) {
         requests.push(
           fetch(`${BASE_API_URL}/payment-methods/channel-logo`, {
             method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'x-api-key': API_KEY
+            },
             body: channelLogoFormData
           })
         );
@@ -556,7 +742,6 @@ const SettingsPage: React.FC = () => {
       for (let i = 0; i < responses.length; i++) {
         if (!responses[i].ok) {
           try {
-            // Cek content type sebelum parsing JSON
             const contentType = responses[i].headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
               const errorData = await responses[i].json();
@@ -566,12 +751,11 @@ const SettingsPage: React.FC = () => {
                 message: errorData.message || 'Unknown error'
               });
             } else {
-              // Jika bukan JSON, ambil sebagai teks
               const errorText = await responses[i].text();
               errors.push({
                 url: requestUrls[i] || `${BASE_API_URL}/payment-methods/channel-logo`,
                 status: responses[i].status,
-                message: errorText.substring(0, 100) || 'Unknown error' // Batasi panjang pesan
+                message: errorText.substring(0, 100) || 'Unknown error'
               });
             }
           } catch {
@@ -619,6 +803,9 @@ const SettingsPage: React.FC = () => {
                 formData={formData} 
                 handleInputChange={handleInputChange}
                 handleLogoChange={handleLogoChange}
+                defaultProfilePictureUrl={defaultProfilePictureUrl}
+                onDefaultProfilePictureChange={handleDefaultProfilePictureChange}
+                onUploadDefaultProfilePicture={uploadDefaultProfilePicture}
               />
             )}
             
@@ -643,6 +830,13 @@ const SettingsPage: React.FC = () => {
               />
             )}
             
+            {activeTab === 'biaya-operasional' && (
+              <BiayaOperasionalSettings 
+                onSaveBiayaOperasional={handleSaveBiayaOperasional}
+                saving={saving}
+              />
+            )}
+            
             {activeTab === 'advanced' && (
               <AdvancedSettings 
                 formData={formData} 
@@ -651,15 +845,18 @@ const SettingsPage: React.FC = () => {
             )}
           </div>
 
-          <div className="bg-gray-50 px-6 py-3 flex justify-end">
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-            >
-              {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
-            </button>
-          </div>
+          {/* Hanya tampilkan tombol simpan jika bukan tab biaya-operasional */}
+          {activeTab !== 'biaya-operasional' && (
+            <div className="bg-gray-50 px-6 py-3 flex justify-end">
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+              >
+                {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaUser, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from '../hooks/useAuth';
 import type { Variants } from "framer-motion";
 
@@ -13,10 +13,29 @@ export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const auth = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirect jika sudah login
+  useEffect(() => {
+    if (auth.user && !auth.isLoading) {
+      // Cek apakah ada lokasi yang disimpan sebelumnya
+      const from = location.state?.from?.pathname || '/';
+      
+      // Redirect ke dashboard sesuai role
+      if (auth.user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (auth.user.role === 'manajer') {
+        navigate('/manajer/dashboard');
+      } else if (auth.user.role === 'kasir') {
+        navigate('/kasir/dashboard');
+      } else {
+        navigate(from);
+      }
+    }
+  }, [auth.user, auth.isLoading, navigate, location]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-    // Hapus error saat user mulai mengetik lagi
     if (error) setError("");
   };
 
@@ -29,12 +48,11 @@ export default function LoginForm() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Mencegah form submission default
+    e.preventDefault();
     setIsLoading(true);
     setError("");
     
     try {
-      // Validasi form sederhana
       if (!form.username.trim()) {
         setError("Username tidak boleh kosong");
         setIsLoading(false);
@@ -50,21 +68,27 @@ export default function LoginForm() {
       const result = await auth.login(form.username, form.password);
       
       if (!result.success) {
-        // Tampilkan pesan error dari backend atau pesan default
         setError(result.message || "Username atau password salah");
       } else {
-        // Redirect berdasarkan role
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        const role = userData.role;
+        // Redirect akan ditangani oleh useEffect di atas
+        // Tapi kita tetap perlu handle redirect manual untuk kasus tertentu
+        const from = location.state?.from?.pathname;
         
-        if (role === 'admin') {
-          navigate('/admin/dashboard');
-        } else if (role === 'manajer') {
-          navigate('/meneger/dashboard');
-        } else if (role === 'kasir') {
-          navigate('/kasir/dashboard');
+        if (from && from !== '/login' && from !== '/register') {
+          navigate(from);
         } else {
-          navigate('/');
+          // Redirect ke dashboard sesuai role
+          const role = auth.user?.role;
+          
+          if (role === 'admin') {
+            navigate('/admin/dashboard');
+          } else if (role === 'manajer') {
+            navigate('/manajer/dashboard');
+          } else if (role === 'kasir') {
+            navigate('/kasir/dashboard');
+          } else {
+            navigate('/');
+          }
         }
       }
     } catch (err: unknown) {
@@ -179,7 +203,6 @@ export default function LoginForm() {
         variants={leftVariants}
         className="hidden md:flex w-1/2 bg-gradient-to-br from-blue-600 to-purple-600 text-white flex-col justify-center items-center p-10 relative"
       >
-        {/* Elemen dekoratif animasi */}
         <motion.div 
           className="absolute -top-20 -left-20 w-40 h-40 rounded-full bg-purple-500 opacity-20"
           animate={{
@@ -351,22 +374,26 @@ export default function LoginForm() {
             ) : 'Login'}
           </motion.button>
 
+          {/* Tombol Register */}
           <motion.div 
-            className="mt-8 text-center"
+            className="mt-6 text-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
           >
-            <p className="text-sm text-gray-500">
+            <p className="text-gray-600 text-sm">
               Belum punya akun?{' '}
-              <motion.a 
-                href="/register" 
+              <motion.button
+                variants={buttonVariants}
+                initial="rest"
+                whileHover="hover"
+                whileTap="tap"
+                type="button"
+                onClick={() => navigate('/register')}
                 className="text-blue-500 hover:text-blue-700 font-medium"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
               >
-                Daftar sekarang
-              </motion.a>
+                Daftar di sini
+              </motion.button>
             </p>
           </motion.div>
 

@@ -4,7 +4,6 @@ import {
   ShoppingCart,
   Menu as MenuIcon,
   X,
-  Bell,
   User,
   LogOut,
   Settings,
@@ -189,12 +188,7 @@ function TopNav() {
       </h1>
 
       <div className="flex items-center gap-4">
-        <button className="p-2 rounded-full hover:bg-gray-100 transition-all duration-200 relative group">
-          <Bell className="w-5 h-5 text-gray-600" />
-          <span className="absolute top-0 right-0 bg-red-500 text-white rounded-full text-xs w-4 h-4 flex items-center justify-center">
-            3
-          </span>
-        </button>
+        
 
         <div className="relative" ref={dropdownRef}>
           <button

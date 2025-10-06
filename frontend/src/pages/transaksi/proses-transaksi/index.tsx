@@ -1,5 +1,5 @@
 // src/pages/transaksi/proses-transaksi/index.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import MainLayout from "../../../components/MainLayout";
 import PaymentInfo from "./components/PaymentInfo";
@@ -58,19 +58,134 @@ const ProsesTransaksiPage = () => {
   const [isPaymentSuccess, setIsPaymentSuccess] = useState<boolean>(false);
   const [isExpired, setIsExpired] = useState<boolean>(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState<boolean>(false);
+  const [isCancelling, setIsCancelling] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(300); // 5 menit dalam detik
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [qrCodeLoading, setQrCodeLoading] = useState<boolean>(true);
+  const [qrCodeError, setQrCodeError] = useState<boolean>(false);
   const [paymentType, setPaymentType] = useState<'va' | 'qris' | 'ewallet' | 'tunai' | null>(null);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  const [parsedOrderId, setParsedOrderId] = useState<string | null>(null);
+  const [parsedTransactionStatus, setParsedTransactionStatus] = useState<string | null>(null);
+  const [parsedStatusCode, setParsedStatusCode] = useState<string | null>(null);
   
   const { 
     transaksi = null,
-    midtrans = null
+    midtrans = null,
+    expiryTime
   } = (location.state as { 
     expiryTime?: string;
     transaksi?: TransactionResponse | null;
     midtrans?: MidtransData | null;
   }) || {};
+
+  // Generate unique key for localStorage based on transaction ID
+  const getStorageKey = useCallback((suffix: string) => {
+    const orderId = transaksi?.order_id || midtrans?.order_id || token;
+    return `transaksi_${orderId}_${suffix}`;
+  }, [transaksi, midtrans, token]);
+
+  // Initialize timer from localStorage or calculate remaining time
+  useEffect(() => {
+    if (!transaksi || !midtrans || isInitialized) return;
+    
+    const orderId = transaksi?.order_id || midtrans?.order_id;
+    if (!orderId) return;
+    
+    // Check if transaction is already marked as expired
+    const expiredKey = getStorageKey('expired');
+    const isExpiredStored = localStorage.getItem(expiredKey) === 'true';
+    
+    if (isExpiredStored) {
+      setIsExpired(true);
+      setIsInitialized(true);
+      return;
+    }
+    
+    // Check if payment is already completed
+    const successKey = getStorageKey('success');
+    const isSuccessStored = localStorage.getItem(successKey) === 'true';
+    
+    if (isSuccessStored) {
+      setIsPaymentSuccess(true);
+      setIsInitialized(true);
+      return;
+    }
+    
+    // Calculate remaining time
+    let remainingTime = 300; // Default 5 minutes
+    
+    if (expiryTime) {
+      const expiryDate = new Date(expiryTime);
+      const now = new Date();
+      const diffInSeconds = Math.floor((expiryDate.getTime() - now.getTime()) / 1000);
+      
+      if (diffInSeconds <= 0) {
+        // Transaction already expired
+        localStorage.setItem(expiredKey, 'true');
+        setIsExpired(true);
+        setIsInitialized(true);
+        return;
+      }
+      
+      remainingTime = Math.min(diffInSeconds, 300); // Cap at 5 minutes
+    } else {
+      // Try to get remaining time from localStorage
+      const timeKey = getStorageKey('timeLeft');
+      const storedTime = localStorage.getItem(timeKey);
+      
+      if (storedTime) {
+        const parsedTime = parseInt(storedTime, 10);
+        if (!isNaN(parsedTime) && parsedTime > 0) {
+          remainingTime = parsedTime;
+        }
+      }
+    }
+    
+    setTimeLeft(remainingTime);
+    setIsInitialized(true);
+  }, [transaksi, midtrans, expiryTime, token, isInitialized, getStorageKey]);
+
+  // Save timer to localStorage and handle expiration
+  useEffect(() => {
+    if (!isInitialized || isExpired || isPaymentSuccess) return;
+    
+    if (timeLeft <= 0) {
+      // Mark transaction as expired
+      const expiredKey = getStorageKey('expired');
+      localStorage.setItem(expiredKey, 'true');
+      setIsExpired(true);
+      return;
+    }
+    
+    // Save remaining time to localStorage
+    const timeKey = getStorageKey('timeLeft');
+    localStorage.setItem(timeKey, timeLeft.toString());
+    
+    const timerId = setTimeout(() => {
+      setTimeLeft(timeLeft - 1);
+    }, 1000);
+    
+    return () => clearTimeout(timerId);
+  }, [timeLeft, isInitialized, isExpired, isPaymentSuccess, getStorageKey]);
+
+  // Cleanup localStorage when transaction is completed or cancelled
+  useEffect(() => {
+    if (isPaymentSuccess || isExpired) {
+      const orderId = transaksi?.order_id || midtrans?.order_id || token;
+      if (!orderId) return;
+      
+      // Save completion status
+      if (isPaymentSuccess) {
+        const successKey = getStorageKey('success');
+        localStorage.setItem(successKey, 'true');
+      }
+      
+      // Clean up timer data
+      const timeKey = getStorageKey('timeLeft');
+      localStorage.removeItem(timeKey);
+    }
+  }, [isPaymentSuccess, isExpired, transaksi, midtrans, token, getStorageKey]);
 
   // Debugging: Cek token dan transaksi
   useEffect(() => {
@@ -96,6 +211,9 @@ const ProsesTransaksiPage = () => {
   // Fetch QR Code hanya untuk QRIS/E-Wallet
   useEffect(() => {
     if (paymentType === 'qris' || paymentType === 'ewallet') {
+      setQrCodeLoading(true);
+      setQrCodeError(false);
+      
       if (midtrans && midtrans.actions && midtrans.actions.length > 0) {
         const qrAction = midtrans.actions.find(action => action.name === "generate-qr-code-v2") || 
                         midtrans.actions.find(action => action.name === "generate-qr-code");
@@ -103,26 +221,18 @@ const ProsesTransaksiPage = () => {
         if (qrAction) {
           setQrCodeUrl(qrAction.url);
           setQrCodeLoading(false);
+        } else {
+          setQrCodeLoading(false);
+          setQrCodeError(true);
         }
+      } else {
+        setQrCodeLoading(false);
+        setQrCodeError(true);
       }
     } else {
       setQrCodeLoading(false);
     }
   }, [midtrans, paymentType]);
-
-  // Countdown timer untuk pembayaran
-  useEffect(() => {
-    if (timeLeft <= 0) {
-      setIsExpired(true);
-      return;
-    }
-
-    const timerId = setTimeout(() => {
-      setTimeLeft(timeLeft - 1);
-    }, 1000);
-
-    return () => clearTimeout(timerId);
-  }, [timeLeft]);
 
   // Format waktu untuk ditampilkan
   const formatTime = (seconds: number): string => {
@@ -133,62 +243,81 @@ const ProsesTransaksiPage = () => {
 
   // Cek parameter query untuk status pembayaran dari Midtrans
   useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const statusCode = queryParams.get('status');
-    const transactionStatus = queryParams.get('transaction_status');
-    const orderId = queryParams.get('order_id');
-    
-    console.log("Query params:", { statusCode, transactionStatus, orderId });
-    
-    // Jika pembayaran berhasil dari Midtrans
-    if (statusCode === '200' && transactionStatus === 'settlement' && orderId) {
-      console.log("Pembayaran berhasil, mengarahkan ke halaman pembelian berhasil");
+    // Try several places where Midtrans may put callback params:
+    // 1) location.search (normal query string)
+    // 2) location.hash (some integrations append ?params after hash)
+    // 3) window.location.href as a final fallback
+    const extractSearch = (): string => {
+      if (location.search && location.search.length > 1) return location.search;
+      if (location.hash && location.hash.includes('?')) {
+        return location.hash.slice(location.hash.indexOf('?'));
+      }
+      try {
+        const u = new URL(window.location.href);
+        return u.search || '';
+      } catch (err) {
+        console.warn('Failed to parse window.location.href', err);
+        return '';
+      }
+    };
+
+    const raw = extractSearch();
+    const qp = new URLSearchParams(raw.startsWith('?') ? raw.slice(1) : raw);
+
+    // Midtrans may use 'status' or 'status_code' for the numeric status — check both
+    const statusCode = qp.get('status') ?? qp.get('status_code');
+    const transactionStatus = qp.get('transaction_status') ?? qp.get('transactionStatus');
+    const orderId = qp.get('order_id') ?? qp.get('orderId');
+
+    console.log('Parsed Midtrans params from URL ->', { statusCode, transactionStatus, orderId });
+
+    // persist parsed values for button fallback
+    setParsedOrderId(orderId);
+    setParsedTransactionStatus(transactionStatus);
+    setParsedStatusCode(statusCode);
+
+    // If params indicate success/failed, immediately navigate as before
+    if (statusCode === '200' && (transactionStatus === 'settlement' || transactionStatus === 'capture') && orderId) {
       setIsPaymentSuccess(true);
-      
-      // Arahkan ke halaman pembelian berhasil setelah delay singkat
       setTimeout(() => {
         navigate(`/pembelian-berhasil/${token}`, {
-          state: { 
-            transaksiId: orderId,
-            transaksiTerbaru: transaksi, // Tambahkan data transaksi lengkap
-            status: 'success',
-            message: "Pembayaran berhasil!" 
-          },
+          state: { transaksiId: orderId, transaksiTerbaru: transaksi, status: 'success', message: 'Pembayaran berhasil!' },
           replace: true
         });
       }, 1500);
+      return;
     }
-    // Jika pembayaran masih pending
-    else if (statusCode === '201' && transactionStatus === 'pending' && orderId) {
-      console.log("Pembayaran pending, menunggu pembayaran");
-      setPaymentStatus('pending');
-    }
-    // Jika pembayaran gagal atau dibatalkan
-    else if ((statusCode === '202' || transactionStatus === 'deny' || 
-              transactionStatus === 'expire' || transactionStatus === 'cancel') && orderId) {
-      console.log("Pembayaran gagal atau dibatalkan");
-      
-      // Arahkan ke halaman pembelian gagal
+
+    if ((statusCode === '202' || transactionStatus === 'deny' || transactionStatus === 'expire' || transactionStatus === 'cancel') && orderId) {
       setTimeout(() => {
-        navigate("/pembelian-gagal", {
-          state: { 
-            transaksiId: orderId,
-            transaksiTerbaru: transaksi, // Tambahkan data transaksi lengkap
-            status: 'failed',
-            message: "Pembayaran gagal. Silakan coba lagi." 
-          },
+        navigate('/pembelian-gagal', {
+          state: { transaksiId: orderId, transaksiTerbaru: transaksi, status: 'failed', message: 'Pembayaran gagal. Silakan coba lagi.' },
           replace: true
         });
       }, 1500);
+      return;
     }
-  }, [location.search, navigate, token, transaksi]); // Tambahkan transaksi ke dependency array
+  }, [location.search, location.hash, navigate, token, transaksi]);
 
   // Fungsi untuk mengecek status transaksi ke API
   const checkTransactionStatus = async (orderId: string) => {
     setIsCheckingStatus(true);
     try {
       console.log(`Mengecek status transaksi untuk order ID: ${orderId}`);
-      const response = await fetch(`/api/transaksi/${orderId}`);
+      // Build API base and headers (reuse Vite env keys if available)
+      const meta = import.meta as { env?: { VITE_API_BASE_URL?: string; VITE_API_KEY?: string } };
+      const API_BASE = meta.env?.VITE_API_BASE_URL ?? '';
+      const API_KEY = meta.env?.VITE_API_KEY ?? '';
+
+      const tokenLocal = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (API_KEY) headers['x-api-key'] = API_KEY;
+      if (tokenLocal) headers['Authorization'] = `Bearer ${tokenLocal}`;
+
+      const url = API_BASE ? `${API_BASE.replace(/\/$/, '')}/api/transaksi/public/status/${orderId}` : `/api/transaksi/public/status/${orderId}`;
+      const response = await fetch(url, { headers });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -206,7 +335,7 @@ const ProsesTransaksiPage = () => {
           navigate(`/pembelian-berhasil/${token}`, {
             state: { 
               transaksiId: orderId,
-              transaksiTerbaru: transaksi, // Tambahkan data transaksi lengkap
+              transaksiTerbaru: transaksi,
               status: 'success',
               message: "Pembayaran berhasil!" 
             },
@@ -263,6 +392,59 @@ const ProsesTransaksiPage = () => {
     }
   };
 
+  // Fungsi untuk membatalkan transaksi
+  const cancelTransaction = async (transactionId: string) => {
+    setIsCancelling(true);
+    try {
+      console.log(`Membatalkan transaksi dengan ID: ${transactionId}`);
+      const meta = import.meta as { env?: { VITE_API_BASE_URL?: string; VITE_API_KEY?: string } };
+      const API_BASE = meta.env?.VITE_API_BASE_URL ?? '';
+      const API_KEY = meta.env?.VITE_API_KEY ?? '';
+      const tokenLocal = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (API_KEY) headers['x-api-key'] = API_KEY;
+      if (tokenLocal) headers['Authorization'] = `Bearer ${tokenLocal}`;
+
+      const url = API_BASE ? `${API_BASE.replace(/\/$/, '')}/api/transaksi/cancel/${transactionId}` : `/api/transaksi/cancel/${transactionId}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Respons pembatalan:", data);
+      
+      // Tampilkan notifikasi sukses
+      await SweetAlert.fire({
+        title: 'Pembatalan Berhasil',
+        text: 'Transaksi telah berhasil dibatalkan.',
+        icon: 'success',
+        confirmButtonText: 'OK'
+      });
+      
+      // Arahkan ke halaman transaksi
+      navigate("/transaksi");
+    } catch (error) {
+      console.error("Error saat membatalkan transaksi:", error);
+      
+      // Tampilkan notifikasi error
+      await SweetAlert.fire({
+        title: 'Pembatalan Gagal',
+        text: 'Terjadi kesalahan saat membatalkan transaksi. Silakan coba lagi.',
+        icon: 'error',
+        confirmButtonText: 'OK'
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   // Fungsi untuk menyalin nomor VA
   const copyVANumber = (vaNumber: string) => {
     navigator.clipboard.writeText(vaNumber)
@@ -294,8 +476,10 @@ const ProsesTransaksiPage = () => {
     console.log("Pembayaran E-Wallet, mengecek status ke API");
     setPaymentStatus('pending');
     
-    // Ambil order ID untuk mengecek status
-    const orderId = transaksi?.order_id || midtrans?.order_id;
+    // Ambil order ID untuk mengecek status — coba beberapa fallback
+    const orderId = transaksi?.order_id || midtrans?.order_id || parsedOrderId || token;
+  console.log('Checking status for orderId (fallbacks):', { fromTransaksi: transaksi?.order_id, fromMidtrans: midtrans?.order_id, parsedOrderId, parsedTransactionStatus, parsedStatusCode, token });
+
     if (orderId) {
       await checkTransactionStatus(orderId);
     } else {
@@ -310,10 +494,67 @@ const ProsesTransaksiPage = () => {
   };
 
   // Menangani pembayaran dibatalkan
-  const handlePaymentCancel = () => {
+  const handlePaymentCancel = async () => {
     console.log("Pembayaran dibatalkan");
-    navigate("/transaksi");
+    
+    // Ambil transaction ID (MongoDB _id) untuk membatalkan transaksi
+    const transactionId = transaksi?._id;
+    if (transactionId) {
+      // Konfirmasi pembatalan dengan SweetAlert
+      const result = await SweetAlert.fire({
+        title: 'Konfirmasi Pembatalan',
+        text: 'Apakah Anda yakin ingin membatalkan transaksi ini?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Ya, Batalkan',
+        cancelButtonText: 'Tidak'
+      });
+      
+      // Jika pengguna mengkonfirmasi pembatalan
+      if (result.isConfirmed) {
+        await cancelTransaction(transactionId);
+      }
+    } else {
+      console.error("Transaction ID tidak ditemukan");
+      await SweetAlert.fire({
+        title: 'Error',
+        text: 'ID transaksi tidak ditemukan. Silakan coba lagi.',
+        icon: 'error',
+        confirmButtonText: 'OK'
+      });
+      
+      // Tetap arahkan ke halaman transaksi meskipun ada error
+      navigate("/transaksi");
+    }
   };
+
+  // If transaction is expired, prevent further actions
+  useEffect(() => {
+    if (isExpired) {
+      // Disable any payment processing
+      setPaymentStatus('expire');
+      
+      // Show notification if not already shown
+      if (isInitialized) {
+        SweetAlert.fire({
+          title: 'Pembayaran Kadaluarsa',
+          text: 'Waktu pembayaran telah habis. Silakan coba lagi.',
+          icon: 'warning',
+          confirmButtonText: 'OK'
+        });
+      }
+    }
+  }, [isExpired, isInitialized]);
+
+  // If payment is successful, prevent further actions
+  useEffect(() => {
+    if (isPaymentSuccess) {
+      // Disable any payment processing
+      setPaymentStatus('selesai');
+    }
+  }, [isPaymentSuccess]);
 
   // Jika pembayaran berhasil dari Midtrans, tampilkan pesan loading
   if (isPaymentSuccess) {
@@ -324,6 +565,41 @@ const ProsesTransaksiPage = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
             <p className="mt-4">Memproses pembayaran berhasil...</p>
             <p className="text-sm text-gray-600 mt-2">Anda akan diarahkan ke halaman pembelian berhasil</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // Jika transaksi sudah kadaluarsa, tampilkan halaman expired
+  if (isExpired) {
+    return (
+      <MainLayout>
+        <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Pembayaran Kadaluarsa</h1>
+            <p className="text-gray-600">Waktu pembayaran telah habis</p>
+          </div>
+
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            <div className="text-center">
+              <p className="font-bold">Waktu pembayaran telah habis!</p>
+              <p className="mt-2">Silakan coba lagi atau pilih metode pembayaran lain</p>
+              <button
+                onClick={() => {
+                  // Clear localStorage for this transaction
+                  const orderId = transaksi?.order_id || midtrans?.order_id || token;
+                  if (orderId) {
+                    localStorage.removeItem(`transaksi_${orderId}_timeLeft`);
+                    localStorage.removeItem(`transaksi_${orderId}_expired`);
+                  }
+                  navigate("/transaksi");
+                }}
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Kembali ke Halaman Transaksi
+              </button>
+            </div>
           </div>
         </div>
       </MainLayout>
@@ -360,9 +636,20 @@ const ProsesTransaksiPage = () => {
               <p className="mt-2">Silakan coba lagi atau pilih metode pembayaran lain</p>
               <button
                 onClick={handlePaymentCancel}
-                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                disabled={isCancelling}
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 flex items-center justify-center"
               >
-                Kembali ke Halaman Transaksi
+                {isCancelling ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Membatalkan...
+                  </>
+                ) : (
+                  "Kembali ke Halaman Transaksi"
+                )}
               </button>
             </div>
           </div>
@@ -455,6 +742,15 @@ const ProsesTransaksiPage = () => {
                       <div className="flex justify-center items-center h-64 w-full">
                         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                       </div>
+                    ) : qrCodeError ? (
+                      <div className="flex flex-col items-center justify-center h-64 w-full">
+                        <div className="bg-red-100 rounded-full p-4 mb-4">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                        </div>
+                        <p className="text-gray-500 text-center">QR Code tidak dapat dimuat. Silakan gunakan URL pembayaran di bawah ini.</p>
+                      </div>
                     ) : (
                       <>
                         <div className="bg-white p-4 rounded-lg border border-gray-200 mb-4">
@@ -463,6 +759,10 @@ const ProsesTransaksiPage = () => {
                               src={qrCodeUrl} 
                               alt="QR Code Pembayaran" 
                               className="w-64 h-64 object-contain"
+                              onError={() => {
+                                console.error("Error loading QR Code image");
+                                setQrCodeError(true);
+                              }}
                             />
                           ) : (
                             <div className="w-64 h-64 bg-gray-100 flex items-center justify-center">
@@ -550,13 +850,24 @@ const ProsesTransaksiPage = () => {
               <div className="flex flex-col sm:flex-row justify-end gap-4 mt-6">
                 <button
                   onClick={handlePaymentCancel}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                  disabled={isCancelling || isCheckingStatus}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:bg-gray-400 flex items-center justify-center"
                 >
-                  Batal
+                  {isCancelling ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Membatalkan...
+                    </>
+                  ) : (
+                    "Batal"
+                  )}
                 </button>
                 <button
                   onClick={handlePaymentWithMidtrans}
-                  disabled={isCheckingStatus || isExpired}
+                  disabled={isCheckingStatus || isExpired || isCancelling}
                   className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 flex items-center justify-center"
                 >
                   {isCheckingStatus ? (

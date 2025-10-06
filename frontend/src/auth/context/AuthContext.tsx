@@ -1,29 +1,78 @@
-import React, { createContext, useState, useEffect, type ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import axios from 'axios';
 
 interface User {
-  id: string;
-  username: string;
-  nama_lengkap?: string;
-  role: 'admin' | 'manajer' | 'kasir';
-  status?: string;
+  id?: string; // Opsional, karena kadang menggunakan _id
+  _id?: string; // Opsional, karena kadang menggunakan id
+  nama_lengkap: string;
+  username?: string;
+  role: 'admin' | 'manajer' | 'kasir' | 'users';
+  status: string;
+  profilePicture?: string;
+}
+
+interface LoginResponse {
+  message: string;
+  token: string;
+  user: User;
+}
+
+interface RegisterResponse {
+  message: string;
+  user: User;
+}
+
+interface LogoutResponse {
+  message: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  defaultProfilePicture: string;
   login: (username: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  register: (nama_lengkap: string, username: string, password: string, role: 'admin' | 'manajer' | 'kasir') => Promise<{ success: boolean; message?: string }>;
+  register: (nama_lengkap: string, username: string, password: string, role: 'admin' | 'manajer' | 'kasir' | 'users') => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
+  updateProfilePicture: (profilePicture: File) => Promise<{ success: boolean; message?: string }>;
+  updateProfile: (profileData: {
+    nama_lengkap: string;
+    username: string;
+    currentPassword?: string;
+    newPassword?: string;
+  }) => Promise<{ success: boolean; message?: string }>;
+  getDefaultProfilePicture: () => Promise<{ success: boolean; defaultProfilePicture?: string; message?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Base URL API
-const API_BASE_URL = 'http://192.168.110.16:5000';
+const _meta = import.meta as { env?: { VITE_API_BASE_URL?: string; VITE_API_KEY?: string } };
+const API_BASE_URL = _meta.env?.VITE_API_BASE_URL ?? 'http://192.168.110.16:5000';
+const API_KEY = _meta.env?.VITE_API_KEY ?? 'GPJbke7X3vAP0IBiiP8A';
+
+function isAxiosError(error: unknown): error is { isAxiosError: true; response?: { data?: ErrorResponse }; message?: string } {
+  return typeof error === 'object' && error !== null && 'isAxiosError' in (error as Record<string, unknown>) && (error as Record<string, unknown>)['isAxiosError'] === true;
+}
+
+function getMessageFromUnknown(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  const e = error as { message?: unknown };
+  return typeof e.message === 'string' ? e.message : undefined;
+}
+
+interface ErrorResponse {
+  message?: string;
+}
+
+// Helper function untuk mendapatkan ID user
+function getUserId(user: User): string {
+  // Prioritaskan _id jika ada, jika tidak gunakan id
+  return user._id || user.id || '';
+}
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [defaultProfilePicture, setDefaultProfilePicture] = useState<string>('');
 
   useEffect(() => {
     const checkAuth = () => {
@@ -33,10 +82,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (storedUser && token) {
         try {
           const parsedUser = JSON.parse(storedUser);
+          console.log('Parsed user from localStorage:', parsedUser);
           setUser(parsedUser);
         } catch (error) {
           console.error('Error parsing stored user:', error);
-          // Hapus data yang tidak valid
           localStorage.removeItem('user');
           localStorage.removeItem('token');
         }
@@ -47,159 +96,307 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     checkAuth();
   }, []);
 
-  const login = async (username: string, password: string): Promise<{ success: boolean; message?: string }> => {
-    setIsLoading(true);
-    
+  const fetchDefaultProfilePicture = useCallback(async (): Promise<{ success: boolean; defaultProfilePicture?: string; message?: string }> => {
     try {
-      const url = `${API_BASE_URL}/auth/login`;
-      console.log('Mencoba mengakses URL:', url);
+      // PERBAIKI: Ganti endpoint dari /api/manager/settings ke /api/admin/settings
+      const response = await axios.get<{ defaultProfilePicture: string }>(
+        `${API_BASE_URL}/api/admin/settings`,
+        {
+          headers: {
+            'x-api-key': API_KEY
+          }
+        }
+      );
+
+      console.log('Get default profile picture berhasil:', response.data);
+      const defaultPic = response.data.defaultProfilePicture;
+      setDefaultProfilePicture(defaultPic);
+      return { success: true, defaultProfilePicture: defaultPic };
+    } catch (error) {
+      console.error('Get default profile picture gagal:', error);
       
-      const response = await fetch(url, {
-        method: 'POST',
+      if (isAxiosError(error)) {
+        const errorMessage = (error.response?.data as ErrorResponse)?.message ?? error.message;
+        return { success: false, message: errorMessage || 'Terjadi kesalahan saat mendapatkan default profile picture' };
+      }
+
+      const fallback = getMessageFromUnknown(error);
+      return { success: false, message: fallback ?? 'Terjadi kesalahan saat mendapatkan default profile picture' };
+    }
+  }, []);
+
+  // Ambil default profile picture saat mount
+  useEffect(() => {
+    fetchDefaultProfilePicture();
+  }, [fetchDefaultProfilePicture]);
+
+  const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; message?: string }> => {
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post<LoginResponse>(`${API_BASE_URL}/auth/login`, {
+        username,
+        password
+      }, {
         headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, password })
+          'x-api-key': API_KEY
+        }
       });
-      
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-      
-      // Cek apakah response adalah JSON
-      const contentType = response.headers.get('content-type');
-      console.log('Content-Type:', contentType);
-      
-      if (!contentType || !contentType.includes('application/json')) {
-        // Jika bukan JSON, baca sebagai teks dan log untuk debugging
-        const errorText = await response.text();
-        console.error('Non-JSON response:', errorText);
-        return { 
-          success: false, 
-          message: `Login gagal: ${response.status} ${response.statusText}` 
-        };
-      }
-      
-      const data = await response.json();
-      console.log('Response data:', data);
-      
-      if (!response.ok) {
-        // Jika response tidak OK, kembalikan pesan error dari backend
-        return { 
-          success: false, 
-          message: data.message || `Login gagal: ${response.status} ${response.statusText}` 
-        };
-      }
-      
-      // Simpan token dan user data ke localStorage
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      setUser(data.user);
+
+      console.log('Login berhasil:', response.data.user);
+
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      setUser(response.data.user);
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
-      // Tangani error jaringan atau error lainnya
-      return { 
-        success: false, 
-        message: error instanceof Error ? error.message : 'Terjadi kesalahan saat login' 
-      };
+      console.error('Login gagal:', error);
+
+      if (isAxiosError(error)) {
+        const errorMessage = (error.response?.data as ErrorResponse)?.message ?? error.message;
+        return { success: false, message: errorMessage || 'Terjadi kesalahan saat login' };
+      }
+
+      const fallback = getMessageFromUnknown(error);
+      return { success: false, message: fallback ?? 'Terjadi kesalahan saat login' };
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const register = async (nama_lengkap: string, username: string, password: string, role: 'admin' | 'manajer' | 'kasir'): Promise<{ success: boolean; message?: string }> => {
+  const register = useCallback(async (nama_lengkap: string, username: string, password: string, role: 'admin' | 'manajer' | 'kasir' | 'users'): Promise<{ success: boolean; message?: string }> => {
     setIsLoading(true);
-    
+
     try {
-      const url = `${API_BASE_URL}/auth/register`;
-      console.log('Mencoba mengakses URL:', url);
-      
-      const response = await fetch(url, {
-        method: 'POST',
+      const response = await axios.post<RegisterResponse>(`${API_BASE_URL}/auth/register`, {
+        nama_lengkap,
+        username,
+        password,
+        role
+      }, {
         headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ nama_lengkap, username, password, role })
+          'x-api-key': API_KEY
+        }
       });
-      
-      console.log('Response status:', response.status);
-      
-      // Cek apakah response adalah JSON
-      const contentType = response.headers.get('content-type');
-      console.log('Content-Type:', contentType);
-      
-      if (!contentType || !contentType.includes('application/json')) {
-        // Jika bukan JSON, baca sebagai teks dan log untuk debugging
-        const errorText = await response.text();
-        console.error('Non-JSON response:', errorText);
-        return { 
-          success: false, 
-          message: `Registrasi gagal: ${response.status} ${response.statusText}` 
-        };
-      }
-      
-      const data = await response.json();
-      console.log('Response data:', data);
-      
-      if (!response.ok) {
-        return { 
-          success: false, 
-          message: data.message || `Registrasi gagal: ${response.status} ${response.statusText}` 
-        };
-      }
-      
-      // Registrasi berhasil, login otomatis
+
+      console.log('Register berhasil:', response.data);
+
       return await login(username, password);
     } catch (error) {
-      console.error('Register error:', error);
-      return { 
-        success: false, 
-        message: error instanceof Error ? error.message : 'Terjadi kesalahan saat registrasi' 
-      };
+      console.error('Register gagal:', error);
+
+      if (isAxiosError(error)) {
+        const errorMessage = (error.response?.data as ErrorResponse)?.message ?? error.message;
+        return { success: false, message: errorMessage || 'Terjadi kesalahan saat registrasi' };
+      }
+
+      const fallback = getMessageFromUnknown(error);
+      return { success: false, message: fallback ?? 'Terjadi kesalahan saat registrasi' };
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [login]);
 
-  const logout = async (): Promise<void> => {
+  const logout = useCallback(async (): Promise<void> => {
+    const token = localStorage.getItem('token');
+    setUser(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+
+    try {
+      if (token) {
+        const response = await axios.post<LogoutResponse>(`${API_BASE_URL}/auth/logout`, {}, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'x-api-key': API_KEY
+          }
+        });
+
+        console.log(response.data.message);
+      }
+    } catch (error) {
+      console.error('Logout gagal:', error);
+
+      if (isAxiosError(error)) {
+        const errorMessage = (error.response?.data as ErrorResponse)?.message ?? error.message;
+        console.error('Logout error response:', errorMessage || error.response?.data);
+      } else {
+        console.error('Logout error:', getMessageFromUnknown(error) ?? error);
+      }
+    }
+  }, []);
+
+  const updateProfilePicture = useCallback(async (profilePicture: File): Promise<{ success: boolean; message?: string }> => {
+    setIsLoading(true);
+
     try {
       const token = localStorage.getItem('token');
       
-      if (token) {
-        const url = `${API_BASE_URL}/auth/logout`;
-        console.log('Mencoba mengakses URL:', url);
-        
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ token })
-        });
-        
-        console.log('Response status:', response.status);
-        
-        if (!response.ok) {
-          // Log error response untuk debugging
-          const errorText = await response.text();
-          console.error('Logout error response:', errorText);
-        }
+      if (!token) {
+        return { success: false, message: 'Anda belum login' };
       }
+
+      // Ambil data user terbaru dari localStorage untuk memastikan kita memiliki role dan ID yang benar
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      console.log('Current user from localStorage:', currentUser);
+      
+      const userRole = currentUser.role || 'users';
+      const userId = getUserId(currentUser); // Gunakan helper function
+
+      if (!userId) {
+        return { success: false, message: 'User ID tidak ditemukan' };
+      }
+
+      const formData = new FormData();
+      formData.append('profilePicture', profilePicture);
+
+      // Debug URL yang akan diakses
+      const url = `${API_BASE_URL}/api/update-profile/${userRole}/${userId}/profile-picture`;
+      console.log('Request URL:', url);
+
+      const response = await axios.put<{ message: string; user: User }>(
+        url,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'x-api-key': API_KEY
+          }
+        }
+      );
+
+      if (response.data.user) {
+        setUser(response.data.user);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
+
+      console.log('Update profile picture berhasil:', response.data);
+      return { success: true, message: response.data.message };
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Update profile picture gagal:', error);
+      
+      if (isAxiosError(error)) {
+        console.error('Error response:', error.response?.data);
+        const errorMessage = (error.response?.data as ErrorResponse)?.message ?? error.message;
+        return { success: false, message: errorMessage || 'Terjadi kesalahan saat update profile picture' };
+      }
+
+      const fallback = getMessageFromUnknown(error);
+      return { success: false, message: fallback ?? 'Terjadi kesalahan saat update profile picture' };
     } finally {
-      // Hapus data dari localStorage dan state
-      setUser(null);
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      // Redirect ke halaman login
-      window.location.href = '/login';
+      setIsLoading(false);
     }
-  };
+  }, []);
+
+  const updateProfile = useCallback(async (profileData: {
+    nama_lengkap: string;
+    username: string;
+    currentPassword?: string;
+    newPassword?: string;
+  }): Promise<{ success: boolean; message?: string }> => {
+    setIsLoading(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        return { success: false, message: 'Anda belum login' };
+      }
+
+      // Ambil data user terbaru dari localStorage untuk memastikan kita memiliki role dan ID yang benar
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      console.log('Current user from localStorage:', currentUser);
+      
+      const userRole = currentUser.role || 'users';
+      const userId = getUserId(currentUser); // Gunakan helper function
+
+      if (!userId) {
+        return { success: false, message: 'User ID tidak ditemukan' };
+      }
+
+      // PERBAIKI: Hapus /profile-picture untuk update data biasa
+      const url = `${API_BASE_URL}/api/update-profile/${userRole}/${userId}`;
+      console.log('Request URL:', url);
+
+      // Logging data yang akan dikirim
+      console.log('Data yang akan dikirim:', profileData);
+
+      const response = await axios.put<{ message: string; user: User }>(
+        url,
+        profileData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'x-api-key': API_KEY
+          }
+        }
+      );
+
+      if (response.data.user) {
+        setUser(response.data.user);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
+
+      console.log('Update profile berhasil:', response.data);
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      console.error('Update profile gagal:', error);
+
+      if (isAxiosError(error)) {
+        console.error('Error response:', error.response?.data);
+        const errorMessage = (error.response?.data as ErrorResponse)?.message ?? error.message;
+        return { success: false, message: errorMessage || 'Terjadi kesalahan saat update profil' };
+      }
+
+      const fallback = getMessageFromUnknown(error);
+      return { success: false, message: fallback ?? 'Terjadi kesalahan saat update profil' };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // PERBAIKI: Tambahkan fungsi untuk mendapatkan data user lengkap
+  const fetchCurrentUser = useCallback(async (): Promise<User | null> => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        return null;
+      }
+
+     
+
+      
+      
+      return null;
+    } catch (error) {
+      console.error('Fetch current user failed:', error);
+      return null;
+    }
+  }, []);
+
+  // PERBAIKI: Ambil data user lengkap saat login
+  useEffect(() => {
+    if (user) {
+      fetchCurrentUser();
+    }
+  }, [user, fetchCurrentUser]);
+
+  const value = useMemo(() => ({ 
+    user, 
+    isLoading, 
+    defaultProfilePicture,
+    login, 
+    register, 
+    logout, 
+    updateProfilePicture,
+    updateProfile,
+    getDefaultProfilePicture: fetchDefaultProfilePicture,
+    fetchCurrentUser // Tambahkan ini
+  }), [user, isLoading, defaultProfilePicture, login, register, logout, updateProfilePicture, updateProfile, fetchDefaultProfilePicture, fetchCurrentUser]);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

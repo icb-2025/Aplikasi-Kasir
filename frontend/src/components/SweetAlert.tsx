@@ -1,3 +1,5 @@
+// src/components/SweetAlert.tsx
+
 import Swal from 'sweetalert2';
 import type { SweetAlertOptions, SweetAlertResult } from 'sweetalert2';
 

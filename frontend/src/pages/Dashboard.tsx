@@ -1,431 +1,593 @@
-// src/pages/Dashboard.tsx
+import { useContext, useCallback, useEffect, useState } from 'react';
 import type { Barang } from "../admin/stok-barang";
 import MainLayout from "../components/MainLayout";
-import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { customStyles } from "./CssHalamanUtama";
+import Sidebar from "./componentUtama/Sidebar";
+import ProductGrid from "./componentUtama/ProductGrid";
+import CurrentOrder from "./componentUtama/CurrentOrder";
+import TransactionModal from "./componentUtama/TransactionModal";
+import AuthContext from "./../auth/context/AuthContext";
 
 interface DashboardProps {
   dataBarang: Barang[];
 }
 
-interface CartItem extends Barang {
+export interface CartItem extends Barang {
   quantity: number;
+  jumlah?: number;
 }
+
+// Interface untuk item dari API cart
+interface CartItemResponse {
+  barangId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  _id: string;
+  image: string; // Tambahkan field image
+}
+
+interface BarangDibeli {
+  kode_barang: string;
+  nama_barang: string;
+  jumlah: number;
+  harga_satuan: number;
+  harga_beli: number;
+  subtotal: number;
+  _id: string;
+}
+
+interface TransactionResponse {
+  _id: string;
+  order_id: string;
+  nomor_transaksi: string; // Tambahkan properti ini
+  tanggal_transaksi: string;
+  barang_dibeli: BarangDibeli[];
+  total_harga: number;
+  metode_pembayaran: string;
+  status: string;
+  kasir_id?: string;
+  createdAt: string;
+  updatedAt: string;
+  no_va?: string;
+}
+
+const API_BASE_URL = 'http://192.168.110.16:5000';
 
 const Dashboard = ({ dataBarang }: DashboardProps) => {
   const navigate = useNavigate();
+  const authContext = useContext(AuthContext);
+  
+  if (!authContext) {
+    throw new Error('AuthContext must be used within an AuthProvider');
+  }
+  
+  const { user } = authContext;
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [showCartModal, setShowCartModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Barang | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [cartAnimation, setCartAnimation] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua");
+  const [isLoading, setIsLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [transactionSuccess, setTransactionSuccess] = useState(false);
+  const [transactionData, setTransactionData] = useState<TransactionResponse | undefined>(undefined);
+  const [isCartLoading, setIsCartLoading] = useState(false);
   
-  // Ambil semua kategori unik dari dataBarang
-  const allCategories = ["Semua", ...Array.from(new Set(dataBarang.map(item => item.kategori)))];
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
   
-  // Animasi badge keranjang
-  useEffect(() => {
-    if (cart.length > 0) {
-      setCartAnimation(true);
-      const timer = setTimeout(() => setCartAnimation(false), 500);
-      return () => clearTimeout(timer);
+  const categories = [
+    { id: "Semua", name: "Semua", icon: "🍔" },
+    { id: "Makanan", name: "Makanan", icon: "🍕" },
+    { id: "Minuman", name: "Minuman", icon: "🥤" },
+    { id: "Cemilan", name: "Cemilan", icon: "🍿" },
+    { id: "Signature", name: "Signature", icon: "⭐" },
+  ];
+  
+  // API Functions
+  const fetchCart = useCallback(async (): Promise<CartItem[]> => {
+    const token = localStorage.getItem('token');
+    if (!token) return [];
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/cart`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch cart');
+      
+      const data = await response.json();
+      return data.items.map((item: CartItemResponse) => ({
+        ...item,
+        _id: item.barangId,
+        nama: item.name,
+        hargaJual: item.price,
+        quantity: item.quantity,
+        gambarUrl: item.image // Tambahkan pemetaan field image ke gambarUrl
+      }));
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+      return [];
     }
-  }, [cart]);
-
-  // Filter barang berdasarkan pencarian dan kategori
+  }, []);
+  
+  const addItemToCart = useCallback(async (barangId: string, quantity: number) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No token found');
+    
+    const response = await fetch(`${API_BASE_URL}/api/cart`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ barangId, quantity })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to add item to cart');
+    }
+    
+    return response.json();
+  }, []);
+  
+  const removeItemFromCart = useCallback(async (barangId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No token found');
+    
+    const response = await fetch(`${API_BASE_URL}/api/cart/${barangId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to remove item from cart');
+    
+    return response.json();
+  }, []);
+  
+  const updateItemQuantity = useCallback(async (barangId: string, quantity: number) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No token found');
+    
+    // First remove the item
+    await removeItemFromCart(barangId);
+    
+    // Then add with new quantity
+    return addItemToCart(barangId, quantity);
+  }, [addItemToCart, removeItemFromCart]);
+  
+  const clearCart = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No token found');
+    
+    const response = await fetch(`${API_BASE_URL}/api/cart`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to clear cart');
+    
+    return response.json();
+  }, []);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Load cart when user is available
+  useEffect(() => {
+    if (user) {
+      const loadCart = async () => {
+        setIsCartLoading(true);
+        try {
+          const cartData = await fetchCart();
+          setCart(cartData);
+        } catch (error) {
+          console.error('Failed to load cart:', error);
+          toast.error('Gagal memuat keranjang');
+        } finally {
+          setIsCartLoading(false);
+        }
+      };
+      
+      loadCart();
+    } else {
+      setCart([]);
+    }
+  }, [user, fetchCart]);
+  
   const filteredBarang = dataBarang.filter(item => {
     const matchesSearch = item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (item.kode?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
                          item.kategori.toLowerCase().includes(searchTerm.toLowerCase());
-    
     const matchesCategory = selectedCategory === "Semua" || item.kategori === selectedCategory;
-    
     return matchesSearch && matchesCategory;
   });
 
-  const addToCart = (product: Barang, qty: number = 1) => {
-    if (qty > product.stok) {
-      toast.error(`Stok tidak mencukupi! Stok tersedia: ${product.stok}`, {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-      });
+  const checkLoginAndProceed = (callback: () => void) => {
+    if (!user) {
+      setShowLoginModal(true);
       return;
     }
-    setIsAnimating(true);
-    
-    setTimeout(() => {
-      const existingItem = cart.find(item => item._id === product._id);
-      if (existingItem) {
-        const newQty = existingItem.quantity + qty;
-        if (newQty > product.stok) {
-          toast.error(`Jumlah melebihi stok! Stok tersedia: ${product.stok}`, {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-          });
-          setIsAnimating(false);
-          return;
-        }
-        setCart(cart.map(item => item._id === product._id ? { ...item, quantity: newQty } : item));
-        toast.success(`${product.nama} ditambahkan ke keranjang`, {
-          position: "top-right",
-          autoClose: 2000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-        });
-      } else {
-        setCart([...cart, { ...product, quantity: qty }]);
-        toast.success(`${product.nama} ditambahkan ke keranjang`, {
-          position: "top-right",
-          autoClose: 2000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-        });
-      }
-      setSelectedProduct(null);
-      setQuantity(1);
-      setIsAnimating(false);
-    }, 300);
+    callback();
   };
 
-  const handleBuyNow = (product: Barang, qty: number = 1) => {
-    if (qty > product.stok) {
-      toast.error(`Stok tidak mencukupi! Stok tersedia: ${product.stok}`, {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
+  const addToCart = async (product: Barang, qty: number = 1) => {
+    checkLoginAndProceed(async () => {
+      if (qty > product.stok) {
+        toast.error(`Stok tidak mencukupi! Stok tersedia: ${product.stok}`, {
+          position: "top-right", autoClose: 3000, hideProgressBar: false,
+          closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
+        });
+        return;
+      }
+      
+      setIsAnimating(true);
+      try {
+        // Check if item already in cart
+        const existingItem = cart.find(item => item._id === product._id);
+        
+        if (existingItem) {
+          const newQty = existingItem.quantity + qty;
+          if (newQty > product.stok) {
+            toast.error(`Jumlah melebihi stok! Stok tersedia: ${product.stok}`, {
+              position: "top-right", autoClose: 3000, hideProgressBar: false,
+              closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
+            });
+            setIsAnimating(false);
+            return;
+          }
+          
+          // Update quantity
+          await updateItemQuantity(product._id, newQty);
+          const updatedCart = await fetchCart();
+          setCart(updatedCart);
+          toast.success(`${product.nama} diperbarui di keranjang`, {
+            position: "top-right", autoClose: 2000, hideProgressBar: false,
+            closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
+          });
+        } else {
+          // Add new item
+          await addItemToCart(product._id, qty);
+          const updatedCart = await fetchCart();
+          setCart(updatedCart);
+          toast.success(`${product.nama} ditambahkan ke keranjang`, {
+            position: "top-right", autoClose: 2000, hideProgressBar: false,
+            closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
+          });
+        }
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+        toast.error('Gagal menambah item ke keranjang');
+      } finally {
+        setSelectedProduct(null);
+        setQuantity(1);
+        setIsAnimating(false);
+      }
+    });
+  };
+
+  const removeFromCart = async (productId: string) => {
+    try {
+      await removeItemFromCart(productId);
+      const updatedCart = await fetchCart();
+      setCart(updatedCart);
+    } catch (error) {
+      console.error('Error removing from cart:', error);
+      toast.error('Gagal menghapus item dari keranjang');
+    }
+  };
+
+  const updateQuantity = async (productId: string, newQuantity: number) => {
+    const product = cart.find(item => item._id === productId);
+    if (!product) return;
+    
+    if (newQuantity > product.stok) {
+      toast.error(`Jumlah melebihi stok! Stok tersedia: ${product.stok}`, {
+        position: "top-right", autoClose: 3000, hideProgressBar: false,
+        closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
       });
       return;
     }
-    navigate('/transaksi', {
-      state: { cartItems: [{ ...product, quantity: qty }], total: qty * (product.hargaFinal || product.hargaJual) }
+    
+    if (newQuantity <= 0) {
+      await removeFromCart(productId);
+      return;
+    }
+    
+    try {
+      await updateItemQuantity(productId, newQuantity);
+      const updatedCart = await fetchCart();
+      setCart(updatedCart);
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      toast.error('Gagal memperbarui kuantitas');
+    }
+  };
+
+  const handleBuyNow = async (product: Barang, qty: number = 1) => {
+    checkLoginAndProceed(async () => {
+      if (qty > product.stok) {
+        toast.error(`Stok tidak mencukupi! Stok tersedia: ${product.stok}`, {
+          position: "top-right", autoClose: 3000, hideProgressBar: false,
+          closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
+        });
+        return;
+      }
+      
+      try {
+        // Add item to cart
+        await addItemToCart(product._id, qty);
+        const updatedCart = await fetchCart();
+        setCart(updatedCart);
+        
+        // Open transaction modal
+        setIsTransactionModalOpen(true);
+      } catch (error) {
+        console.error('Error adding to cart for buy now:', error);
+        toast.error('Gagal menambah item ke keranjang');
+      }
+    });
+  };
+
+  const handleCheckout = () => {
+    checkLoginAndProceed(() => {
+      setIsTransactionModalOpen(true);
     });
   };
 
   const totalCartItems = cart.reduce((total, item) => total + item.quantity, 0);
+  const totalCartValue = cart.reduce((total, item) => total + (item.quantity * (item.hargaFinal || item.hargaJual)), 0);
+
+  const handleTransactionSuccess = async (transactionData?: TransactionResponse) => {
+    try {
+      await clearCart();
+      setCart([]);
+      
+      // Simpan data transaksi untuk ditampilkan di struk
+      if (transactionData) {
+        setTransactionData(transactionData);
+        setTransactionSuccess(true);
+        
+        // Simpan transaksi ke riwayat pengguna
+        const saveToHistory = async () => {
+          try {
+            const token = localStorage.getItem('token');
+            await fetch("http://192.168.110.16:5000/api/users/history", {
+              method: "POST",
+              headers: { 
+                "Content-Type": "application/json",
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                transaksi_id: transactionData._id,
+                order_id: transactionData.order_id,
+                tanggal_transaksi: transactionData.tanggal_transaksi,
+                barang_dibeli: transactionData.barang_dibeli,
+                total_harga: transactionData.total_harga,
+                metode_pembayaran: transactionData.metode_pembayaran,
+                status: transactionData.status
+              }),
+            });
+            
+            console.log('Transaksi berhasil disimpan ke riwayat');
+          } catch (err) {
+            console.error("Gagal menyimpan transaksi ke riwayat:", err);
+          }
+        };
+        
+        saveToHistory();
+      }
+    } catch (error) {
+      console.error('Error clearing cart after transaction:', error);
+      toast.error('Gagal mengosongkan keranjang setelah transaksi');
+    }
+  };
+
+  const goToLogin = () => {
+    setShowLoginModal(false);
+    navigate('/login');
+  };
+
+  const handleResetTransaction = () => {
+    setTransactionSuccess(false);
+    setTransactionData(undefined);
+    setIsTransactionModalOpen(false);
+  };
 
   return (
     <MainLayout>
-      {/* Toast Container */}
-      <ToastContainer 
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
+      <ToastContainer />
       
-      {/* Header */}
-      <div className="flex justify-between items-start mb-8 animate-fadeIn">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">Dashboard Inventori</h2>
-          <p className="text-gray-600">Kelola dan pantau stok barang Anda</p>
+      {/* Top Navigation */}
+      <div className="bg-white shadow-md rounded-b-xl">
+        <div className="max-w-10x4 mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <button onClick={toggleSidebar} className="md:hidden mr-2 p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              
+              <div className="flex-shrink-0 flex items-center">
+                <div className="bg-amber-500 p-2 rounded-xl shadow-md">
+                  <span className="text-white text-xl font-bold">K+</span>
+                </div>
+                <div className="ml-3">
+                  <h1 className="text-xl font-bold text-gray-900">KasirPlus</h1>
+                  <p className="text-xs text-gray-500">Point of Sale System</p>
+                </div>
+              </div>
+              
+              <div className="hidden md:ml-10 md:flex md:space-x-1">
+                {categories.map((category) => (
+                  <button key={category.id} onClick={() => setSelectedCategory(category.id)}
+                    className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      selectedCategory === category.id
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}>
+                    <span className="mr-2">{category.icon}</span>
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex items-center">
+              <div className="ml-3 flex items-center">
+                <div className="relative max-w-md w-full">
+                  <input type="text" placeholder="Cari makanan favoritmu..."
+                    className="w-full py-2 px-4 pl-10 rounded-lg border border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 focus:outline-none"
+                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="ml-4 flex items-center">
+                <button onClick={() => handleCheckout()} className="relative p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  {totalCartItems > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                      {totalCartItems}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        {/* Keranjang Button */}
-        <button
-          onClick={() => setShowCartModal(true)}
-          className={`relative p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center gap-2 transform hover:scale-105 ${cartAnimation ? 'animate-pulse' : ''}`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-          </svg>
-          {totalCartItems > 0 && (
-            <span className={`absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold ${cartAnimation ? 'animate-bounce' : ''}`}>
-              {totalCartItems}
-            </span>
-          )}
-        </button>
+        
+        <div className="md:hidden px-4 pb-3 overflow-x-auto">
+          <div className="flex space-x-2">
+            {categories.map((category) => (
+              <button key={category.id} onClick={() => setSelectedCategory(category.id)}
+                className={`flex-shrink-0 inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  selectedCategory === category.id
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}>
+                <span className="mr-2">{category.icon}</span>
+                {category.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Search dan Filter */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 animate-fadeInUp">
-        <div className="relative w-full md:w-96">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 20 20" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
-            </svg>
-          </div>
-          <input
-            type="text"
-            placeholder="Cari nama, kode, kategori..."
-            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 transition-all"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+      <div className="flex h-[calc(100vh-120px)] mt-4 gap-4">
+        <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
+        
+        <div className="flex-1 bg-white rounded-2xl shadow-md p-4 overflow-y-auto">
+          <ProductGrid 
+            products={filteredBarang}
+            isLoading={isLoading}
+            onAddToCart={addToCart}
+            onBuyNow={handleBuyNow}
           />
         </div>
         
-        {/* Filter Kategori */}
-        <div className="flex flex-wrap gap-2">
-          {allCategories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                selectedCategory === category
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
+        <div className="w-80 bg-white rounded-2xl shadow-md p-4 flex flex-col">
+          <CurrentOrder 
+            cartItems={cart}
+            onRemoveItem={removeFromCart}
+            onUpdateQuantity={updateQuantity}
+            onCheckout={handleCheckout}
+            totalItems={totalCartItems}
+            totalValue={totalCartValue}
+            isLoading={isCartLoading}
+          />
         </div>
       </div>
 
-      {/* Barang Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredBarang.map((item, index) => (
-          <div
-            key={item._id}
-            className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col transform hover:-translate-y-1 animate-fadeInUp"
-            style={{ animationDelay: `${index * 0.05}s` }}
-          >
-            {/* Gambar produk */}
-            <div className="h-40 bg-gray-100 flex items-center justify-center overflow-hidden relative group">
-              {item.gambarUrl ? (
-                <img 
-                  src={item.gambarUrl} 
-                  alt={item.nama}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  onError={(e) => {
-                    // Ganti dengan gambar default jika gagal memuat
-                    const target = e.target as HTMLImageElement;
-                    target.onerror = null; // Prevent looping
-                    target.src = "/images/nostokbarang.jpg";
-                  }}
-                />
-              ) : (
-                <img 
-                  src="/images/nostokbarang.jpg" 
-                  alt="Tidak ada gambar"
-                  className="w-full h-full object-cover"
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-
-            {/* Info produk */}
-            <div className="flex-1 p-5 flex flex-col">
-              <h3 className="text-lg font-bold text-gray-800 truncate mb-1">{item.nama}</h3>
-              <p className="text-sm text-gray-500 mb-1">Kategori: {item.kategori}</p>
-              <p className="text-sm text-gray-600">
-                Stok:
-                <span className={`ml-1 font-medium ${item.stok > 0 ? "text-green-600" : "text-red-500"}`}>
-                  {item.stok}
-                </span>
-              </p>
-              <p className="text-base font-semibold text-blue-600 mt-2">
-                Rp {(item.hargaFinal || item.hargaJual).toLocaleString("id-ID")}
-              </p>
-
-              {/* Tombol aksi */}
-              <div className="mt-auto pt-4 flex gap-2">
-                <button
-                  onClick={() => setSelectedProduct(item)}
-                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all transform hover:scale-105 active:scale-95"
-                >
-                  Keranjang
-                </button>
-                <button
-                  onClick={() => handleBuyNow(item, 1)}
-                  className="flex-1 px-4 py-2.5 border border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-all transform hover:scale-105 active:scale-95"
-                >
-                  Beli
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Modal Keranjang */}
-      {showCartModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col animate-slideUp">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-xl font-semibold">Keranjang Belanja</h3>
-              <button 
-                onClick={() => setShowCartModal(false)} 
-                className="text-gray-400 hover:text-gray-600 transition-colors transform hover:rotate-90 duration-300"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              {cart.length === 0 ? (
-                <div className="text-center py-8">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <p className="text-gray-500">Keranjang kosong</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {cart.map((item, index) => (
-                    <div 
-                      key={item._id} 
-                      className="flex justify-between items-center p-3 bg-gray-50 rounded-lg transition-all duration-300 hover:bg-gray-100 animate-fadeIn"
-                      style={{ animationDelay: `${index * 0.05}s` }}
-                    >
-                      <div className="flex items-center gap-3">
-                        {item.gambarUrl ? (
-                          <img 
-                            src={item.gambarUrl} 
-                            alt={item.nama}
-                            className="w-12 h-12 object-cover rounded"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.onerror = null;
-                              target.src = "/images/nostokbarang.jpg";
-                            }}
-                          />
-                        ) : (
-                          <img 
-                            src="/images/nostokbarang.jpg" 
-                            alt="Tidak ada gambar"
-                            className="w-12 h-12 object-cover rounded"
-                          />
-                        )}
-                        <div>
-                          <h4 className="font-medium">{item.nama}</h4>
-                          <p className="text-sm text-gray-500">
-                            {item.quantity} x Rp {(item.hargaFinal || item.hargaJual).toLocaleString("id-ID")}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="font-semibold">
-                        Rp {(item.quantity * (item.hargaFinal || item.hargaJual)).toLocaleString("id-ID")}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            {cart.length > 0 && (
-              <div className="p-6 border-t border-gray-200">
-                <div className="flex justify-between items-center mb-4">
-                  <span>Total:</span>
-                  <span className="text-xl font-bold text-blue-600">
-                    Rp {cart.reduce((total, item) => total + (item.quantity * (item.hargaFinal || item.hargaJual)), 0).toLocaleString("id-ID")}
-                  </span>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowCartModal(false);
-                    navigate('/transaksi', {
-                      state: { 
-                        cartItems: cart, 
-                        total: cart.reduce((total, item) => total + (item.quantity * (item.hargaFinal || item.hargaJual)), 0) 
-                      }
-                    });
-                  }}
-                  className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  Checkout
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal Masukkan Keranjang */}
       {selectedProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 animate-slideUp">
-            <div className="flex items-center gap-4 mb-4">
-              {selectedProduct.gambarUrl ? (
-                <img 
-                  src={selectedProduct.gambarUrl} 
-                  alt={selectedProduct.nama}
-                  className="w-16 h-16 object-cover rounded-lg"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.onerror = null;
-                    target.src = "/images/nostokbarang.jpg";
-                  }}
-                />
-              ) : (
-                <img 
-                  src="/images/nostokbarang.jpg" 
-                  alt="Tidak ada gambar"
-                  className="w-16 h-16 object-cover rounded-lg"
-                />
-              )}
-              <div>
-                <h3 className="text-xl font-semibold">{selectedProduct.nama}</h3>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
+                {selectedProduct.gambarUrl ? (
+                  <img src={selectedProduct.gambarUrl} alt={selectedProduct.nama} className="w-full h-full object-cover rounded-2xl" />
+                ) : (
+                  <span className="text-3xl">🍔</span>
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-800">{selectedProduct.nama}</h3>
                 <p className="text-gray-500">{selectedProduct.kategori}</p>
+                <div className="text-2xl font-bold text-amber-600 mt-1">
+                  Rp {(selectedProduct.hargaFinal || selectedProduct.hargaJual).toLocaleString("id-ID")}
+                </div>
               </div>
             </div>
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              Stok tersedia: <span className="font-medium">{selectedProduct.stok}</span>
+            
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 mb-6 border border-amber-100">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">Stok tersedia:</span>
+                <span className={`font-bold ${selectedProduct.stok > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                  {selectedProduct.stok} unit
+                </span>
+              </div>
             </div>
-            <div className="mb-4 text-lg font-semibold">
-              Harga: Rp {(selectedProduct.hargaFinal || selectedProduct.hargaJual).toLocaleString("id-ID")}
+            
+            <div className="mb-8">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Jumlah:</label>
+              <div className="flex items-center justify-center space-x-4">
+                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} 
+                  className="w-12 h-12 bg-amber-100 rounded-xl hover:bg-amber-200 transition-all transform hover:scale-110 active:scale-95 flex items-center justify-center text-xl font-bold text-amber-700">
+                  -
+                </button>
+                <div className="w-20 text-center">
+                  <input type="number" min={1} max={selectedProduct.stok} value={quantity}
+                    onChange={e => setQuantity(Math.max(1, Math.min(selectedProduct.stok, Number(e.target.value))))}
+                    className="w-full text-2xl font-bold text-center bg-transparent border-0 focus:outline-none focus:ring-0" />
+                </div>
+                <button onClick={() => setQuantity(q => Math.min(selectedProduct.stok, q + 1))} 
+                  className="w-12 h-12 bg-amber-100 rounded-xl hover:bg-amber-200 transition-all transform hover:scale-110 active:scale-95 flex items-center justify-center text-xl font-bold text-amber-700">
+                  +
+                </button>
+              </div>
+              <div className="text-center mt-3 text-sm text-gray-500">
+                Total: <span className="font-semibold text-amber-600">
+                  Rp {(quantity * (selectedProduct.hargaFinal || selectedProduct.hargaJual)).toLocaleString("id-ID")}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center justify-center mb-6">
-              <button 
-                onClick={() => setQuantity(q => Math.max(1, q - 1))} 
-                className="px-4 py-2 bg-gray-200 rounded-l-lg hover:bg-gray-300 transition-colors active:scale-95"
-              >
-                -
-              </button>
-              <input
-                type="number"
-                min={1}
-                max={selectedProduct.stok}
-                value={quantity}
-                onChange={e => setQuantity(Math.max(1, Math.min(selectedProduct.stok, Number(e.target.value))))}
-                className="w-20 text-center py-2 border-y border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button 
-                onClick={() => setQuantity(q => Math.min(selectedProduct.stok, q + 1))} 
-                className="px-4 py-2 bg-gray-200 rounded-r-lg hover:bg-gray-300 transition-colors active:scale-95"
-              >
-                +
-              </button>
-            </div>
-            <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setSelectedProduct(null)} 
-                className="px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
-              >
+            
+            <div className="flex space-x-3">
+              <button onClick={() => setSelectedProduct(null)} 
+                className="flex-1 px-6 py-3.5 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all transform hover:scale-105 active:scale-95 font-medium">
                 Batal
               </button>
-              <button 
-                onClick={() => addToCart(selectedProduct, quantity)} 
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2"
-                disabled={isAnimating}
-              >
+              <button onClick={() => addToCart(selectedProduct, quantity)} 
+                className="flex-1 px-6 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all transform hover:scale-105 active:scale-[0.98] font-medium flex items-center justify-center gap-2 shadow-lg"
+                disabled={isAnimating}>
                 {isAnimating ? (
                   <>
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -436,7 +598,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
                   </>
                 ) : (
                   <>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     Tambah ke Keranjang
@@ -448,48 +610,46 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         </div>
       )}
 
-      <style>
-        {`
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          
-          @keyframes fadeInUp {
-            from { 
-              opacity: 0; 
-              transform: translateY(20px); 
-            }
-            to { 
-              opacity: 1; 
-              transform: translateY(0); 
-            }
-          }
-          
-          @keyframes slideUp {
-            from { 
-              transform: translateY(30px); 
-              opacity: 0; 
-            }
-            to { 
-              transform: translateY(0); 
-              opacity: 1; 
-            }
-          }
-          
-          .animate-fadeIn {
-            animation: fadeIn 0.5s ease forwards;
-          }
-          
-          .animate-fadeInUp {
-            animation: fadeInUp 0.5s ease forwards;
-          }
-          
-          .animate-slideUp {
-            animation: slideUp 0.3s ease forwards;
-          }
-        `}
-      </style>
+      <TransactionModal
+        isOpen={isTransactionModalOpen}
+        onClose={handleResetTransaction}
+        cartItems={cart.map(item => ({
+          ...item,
+          hargaFinal: item.hargaFinal || item.hargaJual,
+          jumlah: item.quantity
+        }))}
+        total={totalCartValue}
+        onTransactionSuccess={handleTransactionSuccess}
+        transactionSuccess={transactionSuccess}
+        transactionData={transactionData}
+      />
+
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="text-center mb-6">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Login Diperlukan</h3>
+              <p className="text-gray-600">Silakan login untuk menambah produk ke keranjang atau melakukan pembelian.</p>
+            </div>
+            
+            <div className="flex flex-col space-y-3">
+              <button onClick={goToLogin} className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md">
+                Login Sekarang
+              </button>
+              <button onClick={() => setShowLoginModal(false)} className="w-full py-3 px-4 bg-white text-gray-700 rounded-xl font-medium border border-gray-300 hover:bg-gray-50 transition-all">
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{customStyles}</style>
     </MainLayout>
   );
 };
