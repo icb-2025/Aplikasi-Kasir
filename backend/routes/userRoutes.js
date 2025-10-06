@@ -1,12 +1,20 @@
-// import express from "express";
-// import { getUsers, addUser, deleteUser } from "../controllers/userControllers.js";
-// import authorize from "../middleware/authorize.js";
+import express from "express";
+import upload from "../middleware/upload.js";
+import { updateUserProfilePicture } from "../controllers/profilecontroller.js";
+import userMiddleware from "../middleware/user.js";
+import { getUserHistory } from "../controllers/datatransaksiController.js";
 
-// const router = express.Router();
+const router = express.Router();
 
-// // Hanya admin yang bisa akses user management
-// router.get("/", authorize(["admin"]), getUsers);
-// router.post("/", authorize(["admin"]), addUser);
-// router.delete("/:id", authorize(["admin"]), deleteUser);
+// User update foto profile sendiri
+router.put(
+  "/users/:userId/profile-picture",
+  userMiddleware, // jangan pakai ()
+  upload.single("profilePicture"),
+  updateUserProfilePicture
+);
 
-// export default router;
+router.get("/", userMiddleware, getUserHistory);
+
+
+export default router;

@@ -1,5 +1,6 @@
-import {Schema, model} from "mongoose";
+import { Schema, model } from "mongoose";
 import bcrypt from "bcrypt";
+import Settings from "./settings.js";
 
 const userSchema = new Schema({
   nama_lengkap: { type: String, required: true },
@@ -8,30 +9,45 @@ const userSchema = new Schema({
   status: { type: String, enum: ["aktif", "nonaktif"], default: "nonaktif" },
   role: {
     type: String,
-    enum: ["admin", "kasir", "manajer"],
-    default: "kasir",
-  }
+    enum: ["users", "admin", "kasir", "manajer"],
+    default: "users",
+  },
+
+  profilePicture: { type: String },
+
+  // 🔹 Tambahin array buat tracking update foto profil
+  profilePictureUpdates: [
+    {
+      updatedAt: { type: Date, default: Date.now }
+    }
+  ]
 });
 
-// Middleware sebelum "save" -> hash password
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next(); // hanya hash jika password diubah
   try {
-    const salt = await bcrypt.genSalt(10); // generate salt
-    this.password = await bcrypt.hash(this.password, salt); // hash password
+    if (this.isNew && !this.profilePicture) {
+      const settings = await Settings.findOne();
+      this.profilePicture =
+        settings?.defaultProfilePicture ||
+        "https://t3.ftcdn.net/jpg/05/87/76/66/360_F_587766653_PkBNyGx7mQh9l1XXPtCAq1lBgOsLl6xH.jpg";
+    }
+
+    if (this.isModified("password")) {
+      const salt = await bcrypt.genSalt(10);
+      this.password = await bcrypt.hash(this.password, salt);
+    }
+
     next();
   } catch (err) {
     next(err);
   }
 });
 
-// Method untuk verifikasi password
+
 userSchema.methods.comparePassword = async function (inputPassword) {
   return await bcrypt.compare(inputPassword, this.password);
 };
 
-// Model
 const User = model("User", userSchema, "Users");
 
 export default User;
-

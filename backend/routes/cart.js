@@ -1,17 +1,12 @@
-// import express from "express";
-// import {
-//   createSession,
-//   addToCart,
-//   getCart,
-//   removeFromCart,
-// } from "../controllers/datatransaksiController.js";
+import express from "express";
+import { getCart, addToCart, removeFromCart, clearCart } from "../controllers/cartcontroller.js";
+import userAuth from "../middleware/user.js";
 
-// const router = express.Router();
+const router = express.Router();
 
-// // Route untuk session dan keranjang
-// router.post("/", createSession); // Buat session baru
-// router.post("/", addToCart); // Tambah produk ke keranjang
-// router.get("/:sessionId", getCart); // Ambil keranjang berdasarkan session ID
-// router.delete("/", removeFromCart); // Hapus produk dari keranjang
+router.get("/", userAuth, getCart);
+router.post("/", userAuth, addToCart);
+router.delete("/:barangId", userAuth, removeFromCart);
+router.delete("/", userAuth, clearCart);
 
-// export default router;
+export default router;

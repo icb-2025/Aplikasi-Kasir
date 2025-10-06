@@ -12,8 +12,10 @@ export const register = async (req, res) => {
       message = "Admin berhasil ditambahkan!";
     } else if (role === "manajer") {
       message = "Manajer berhasil ditambahkan!";
-    } else {
+    } else if(role === "kasir"){
       message = "Kasir berhasil ditambahkan!";
+    } else {
+      message = "User Berhasil Didaftarkan!";
     }
 
     res.status(201).json({ message });

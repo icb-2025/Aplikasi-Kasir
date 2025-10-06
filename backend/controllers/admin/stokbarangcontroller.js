@@ -1,6 +1,6 @@
 import Barang from "../../models/databarang.js";
 import cloudinary from "../../config/cloudinary.js";
-
+import Settings from "../../models/settings.js"; 
 
 // GET semua barang
 export const getAllBarang = async (req, res) => {
@@ -13,7 +13,7 @@ export const getAllBarang = async (req, res) => {
 
       return {
         ...item.toObject(),
-        hargaFinal: Math.round(item.hargaFinal),
+        hargaFinal: parseFloat(item.hargaFinal.toFixed(2)),
         status
       };
     });
@@ -28,13 +28,28 @@ export const createBarang = async (req, res) => {
   try {
     let gambarUrl = "";
 
+    // Upload gambar ke Cloudinary (jika ada)
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "barang",
       });
       gambarUrl = result.secure_url;
     }
-    const hargaFinal = req.body.harga_jual - req.body.harga_beli;
+
+    // Ambil pengaturan pajak & diskon dari Settings (gunakan yang pertama)
+    const settings = await Settings.findOne();
+    const taxRate = settings?.taxRate || 0;
+    const discount = settings?.globalDiscount || 0;
+
+    // Hitung harga akhir:
+    // hargaFinal = hargaJual + pajak - diskon
+    const hargaJual = parseFloat(req.body.harga_jual);
+    const pajak = (hargaJual * taxRate) / 100;
+    const potongan = (hargaJual * discount) / 100;
+
+    const hargaFinal = hargaJual + pajak - potongan;
+
+    // Simpan barang
     const barang = new Barang({
       ...req.body,
       hargaFinal,
@@ -42,7 +57,11 @@ export const createBarang = async (req, res) => {
     });
 
     await barang.save();
-    res.status(201).json({ message: "Barang berhasil ditambahkan!", barang });
+    res.status(201).json({ 
+      message: "Barang berhasil ditambahkan!", 
+      barang,
+      perhitungan: { taxRate, discount, pajak, potongan, hargaFinal }
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

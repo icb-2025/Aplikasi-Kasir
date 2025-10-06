@@ -1,10 +1,10 @@
-import {Schema, model} from "mongoose";
+import { Schema, model } from "mongoose";
 
 const transaksiSchema = new Schema({
   order_id: {
     type: String,
     required: true,
-    unique: true, 
+    unique: true,
     maxlength: 64
   },
   nomor_transaksi: { 
@@ -18,16 +18,16 @@ const transaksiSchema = new Schema({
     required: true,
     default: Date.now
   },
- barang_dibeli: [
-  {
-    kode_barang: { type: String },
-    nama_barang: { type: String, required: true },
-    jumlah: { type: Number, required: true },
-    harga_satuan: { type: Number, required: true }, 
-    harga_beli: { type: Number, required: true }, 
-    subtotal: { type: Number, required: true }
-  }
-],
+  barang_dibeli: [
+    {
+      kode_barang: { type: String },
+      nama_barang: { type: String, required: true },
+      jumlah: { type: Number, required: true },
+      harga_satuan: { type: Number, required: true }, 
+      harga_beli: { type: Number, required: true }, 
+      subtotal: { type: Number, required: true }
+    }
+  ],
 
   total_harga: { 
     type: Number, 
@@ -43,14 +43,18 @@ const transaksiSchema = new Schema({
     default: "pending" 
   },
 
+  // 🔹 simpan username saja biar ringan
   kasir_id: { 
-    type: Schema.Types.ObjectId, 
-    ref: "User", 
-    required: true 
+    type: String, 
+    required: true
   },
-  no_va: {
-    type: String
+  user_id: {
+    type: Schema.Types.ObjectId,
+    ref: "user", 
+    required: true
   },
+
+  no_va: String,
   stok_dikembalikan: {
     type: Boolean,
     default: false
