@@ -1,5 +1,6 @@
 import Transaksi from "../models/datatransaksi.js";
 import Barang from "../models/databarang.js"; 
+import db from "../config/firebaseAdmin.js";
 import { io } from "../server.js";
 import { snap, core } from "../config/midtrans.js";
 import midtransClient from "midtrans-client";
@@ -8,13 +9,9 @@ import { updateBarang } from "./databarangControllers.js";
 import User from "../models/user.js";
 import Counter from "../models/counter.js";
 import Settings from "../models/settings.js";
-import BiayaOperasional from "../models/biayaoperasional.js"; // sesuaikan path
-import { v4 as uuidv4 } from "uuid"; // Untuk membuat session ID unik
+import BiayaOperasional from "../models/biayaoperasional.js";
+import { v4 as uuidv4 } from "uuid";
 
-/**
- * Pilih kasir aktif secara round-robin.
- * Menggunakan counter di DB untuk keandalan terhadap restart & concurrent requests.
- */
 
 async function pilihKasirRoundRobin() {
   // ambil semua kasir yang aktif
@@ -81,32 +78,37 @@ export const addTransaksiToLaporan = async (transaksi) => {
 
     let totalHargaFix = 0;
 
-    transaksi.barang_dibeli = transaksi.barang_dibeli.map((barang) => {
-  const jumlah = barang.jumlah || 1;
-  const hargaJual = barang.harga_satuan || 0; 
-  const hargaBeli = barang.harga_beli || 0;
+  transaksi.barang_dibeli = await Promise.all(
+  transaksi.barang_dibeli.map(async (barang) => {
+    const jumlah = barang.jumlah || 1;
+    const hargaJual = barang.harga_satuan || 0;
 
-  const subtotal = hargaJual * jumlah;
-  const labaItem = (hargaJual - hargaBeli) * jumlah;
+    const produk = await Barang.findOne({ kode_barang: barang.kode_barang });
+    const hargaBeli = produk ? produk.harga_beli : 0;
 
-  totalHargaFix += subtotal;
+    const subtotal = hargaJual * jumlah;
+    const labaItem = (hargaJual - hargaBeli) * jumlah;
 
-  laporan.laba.detail.push({
-    kode_barang: barang.kode_barang,
-    produk: barang.nama_barang,
-    harga_jual: hargaJual,
-    harga_beli: hargaBeli,
-    jumlah,
-    subtotal,
-    laba: labaItem,
-  });
+    totalHargaFix += subtotal;
 
-  return {
-    ...barang,
-    harga_satuan: hargaJual,
-    subtotal,
-  };
-});
+    laporan.laba.detail.push({
+      kode_barang: barang.kode_barang,
+      produk: barang.nama_barang,
+      harga_jual: hargaJual,
+      harga_beli: hargaBeli,
+      jumlah,
+      subtotal,
+      laba: labaItem,
+    });
+
+    return {
+      ...barang,
+      harga_satuan: hargaJual,
+      subtotal,
+      harga_beli: hargaBeli
+    };
+  })
+);
 
     transaksi.total_harga = totalHargaFix;
 
@@ -164,7 +166,8 @@ export const getAllTransaksi = async (req, res) => {
     let filter = {};
 
     if (req.user.role === "kasir") {
-      filter.kasir_id = req.user.id;   
+      // kasir_id stores username (lightweight), filter by username so kasir only sees their own transaksi
+      filter.kasir_id = req.user.username || req.user.id;
     }
 
     const transaksi = await Transaksi.find(filter).populate({
@@ -205,11 +208,15 @@ function formatDateForMidtrans(date = new Date()) {
   return `${yyyy}-${MM}-${dd} ${HH}:${mm}:${ss} +0700`;
 }
 
+
 export const createTransaksi = async (req, res) => {
   try {
     const { barang_dibeli, metode_pembayaran, total_harga } = req.body;
+    const grossAmount = Math.round(Number(total_harga));
+
+    // Ambil metode pembayaran dari Settings
     const settings = await Settings.findOne();
-    const allowedMethods = settings ? settings.payment_methods.map((pm) => pm.method) : ["Tunai"];
+    const allowedMethods = settings ? settings.payment_methods.map(pm => pm.method) : ["Tunai"];
     let baseMethod = metode_pembayaran;
     let channel = null;
 
@@ -219,7 +226,7 @@ export const createTransaksi = async (req, res) => {
       channel = match[2].trim();
     }
 
-    const selectedMethod = settings?.payment_methods.find((pm) => pm.method === baseMethod);
+    const selectedMethod = settings?.payment_methods.find(pm => pm.method === baseMethod);
     if (!selectedMethod) {
       return res.status(400).json({
         message: `Metode pembayaran '${baseMethod}' tidak valid. Pilih salah satu dari: ${allowedMethods.join(", ")}`,
@@ -227,7 +234,7 @@ export const createTransaksi = async (req, res) => {
     }
 
     if (channel && selectedMethod.channels.length > 0) {
-      const validChannels = selectedMethod.channels.map((c) => c.name);
+      const validChannels = selectedMethod.channels.map(c => c.name);
       if (!validChannels.includes(channel)) {
         return res.status(400).json({
           message: `Channel '${channel}' tidak valid untuk ${baseMethod}. Pilih salah satu dari: ${validChannels.join(", ")}`,
@@ -235,37 +242,66 @@ export const createTransaksi = async (req, res) => {
       }
     }
 
+    // 🔹 Update stok barang secara atomik di Firebase + Mongo
     for (const item of barang_dibeli) {
-      const barang =
-        (await Barang.findOne({ kode_barang: item.kode_barang })) ||
-        (await Barang.findOne({ nama_barang: item.nama_barang }));
+      const barang = await Barang.findOne({
+        $or: [{ kode_barang: item.kode_barang }, { nama_barang: item.nama_barang }],
+      });
 
       if (!barang) {
         return res.status(404).json({ message: `Barang ${item.nama_barang} tidak ditemukan!` });
       }
 
       const jumlah = Number(item.jumlah);
-      if (barang.stok < jumlah) {
-        return res.status(400).json({ message: `Stok ${item.nama_barang} tidak mencukupi!` });
+
+      if (db) {
+        const ref = db.ref(`/barang/${barang._id.toString()}/stok`);
+        const trx = await ref.transaction(current => {
+          if (current === null || typeof current === "undefined") return 0;
+          if (current < jumlah) return; // batalkan jika stok kurang
+          return current - jumlah;
+        });
+
+        if (!trx.committed) {
+          return res.status(400).json({ message: `Stok ${item.nama_barang} tidak mencukupi!` });
+        }
+
+        const newStock = trx.snapshot.val();
+
+        // Sync ke MongoDB
+        await Barang.findByIdAndUpdate(barang._id, { stok: newStock });
+
+        // Emit ke semua frontend yang terkoneksi
+        io.emit("stockUpdated", { id: barang._id.toString(), stok: newStock });
+      } else {
+        // fallback MongoDB jika RTDB error
+        if (barang.stok < jumlah) {
+          return res.status(400).json({ message: `Stok ${item.nama_barang} tidak mencukupi!` });
+        }
+        barang.stok -= jumlah;
+        await barang.save();
+        io.emit("stockUpdated", { id: barang._id.toString(), stok: barang.stok });
       }
-
-      barang.stok -= jumlah;
-      await barang.save();
     }
-    const nomorTransaksi = uuidv4();
-    let kasirIdToUse = req.body.kasir_id || null;
 
-if (!kasirIdToUse) {
-  try {
-    const kasirTerpilih = await pilihKasirRoundRobin();
-    kasirIdToUse = kasirTerpilih.username; 
-  } catch (err) {
-    return res.status(400).json({ message: err.message || "Tidak dapat memilih kasir otomatis" });
+    // 🔹 Buat transaksi
+    const nomorTransaksi = uuidv4();
+    // 🔹 Ambil kasir
+let kasirUsername = req.body.kasir_username;
+
+if (!kasirUsername) {
+  const kasirTerpilih = await pilihKasirRoundRobin();
+  kasirUsername = kasirTerpilih?.username || "kasir_default";
+} else {
+  // validasi bahwa username itu memang kasir
+  const kasirData = await User.findOne({ username: kasirUsername, role: "kasir" });
+  if (!kasirData) {
+    return res.status(400).json({ message: `Kasir '${kasirUsername}' tidak ditemukan atau bukan kasir.` });
   }
 }
 
 
-    const barangFinal = barang_dibeli.map((item) => ({
+    const barangFinal = barang_dibeli.map(item => ({
       ...item,
       subtotal: item.jumlah * item.harga_satuan,
     }));
@@ -277,13 +313,14 @@ if (!kasirIdToUse) {
       nomor_transaksi: nomorTransaksi,
       status: baseMethod === "Tunai" ? "selesai" : "pending",
       tanggal_transaksi: new Date(),
-      kasir_id: kasirIdToUse,   
-      user_id: req.user.id
+      kasir_id: kasirUsername,
+      user_id: req.user?.id || null,
     });
+
     await transaksi.save();
 
+    // 🔹 Midtrans handling
     let midtransResponse = {};
-
     if (baseMethod === "Virtual Account") {
       const bankMapping = {
         bca: "bca",
@@ -292,103 +329,53 @@ if (!kasirIdToUse) {
         permata: "permata",
         "cimb niaga": "cimb",
       };
-
       const bankCode = bankMapping[channel?.toLowerCase()] || "permata";
 
       const vaChargeParams = {
-  payment_type: "bank_transfer",
-  transaction_details: {
-    order_id: nomorTransaksi,
-    gross_amount: total_harga,
-  },
-  bank_transfer: { bank: bankCode },
-};
-
-      const vaTransaction = await core.charge(vaChargeParams);
-
-      let noVA = null;
-      let bankName = channel || null;
-
-      if (vaTransaction.va_numbers && vaTransaction.va_numbers.length > 0) {
-        noVA = vaTransaction.va_numbers[0].va_number;
-        bankName = vaTransaction.va_numbers[0].bank;
-      } else if (vaTransaction.permata_va_number) {
-        noVA = vaTransaction.permata_va_number;
-        bankName = "permata";
-      } else if (vaTransaction.cimb_va_number) {
-        noVA = vaTransaction.cimb_va_number;
-        bankName = "cimb";
-      }
-
-      transaksi.no_va = noVA;
-      transaksi.metode_pembayaran = `Virtual Account (${bankName?.toUpperCase() || "BANK"})`;
-      await transaksi.save();
-
-      midtransResponse = vaTransaction;
-
-    } else if (baseMethod === "Tunai") {
-      midtransResponse = {
-        status: "success",
-        message: "Pembayaran tunai dicatat",
-      };
-
-    } else if (baseMethod === "E-Wallet") {
-      const qrisChargeParams = {
-        payment_type: "qris",
+        payment_type: "bank_transfer",
         transaction_details: {
           order_id: nomorTransaksi,
-          gross_amount: total_harga,
+          gross_amount: grossAmount,
         },
+        bank_transfer: { bank: bankCode },
       };
 
-      const qrisTransaction = await core.charge(qrisChargeParams);
+      const vaTransaction = await core.charge(vaChargeParams);
+      transaksi.no_va = vaTransaction.va_numbers?.[0]?.va_number || null;
+      transaksi.metode_pembayaran = `Virtual Account (${bankCode.toUpperCase()})`;
+      await transaksi.save();
+      midtransResponse = vaTransaction;
 
+    } else if (baseMethod === "E-Wallet") {
+      const qrisTransaction = await core.charge({
+        payment_type: "qris",
+        transaction_details: { order_id: nomorTransaksi, gross_amount: grossAmount },
+      });
       transaksi.metode_pembayaran = "E-Wallet (QRIS)";
       await transaksi.save();
-
       midtransResponse = qrisTransaction;
 
     } else if (baseMethod === "Credit Card") {
-      const snapParams = {
-        transaction_details: {
-          order_id: nomorTransaksi,
-          gross_amount: total_harga,
-        },
+      const snapTransaction = await snap.createTransaction({
+        transaction_details: { order_id: nomorTransaksi, gross_amount: grossAmount },
         credit_card: { secure: true },
-        customer_details: { first_name: "Pelanggan" },
-        enabled_payments: ["credit_card"],
-      };
-
-      const snapTransaction = await snap.createTransaction(snapParams);
-
+      });
       transaksi.metode_pembayaran = "Credit Card";
       await transaksi.save();
-
       midtransResponse = snapTransaction;
 
-    } else {
-      const snapParams = {
-        transaction_details: {
-          order_id: nomorTransaksi,
-          gross_amount: total_harga,
-        },
-        customer_details: { first_name: "Pelanggan" },
-      };
-
-      midtransResponse = await snap.createTransaction(snapParams);
+    } else if (baseMethod === "Tunai") {
+      midtransResponse = { status: "success", message: "Pembayaran tunai dicatat" };
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Transaksi berhasil dibuat",
       transaksi,
       midtrans: midtransResponse,
     });
   } catch (error) {
-    console.error("Error createTransaksi:", error.response?.data || error.message);
-    res.status(400).json({
-      message: "Gagal membuat transaksi",
-      error: error.response?.data || error.message,
-    });
+    console.error("Error createTransaksi:", error);
+    return res.status(400).json({ message: "Gagal membuat transaksi", error: error.message });
   }
 };
 
@@ -415,11 +402,35 @@ export const cancelTransaksi = async (req, res) => {
     for (const item of transaksi.barang_dibeli) {
       const barang = await Barang.findById(item.kode_barang);
       if (barang) {
+        const jumlah = Number(item.jumlah);
+        if (db) {
+          try {
+            const ref = db.ref(`/barang/${barang._id.toString()}/stok`);
+      const trx = await ref.transaction(c => {
+  if (c === null || typeof c === "undefined") return jumlah; // kalau stok belum ada, isi jumlah awal
+  return c + jumlah; // tambahkan stok kembali
+});
+
+            if (trx.committed) {
+              const newStock = trx.snapshot.val();
+              // sync to Mongo
+              try { await Barang.findByIdAndUpdate(barang._id, { stok: newStock }); } catch (e) { console.warn('Sync Mongo failed:', e.message); }
+              console.log(`(Cancel) Stok ${barang.nama_barang} dikembalikan sebanyak ${item.jumlah}, total sekarang: ${newStock}`);
+              try { io.emit('stockUpdated', { id: barang._id.toString(), stok: newStock }); } catch (e) { console.warn('Emit failed:', e.message); }
+              continue;
+            }
+          } catch (e) {
+            console.warn('RTDB increment failed, falling back to Mongo:', e.message);
+          }
+        }
+console.log(`(Cancel) Stok ${barang.nama_barang} dikembalikan sebanyak ${item.jumlah}, total sekarang: ${newStock}`);
+        // fallback to Mongo
         barang.stok = Number(barang.stok) + Number(item.jumlah);
         await barang.save();
         console.log(
           `(Cancel) Stok ${barang.nama_barang} dikembalikan sebanyak ${item.jumlah}, total sekarang: ${barang.stok}`
         );
+        try { io.emit('stockUpdated', { id: barang._id.toString(), stok: barang.stok }); } catch (e) { console.warn('Emit failed:', e.message); }
       } else {
         console.warn(
           `Barang dengan _id ${item.kode_barang} tidak ditemukan untuk rollback stok!`
@@ -507,13 +518,36 @@ export const midtransCallback = async (req, res) => {
     }
 if (status === "expire" || status === "dibatalkan") {
   for (const item of transaksi.barang_dibeli) {
-    const barang = await Barang.findById(item.kode_barang); 
+    const barang = await Barang.findById(item.kode_barang);
     if (barang) {
+      const jumlah = Number(item.jumlah);
+      if (db) {
+        try {
+          const ref = db.ref(`/barang/${barang._id.toString()}/stok`);
+    const trx = await ref.transaction(c => {
+  if (c === null || typeof c === "undefined") return jumlah;
+  return c + jumlah; // ✅ tambahkan stok
+});
+
+
+          if (trx.committed) {
+            const newStock = trx.snapshot.val();
+            try { await Barang.findByIdAndUpdate(barang._id, { stok: newStock }); } catch (e) { console.warn('Sync Mongo failed:', e.message); }
+            console.log(`Stok ${barang.nama_barang} dikembalikan sebanyak ${item.jumlah}, total sekarang: ${newStock}`);
+            try { io.emit('stockUpdated', { id: barang._id.toString(), stok: newStock }); } catch (e) { console.warn('Emit failed:', e.message); }
+            continue;
+          }
+        } catch (e) {
+          console.warn('RTDB increment failed, falling back to Mongo:', e.message);
+        }
+      }
+
       barang.stok = Number(barang.stok) + Number(item.jumlah);
       await barang.save();
       console.log(
         `Stok ${barang.nama_barang} dikembalikan sebanyak ${item.jumlah}, total sekarang: ${barang.stok}`
       );
+      try { io.emit('stockUpdated', { id: barang._id.toString(), stok: barang.stok }); } catch (e) { console.warn('Emit failed:', e.message); }
     } else {
       console.warn(
         `Barang dengan _id ${item.kode_barang} tidak ditemukan untuk rollback stok!`
@@ -619,27 +653,34 @@ export const getStatusTransaksi = async (req, res) => {
 };
 
 
+// Cek status transaksi publik (untuk pembeli, tidak login)
 export const getStatusTransaksiPublic = async (req, res) => {
   try {
     const { order_id } = req.params;
 
     const transaksi = await Transaksi.findOne({ order_id });
-
     if (!transaksi) {
-      return res.status(404).json({ message: "Transaksi tidak ditemukan!" });
+      return res.status(404).json({ message: `Transaksi dengan nomor ${order_id} tidak ditemukan` });
     }
 
-    res.json({
+    res.status(200).json({
       order_id: transaksi.order_id,
       status: transaksi.status,
       metode_pembayaran: transaksi.metode_pembayaran,
+      tanggal_transaksi: transaksi.tanggal_transaksi,
       total_harga: transaksi.total_harga,
+      barang_dibeli: transaksi.barang_dibeli.map(item => ({
+        nama_barang: item.nama_barang,
+        jumlah: item.jumlah,
+        subtotal: item.subtotal
+      })),
     });
-  } catch (err) {
-    console.error("Error getStatusTransaksiPublic:", err);
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    console.error("Error getStatusTransaksiPublic:", error);
+    res.status(500).json({ message: "Terjadi kesalahan saat mengecek status transaksi", error: error.message });
   }
 };
+
 
 export const getUserHistory = async (req, res) => {
   try {
@@ -663,6 +704,7 @@ export const getUserHistory = async (req, res) => {
         status: trx.status,
         metode_pembayaran: trx.metode_pembayaran,
         total_harga: trx.total_harga,
+        kasir_id: trx.kasir_id,
         createdAt: trx.createdAt,
       }))
     });
@@ -671,7 +713,6 @@ export const getUserHistory = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 function mapMidtransToSettings(notification) {
   // Case: VA

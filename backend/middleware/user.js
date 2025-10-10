@@ -1,9 +1,14 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import User from "../models/user.js";
 
 dotenv.config();
 
 const userAuth = (req, res, next) => {
+  if (req.path === "/midtrans-callback") {
+    return next();
+  }
+
   const authHeader = req.headers["authorization"];
   if (!authHeader) {
     return res.status(401).json({ message: "Missing Authorization header" });
@@ -15,12 +20,26 @@ const userAuth = (req, res, next) => {
       return res.status(403).json({ message: "Invalid token" });
     }
 
-    req.user = {
-      id: decoded.id,
-      role: decoded.role,
+    // If token contains username, use it. Otherwise look up from DB by id.
+    const setUser = (username) => {
+      req.user = {
+        id: decoded.id,
+        role: decoded.role,
+        username: username || null,
+      };
+      next();
     };
 
-    next();
+    if (decoded.username) {
+      setUser(decoded.username);
+    } else {
+      User.findById(decoded.id).then(user => {
+        setUser(user ? user.username : null);
+      }).catch(e => {
+        console.warn('userAuth: failed lookup user for username fallback', e.message);
+        setUser(null);
+      });
+    }
   });
 };
 

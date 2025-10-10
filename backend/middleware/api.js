@@ -1,5 +1,5 @@
 // middleware/api.js
-import jwt from "jsonwebtoken";
+import jwt, { decode } from "jsonwebtoken";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -30,6 +30,7 @@ const apiMiddleware = (roles = []) => (req, res, next) => {
     req.user = {
       id: decoded.id,
       role: decoded.role, 
+      username: decoded.username
     };
 
     // 4. Cek roles (kalau ada restriction)

@@ -9,7 +9,7 @@ import {
   getStatusTransaksi,
   cancelTransaksi,
   getStatusTransaksiPublic,
-  getAllTransaksiPublic
+  getAllTransaksiPublic,
 } from "../controllers/datatransaksiController.js";
 import apiMiddleware from "../middleware/api.js";
 

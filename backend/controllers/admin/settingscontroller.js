@@ -94,11 +94,26 @@ export const updateServiceCharge = async (req, res) => {
       await settings.save();
     }
 
+    // 🔹 Update semua barang dengan serviceCharge baru
+    const barangList = await Barang.find();
+    for (let b of barangList) {
+      const taxRate = settings.taxRate || 0;
+      const globalDiscount = settings.globalDiscount || 0;
+
+      const hargaSetelahDiskon = b.harga_jual - (b.harga_jual * globalDiscount) / 100;
+      const hargaSetelahPajak = hargaSetelahDiskon + (hargaSetelahDiskon * taxRate) / 100;
+      const hargaFinal = hargaSetelahPajak + (hargaSetelahPajak * serviceCharge) / 100;
+
+      b.hargaFinal = Math.round(hargaFinal);
+      await b.save();
+    }
+
     res.json({ message: "Service charge berhasil diperbarui!", settings });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
+
 
 // Update pengaturan struk
 export const updateReceipt = async (req, res) => {
