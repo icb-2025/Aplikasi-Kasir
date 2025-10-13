@@ -6,13 +6,13 @@ import NotFound from '../auth/notif/404notfound';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: ('admin' | 'manajer' | 'kasir')[];
-  requireAuth?: boolean; // Tambahkan prop untuk menentukan apakah route memerlukan autentikasi
+  requireAuth?: boolean;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
   allowedRoles = ['admin', 'manajer', 'kasir'],
-  requireAuth = false // Default tidak memerlukan autentikasi
+  requireAuth = false
 }) => {
   const auth = useAuth();
   const location = useLocation();
@@ -25,22 +25,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (auth.user && (location.pathname === '/login' || location.pathname === '/register')) {
       let path = '/';
       if (auth.user.role === 'admin') path = '/admin/dashboard';
-      else if (auth.user.role === 'manajer') path = '/meneger/dashboard';
+      else if (auth.user.role === 'manajer') path = '/manajer/dashboard';
       else if (auth.user.role === 'kasir') path = '/kasir/dashboard';
       
       return { shouldRedirect: true, redirectPath: path, showLoading: false, showNotFound: false };
     }
 
-    // Jika route memerlukan autentikasi dan user belum login
     if (requireAuth && !auth.user) {
       return { shouldRedirect: true, redirectPath: '/login', showLoading: false, showNotFound: false };
     }
 
     if (!auth.user) {
-      // Path publik yang bisa diakses tanpa login
       const publicPaths = ['/', '/transaksi', '/login', '/register'];
-      
-      // Path yang memerlukan login
       const authRequiredPaths = ['/pesanan', '/riwayat'];
       
       const isPublicPath = publicPaths.some(path => 
@@ -51,12 +47,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         location.pathname === path || location.pathname.startsWith(path + '/')
       );
       
-      // Jika path memerlukan login, redirect ke halaman login
       if (isAuthRequiredPath) {
         return { shouldRedirect: true, redirectPath: '/login', showLoading: false, showNotFound: false };
       }
       
-      // Jika bukan path publik, tampilkan halaman not found
       if (!isPublicPath) {
         return { shouldRedirect: false, redirectPath: null, showLoading: false, showNotFound: true };
       }

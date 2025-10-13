@@ -1,4 +1,3 @@
-// src/auth/AuthOnlyRoute.tsx
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
@@ -18,17 +17,15 @@ const AuthOnlyRoute: React.FC<AuthOnlyRouteProps> = ({ children }) => {
     );
   }
 
-  // Jika user sudah login, redirect ke dashboard sesuai role
   if (auth.user) {
     let redirectPath = '/';
     if (auth.user.role === 'admin') redirectPath = '/admin/dashboard';
-    else if (auth.user.role === 'manajer') redirectPath = '/meneger/dashboard';
+    else if (auth.user.role === 'manajer') redirectPath = '/manajer/dashboard';
     else if (auth.user.role === 'kasir') redirectPath = '/kasir/dashboard';
     
     return <Navigate to={redirectPath} replace />;
   }
 
-  // Jika belum login, tampilkan halaman auth
   return <>{children}</>;
 };
 

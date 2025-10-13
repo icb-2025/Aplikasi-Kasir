@@ -1,4 +1,5 @@
-import { useContext, useCallback, useEffect, useState } from 'react';
+import { useContext, useCallback, useEffect, useState, useRef } from 'react';
+import io, { Socket } from 'socket.io-client';
 import type { Barang } from "../admin/stok-barang";
 import MainLayout from "../components/MainLayout";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +10,7 @@ import Sidebar from "./componentUtama/Sidebar";
 import ProductGrid from "./componentUtama/ProductGrid";
 import CurrentOrder from "./componentUtama/CurrentOrder";
 import TransactionModal from "./componentUtama/TransactionModal";
+import ProsesTransaksiModal from "./componentUtama/proses-transaksi";
 import AuthContext from "./../auth/context/AuthContext";
 
 interface DashboardProps {
@@ -20,14 +22,13 @@ export interface CartItem extends Barang {
   jumlah?: number;
 }
 
-// Interface untuk item dari API cart
 interface CartItemResponse {
   barangId: string;
   name: string;
   price: number;
   quantity: number;
   _id: string;
-  image: string; // Tambahkan field image
+  image: string;
 }
 
 interface BarangDibeli {
@@ -43,7 +44,7 @@ interface BarangDibeli {
 interface TransactionResponse {
   _id: string;
   order_id: string;
-  nomor_transaksi: string; // Tambahkan properti ini
+  nomor_transaksi: string;
   tanggal_transaksi: string;
   barang_dibeli: BarangDibeli[];
   total_harga: number;
@@ -55,11 +56,39 @@ interface TransactionResponse {
   no_va?: string;
 }
 
+interface MidtransData {
+  transaction_id?: string;
+  order_id: string;
+  gross_amount: string;
+  payment_type: string;
+  transaction_status: string;
+  qr_string?: string;
+  permata_va_number?: string;
+  va_number?: string;
+  actions?: Array<{
+    name: string;
+    method: string;
+    url: string;
+  }>;
+}
+
+// Define a proper type for transaction status data
+interface TransactionStatusData {
+  cartItems?: CartItem[];
+  total?: number;
+  transactionData?: TransactionResponse | null;
+  midtransData?: MidtransData | null;
+  expiryTime?: string | null;
+  token?: string | null;
+  paymentMethod?: string | null;
+}
+
 const API_BASE_URL = 'http://192.168.110.16:5000';
 
 const Dashboard = ({ dataBarang }: DashboardProps) => {
   const navigate = useNavigate();
   const authContext = useContext(AuthContext);
+  const socketRef = useRef<Socket | null>(null);
   
   if (!authContext) {
     throw new Error('AuthContext must be used within an AuthProvider');
@@ -76,10 +105,23 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  const [isProsesTransaksiModalOpen, setIsProsesTransaksiModalOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [transactionSuccess, setTransactionSuccess] = useState(false);
   const [transactionData, setTransactionData] = useState<TransactionResponse | undefined>(undefined);
   const [isCartLoading, setIsCartLoading] = useState(false);
+  const [barangList, setBarangList] = useState<Barang[]>(dataBarang);
+  
+  // State for ProsesTransaksiModal
+  const [prosesTransaksiData, setProsesTransaksiData] = useState<{
+    transaksi: TransactionResponse | null;
+    midtrans: MidtransData | null;
+    expiryTime?: string;
+    token?: string;
+  }>({
+    transaksi: null,
+    midtrans: null
+  });
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -93,7 +135,71 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     { id: "Signature", name: "Signature", icon: "⭐" },
   ];
   
-  // API Functions
+  // Update barangList when props dataBarang changes
+  useEffect(() => {
+    setBarangList(dataBarang);
+  }, [dataBarang]);
+
+  // Initialize Socket.IO
+  useEffect(() => {
+    socketRef.current = io(API_BASE_URL);
+    
+    // Listen for stockUpdated event from server
+    socketRef.current.on('stockUpdated', (data: { id: string; stok: number }) => {
+      setBarangList(prevList => 
+        prevList.map(item => {
+          if (item._id === data.id) {
+            const newStok = data.stok;
+            const status = newStok <= 0 
+              ? "habis" 
+              : newStok <= (item.stokMinimal || 5) 
+                ? "hampir habis" 
+                : "aman";
+            return { 
+              ...item, 
+              stok: newStok,
+              status
+            };
+          }
+          return item;
+        })
+      );
+      
+      // Update cart if the updated item is in cart
+      setCart(prevCart => 
+        prevCart.map(item => {
+          if (item._id === data.id) {
+            // If stock is empty, remove from cart
+            if (data.stok <= 0) {
+              toast.warning(`${item.nama} has run out of stock. Removed from cart.`, {
+                position: "top-right", autoClose: 3000, hideProgressBar: false,
+                closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
+              });
+              return { ...item, quantity: 0 };
+            }
+            // If quantity in cart exceeds new stock, adjust it
+            if (item.quantity > data.stok) {
+              toast.warning(`Stock of ${item.nama} has decreased. Quantity in cart adjusted.`, {
+                position: "top-right", autoClose: 3000, hideProgressBar: false,
+                closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
+              });
+              return { ...item, quantity: data.stok };
+            }
+            return { ...item, stok: data.stok, status };
+          }
+          return item;
+        }).filter(item => item.quantity > 0) // Remove items with quantity 0
+      );
+    });
+
+    // Cleanup when component unmounts
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, []);
+  
   const fetchCart = useCallback(async (): Promise<CartItem[]> => {
     const token = localStorage.getItem('token');
     if (!token) return [];
@@ -115,7 +221,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         nama: item.name,
         hargaJual: item.price,
         quantity: item.quantity,
-        gambarUrl: item.image // Tambahkan pemetaan field image ke gambarUrl
+        gambarUrl: item.image
       }));
     } catch (error) {
       console.error('Error fetching cart:', error);
@@ -165,11 +271,21 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     const token = localStorage.getItem('token');
     if (!token) throw new Error('No token found');
     
-    // First remove the item
-    await removeItemFromCart(barangId);
+    const response = await fetch(`${API_BASE_URL}/api/cart/${barangId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ quantity })
+    });
     
-    // Then add with new quantity
-    return addItemToCart(barangId, quantity);
+    if (!response.ok) {
+      await removeItemFromCart(barangId);
+      return addItemToCart(barangId, quantity);
+    }
+    
+    return response.json();
   }, [addItemToCart, removeItemFromCart]);
   
   const clearCart = useCallback(async () => {
@@ -194,7 +310,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     return () => clearTimeout(timer);
   }, []);
   
-  // Load cart when user is available
   useEffect(() => {
     if (user) {
       const loadCart = async () => {
@@ -204,7 +319,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
           setCart(cartData);
         } catch (error) {
           console.error('Failed to load cart:', error);
-          toast.error('Gagal memuat keranjang');
+          toast.error('Failed to load cart');
         } finally {
           setIsCartLoading(false);
         }
@@ -215,8 +330,128 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       setCart([]);
     }
   }, [user, fetchCart]);
+
+  // Function to save transaction status to localStorage
+  const saveTransactionStatus = useCallback((status: 'pending' | 'success' | 'expired' | 'cancelled', data?: TransactionStatusData) => {
+    const transactionData = {
+      status,
+      data: {
+        ...data,
+        // Also save transaction and midtrans data if available
+        transactionData: data?.transactionData || null,
+        midtransData: data?.midtransData || null,
+        expiryTime: data?.expiryTime || null,
+        token: data?.token || null,
+        paymentMethod: data?.paymentMethod || null
+      },
+      timestamp: new Date().toISOString()
+    };
+    
+    localStorage.setItem('transactionStatus', JSON.stringify(transactionData));
+  }, []);
+
+  // Function to clear transaction status from localStorage
+  const clearTransactionStatus = useCallback(() => {
+    localStorage.removeItem('transactionStatus');
+    
+    // Also clear any transaction-specific keys
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (key.startsWith('transaksi_')) {
+        localStorage.removeItem(key);
+      }
+    });
+  }, []);
+
+  // Check transaction status when app loads
+  useEffect(() => {
+    const savedTransactionStatus = localStorage.getItem('transactionStatus');
+    
+    if (savedTransactionStatus) {
+      try {
+        const { status, data, timestamp } = JSON.parse(savedTransactionStatus) as {
+          status: 'pending' | 'success' | 'expired' | 'cancelled';
+          data: TransactionStatusData;
+          timestamp: string;
+        };
+        
+        // Check if transaction is still valid (e.g., less than 24 hours)
+        const transactionTime = new Date(timestamp);
+        const now = new Date();
+        const diffInHours = (now.getTime() - transactionTime.getTime()) / (1000 * 60 * 60);
+        
+        if (diffInHours < 24) { // Transaction is still valid if less than 24 hours
+          if (status === 'pending') {
+            // Verify transaction status with server before showing modal
+            const verifyTransaction = async () => {
+              try {
+                if (data.transactionData?.order_id) {
+                  const response = await fetch(`${API_BASE_URL}/api/transaksi/public/status/${data.transactionData.order_id}`);
+                  
+                  if (response.ok) {
+                    const transactionStatus = await response.json();
+                    
+                    // If transaction is cancelled or expired, don't show modal
+                    if (transactionStatus.status === 'batal' || transactionStatus.status === 'expire') {
+                      console.log('Transaction is cancelled or expired, clearing storage');
+                      clearTransactionStatus();
+                      return;
+                    }
+                    
+                    // If transaction is still pending, show modal
+                    setCart(data.cartItems || []);
+                    
+                    // Check if this transaction is a Virtual Account that requires ProsesTransaksiModal
+                    const isVirtualAccount = data.paymentMethod && 
+                      (data.paymentMethod.includes('Virtual Account') || 
+                       data.paymentMethod.toLowerCase().includes('va'));
+                    
+                    if (isVirtualAccount && data.transactionData && data.midtransData) {
+                      setProsesTransaksiData({
+                        transaksi: data.transactionData,
+                        midtrans: data.midtransData,
+                        expiryTime: data.expiryTime || undefined,
+                        token: data.token || undefined
+                      });
+                      setIsProsesTransaksiModalOpen(true);
+                    } else {
+                      setIsTransactionModalOpen(true);
+                    }
+                    
+                    toast.info('Melanjutkan transaksi tertunda', {
+                      position: "top-right",
+                      autoClose: 3000,
+                      hideProgressBar: false,
+                      closeOnClick: true,
+                      pauseOnHover: true,
+                      draggable: true,
+                      progress: undefined,
+                    });
+                  } else {
+                    // If failed to verify, clear storage
+                    clearTransactionStatus();
+                  }
+                }
+              } catch (error) {
+                console.error('Error verifying transaction status:', error);
+                clearTransactionStatus();
+              }
+            };
+            
+            verifyTransaction();
+          }
+        } else {
+          // Remove expired transaction data
+          clearTransactionStatus();
+        }
+      } catch (error) {
+        console.error('Error parsing saved transaction status:', error);
+        clearTransactionStatus();
+      }
+    }
+  }, [clearTransactionStatus]);
   
-  const filteredBarang = dataBarang.filter(item => {
+  const filteredBarang = barangList.filter(item => {
     const matchesSearch = item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (item.kode?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
                          item.kategori.toLowerCase().includes(searchTerm.toLowerCase());
@@ -234,8 +469,12 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
 
   const addToCart = async (product: Barang, qty: number = 1) => {
     checkLoginAndProceed(async () => {
-      if (qty > product.stok) {
-        toast.error(`Stok tidak mencukupi! Stok tersedia: ${product.stok}`, {
+      // Check latest stock from barangList state
+      const currentProduct = barangList.find(item => item._id === product._id);
+      const currentStock = currentProduct ? currentProduct.stok : product.stok;
+      
+      if (qty > currentStock) {
+        toast.error(`Insufficient stock! Available stock: ${currentStock}`, {
           position: "top-right", autoClose: 3000, hideProgressBar: false,
           closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
         });
@@ -244,13 +483,12 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       
       setIsAnimating(true);
       try {
-        // Check if item already in cart
         const existingItem = cart.find(item => item._id === product._id);
         
         if (existingItem) {
           const newQty = existingItem.quantity + qty;
-          if (newQty > product.stok) {
-            toast.error(`Jumlah melebihi stok! Stok tersedia: ${product.stok}`, {
+          if (newQty > currentStock) {
+            toast.error(`Quantity exceeds stock! Available stock: ${currentStock}`, {
               position: "top-right", autoClose: 3000, hideProgressBar: false,
               closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
             });
@@ -258,27 +496,25 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
             return;
           }
           
-          // Update quantity
           await updateItemQuantity(product._id, newQty);
           const updatedCart = await fetchCart();
           setCart(updatedCart);
-          toast.success(`${product.nama} diperbarui di keranjang`, {
+          toast.success(`${product.nama} updated in cart`, {
             position: "top-right", autoClose: 2000, hideProgressBar: false,
             closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
           });
         } else {
-          // Add new item
           await addItemToCart(product._id, qty);
           const updatedCart = await fetchCart();
           setCart(updatedCart);
-          toast.success(`${product.nama} ditambahkan ke keranjang`, {
+          toast.success(`${product.nama} added to cart`, {
             position: "top-right", autoClose: 2000, hideProgressBar: false,
             closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
           });
         }
       } catch (error) {
         console.error('Error adding to cart:', error);
-        toast.error('Gagal menambah item ke keranjang');
+        toast.error('Failed to add item to cart');
       } finally {
         setSelectedProduct(null);
         setQuantity(1);
@@ -294,7 +530,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       setCart(updatedCart);
     } catch (error) {
       console.error('Error removing from cart:', error);
-      toast.error('Gagal menghapus item dari keranjang');
+      toast.error('Failed to remove item from cart');
     }
   };
 
@@ -302,8 +538,12 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     const product = cart.find(item => item._id === productId);
     if (!product) return;
     
-    if (newQuantity > product.stok) {
-      toast.error(`Jumlah melebihi stok! Stok tersedia: ${product.stok}`, {
+    // Check latest stock from barangList state
+    const currentProduct = barangList.find(item => item._id === productId);
+    const currentStock = currentProduct ? currentProduct.stok : product.stok;
+    
+    if (newQuantity > currentStock) {
+      toast.error(`Quantity exceeds stock! Available stock: ${currentStock}`, {
         position: "top-right", autoClose: 3000, hideProgressBar: false,
         closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
       });
@@ -321,14 +561,18 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       setCart(updatedCart);
     } catch (error) {
       console.error('Error updating quantity:', error);
-      toast.error('Gagal memperbarui kuantitas');
+      toast.error('Failed to update quantity');
     }
   };
 
   const handleBuyNow = async (product: Barang, qty: number = 1) => {
     checkLoginAndProceed(async () => {
-      if (qty > product.stok) {
-        toast.error(`Stok tidak mencukupi! Stok tersedia: ${product.stok}`, {
+      // Check latest stock from barangList state
+      const currentProduct = barangList.find(item => item._id === product._id);
+      const currentStock = currentProduct ? currentProduct.stok : product.stok;
+      
+      if (qty > currentStock) {
+        toast.error(`Insufficient stock! Available stock: ${currentStock}`, {
           position: "top-right", autoClose: 3000, hideProgressBar: false,
           closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
         });
@@ -336,22 +580,49 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       }
       
       try {
-        // Add item to cart
         await addItemToCart(product._id, qty);
         const updatedCart = await fetchCart();
         setCart(updatedCart);
         
-        // Open transaction modal
+        // Save transaction status to localStorage
+        saveTransactionStatus('pending', {
+          cartItems: updatedCart,
+          total: updatedCart.reduce((total, item) => total + (item.quantity * (item.hargaFinal || item.hargaJual)), 0)
+        });
+        
         setIsTransactionModalOpen(true);
       } catch (error) {
         console.error('Error adding to cart for buy now:', error);
-        toast.error('Gagal menambah item ke keranjang');
+        toast.error('Failed to add item to cart');
       }
     });
   };
 
   const handleCheckout = () => {
     checkLoginAndProceed(() => {
+      if (cart.length === 0) {
+        toast.error('Shopping cart is still empty');
+        return;
+      }
+      
+      // Validate stock before checkout
+      const hasInvalidItems = cart.some(item => {
+        const currentProduct = barangList.find(p => p._id === item._id);
+        const currentStock = currentProduct ? currentProduct.stok : item.stok;
+        return item.quantity > currentStock;
+      });
+      
+      if (hasInvalidItems) {
+        toast.error('Some items in cart exceed available stock. Please update your cart.');
+        return;
+      }
+      
+      // Save transaction status to localStorage
+      saveTransactionStatus('pending', {
+        cartItems: cart,
+        total: cart.reduce((total, item) => total + (item.quantity * (item.hargaFinal || item.hargaJual)), 0)
+      });
+      
       setIsTransactionModalOpen(true);
     });
   };
@@ -364,17 +635,20 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       await clearCart();
       setCart([]);
       
-      // Simpan data transaksi untuk ditampilkan di struk
       if (transactionData) {
         setTransactionData(transactionData);
         setTransactionSuccess(true);
         
-        // Simpan transaksi ke riwayat pengguna
+        // Clear transaction status from localStorage
+        clearTransactionStatus();
+        
         const saveToHistory = async () => {
           try {
             const token = localStorage.getItem('token');
-            await fetch("http://192.168.110.16:5000/api/users/history", {
-              method: "POST",
+            if (!token) return;
+            
+            await fetch(`${API_BASE_URL}/api/users/history`, {
+              method: "GET",
               headers: { 
                 "Content-Type": "application/json",
                 'Authorization': `Bearer ${token}`
@@ -390,9 +664,9 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
               }),
             });
             
-            console.log('Transaksi berhasil disimpan ke riwayat');
+            console.log('Transaction successfully saved to history');
           } catch (err) {
-            console.error("Gagal menyimpan transaksi ke riwayat:", err);
+            console.error("Failed to save transaction to history:", err);
           }
         };
         
@@ -400,7 +674,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       }
     } catch (error) {
       console.error('Error clearing cart after transaction:', error);
-      toast.error('Gagal mengosongkan keranjang setelah transaksi');
+      toast.error('Failed to clear cart after transaction');
     }
   };
 
@@ -413,13 +687,25 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     setTransactionSuccess(false);
     setTransactionData(undefined);
     setIsTransactionModalOpen(false);
+    console.log("Modal closed, state reset");
   };
+
+  const handleResetProsesTransaksi = () => {
+    setIsProsesTransaksiModalOpen(false);
+    setProsesTransaksiData({
+      transaksi: null,
+      midtrans: null
+    });
+  };
+
+  useEffect(() => {
+    console.log("Modal state changed:", isTransactionModalOpen);
+  }, [isTransactionModalOpen]);
 
   return (
     <MainLayout>
       <ToastContainer />
       
-      {/* Top Navigation */}
       <div className="bg-white shadow-md rounded-b-xl">
         <div className="max-w-10x4 mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -458,7 +744,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
             <div className="flex items-center">
               <div className="ml-3 flex items-center">
                 <div className="relative max-w-md w-full">
-                  <input type="text" placeholder="Cari makanan favoritmu..."
+                  <input type="text" placeholder="Search for your favorite food..."
                     className="w-full py-2 px-4 pl-10 rounded-lg border border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 focus:outline-none"
                     value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -549,15 +835,15 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
             
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 mb-6 border border-amber-100">
               <div className="flex justify-between items-center">
-                <span className="text-gray-700">Stok tersedia:</span>
+                <span className="text-gray-700">Available stock:</span>
                 <span className={`font-bold ${selectedProduct.stok > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                  {selectedProduct.stok} unit
+                  {selectedProduct.stok} units
                 </span>
               </div>
             </div>
             
             <div className="mb-8">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Jumlah:</label>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Quantity:</label>
               <div className="flex items-center justify-center space-x-4">
                 <button onClick={() => setQuantity(q => Math.max(1, q - 1))} 
                   className="w-12 h-12 bg-amber-100 rounded-xl hover:bg-amber-200 transition-all transform hover:scale-110 active:scale-95 flex items-center justify-center text-xl font-bold text-amber-700">
@@ -583,7 +869,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
             <div className="flex space-x-3">
               <button onClick={() => setSelectedProduct(null)} 
                 className="flex-1 px-6 py-3.5 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all transform hover:scale-105 active:scale-95 font-medium">
-                Batal
+                Cancel
               </button>
               <button onClick={() => addToCart(selectedProduct, quantity)} 
                 className="flex-1 px-6 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all transform hover:scale-105 active:scale-[0.98] font-medium flex items-center justify-center gap-2 shadow-lg"
@@ -594,14 +880,14 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Memproses...
+                    Processing...
                   </>
                 ) : (
                   <>
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
-                    Tambah ke Keranjang
+                    Add to Cart
                   </>
                 )}
               </button>
@@ -622,6 +908,20 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         onTransactionSuccess={handleTransactionSuccess}
         transactionSuccess={transactionSuccess}
         transactionData={transactionData}
+        onOpenProsesTransaksi={(data) => {
+          setProsesTransaksiData(data);
+          setIsProsesTransaksiModalOpen(true);
+        }}
+      />
+
+      <ProsesTransaksiModal
+        isOpen={isProsesTransaksiModalOpen}
+        onClose={handleResetProsesTransaksi}
+        transaksi={prosesTransaksiData.transaksi}
+        midtrans={prosesTransaksiData.midtrans}
+        expiryTime={prosesTransaksiData.expiryTime}
+        token={prosesTransaksiData.token}
+        onTransactionSuccess={handleTransactionSuccess}
       />
 
       {showLoginModal && (
@@ -633,16 +933,16 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Login Diperlukan</h3>
-              <p className="text-gray-600">Silakan login untuk menambah produk ke keranjang atau melakukan pembelian.</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Login Required</h3>
+              <p className="text-gray-600">Please login to add products to cart or make a purchase.</p>
             </div>
             
             <div className="flex flex-col space-y-3">
               <button onClick={goToLogin} className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md">
-                Login Sekarang
+                Login Now
               </button>
               <button onClick={() => setShowLoginModal(false)} className="w-full py-3 px-4 bg-white text-gray-700 rounded-xl font-medium border border-gray-300 hover:bg-gray-50 transition-all">
-                Batal
+                Cancel
               </button>
             </div>
           </div>

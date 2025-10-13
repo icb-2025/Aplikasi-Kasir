@@ -12,7 +12,8 @@ import {
   X,
   Printer,
   Home,
-  History
+  FileText,
+  QrCode
 } from "lucide-react";
 import SweetAlert from "../../components/SweetAlert";
 import ProsesTransaksiModal from "./proses-transaksi";
@@ -51,7 +52,6 @@ interface BarangDibeli {
   _id: string;
 }
 
-// Update interface untuk mencakup semua properti yang dibutuhkan
 interface TransactionResponse {
   _id: string;
   order_id: string;
@@ -62,6 +62,8 @@ interface TransactionResponse {
   metode_pembayaran: string;
   status: string;
   kasir_id?: string;
+  kasir_username?: string;
+  kasir_nama?: string;
   createdAt: string;
   updatedAt: string;
   no_va?: string;
@@ -79,12 +81,6 @@ interface MidtransData {
   }>;
 }
 
-interface TransactionApiResponse {
-  message: string;
-  transaksi: TransactionResponse;
-  midtrans: MidtransData;
-}
-
 interface SettingsReceipt {
   receiptHeader?: string;
   receiptFooter?: string;
@@ -98,9 +94,15 @@ interface TransactionModalProps {
   onTransactionSuccess: (transactionData?: TransactionResponse) => void;
   transactionSuccess?: boolean;
   transactionData?: TransactionResponse;
+  onOpenProsesTransaksi?: (data: {
+    transaksi: TransactionResponse | null;
+    midtrans: MidtransData | null;
+    expiryTime?: string;
+    token?: string;
+  }) => void;
 }
 
-// Animasi variants
+// Animation variants
 const backdropVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
@@ -135,8 +137,10 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   total,
   onTransactionSuccess,
   transactionSuccess = false,
-  transactionData = null
+  transactionData = null,
+  onOpenProsesTransaksi
 }) => {
+  // State
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [paymentMethods, setPaymentMethods] = useState<PaymentChannel[]>([]);
@@ -147,7 +151,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const [kasirAktif, setKasirAktif] = useState<boolean>(true);
   const [receiptSettings, setReceiptSettings] = useState<SettingsReceipt>({});
   
-  // State untuk modal proses transaksi
+  // State for process transaction modal
   const [isProsesTransaksiOpen, setIsProsesTransaksiOpen] = useState(false);
   const [prosesTransaksiData, setProsesTransaksiData] = useState<{
     transaksi: TransactionResponse | null;
@@ -159,8 +163,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     midtrans: null
   });
 
-  const isCashPayment = selectedMethod.toLowerCase() === 'tunai';
+  const isCashPayment = selectedMethod.toLowerCase() === 'tunai' || selectedMethod.toLowerCase() === 'va';
 
+  // Fetch payment methods and receipt settings
   useEffect(() => {
     const fetchPaymentMethods = async () => {
       try {
@@ -191,8 +196,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           setSelectedMethod(methodsWithActiveChannels[0].method);
         }
       } catch (err) {
-        console.error("Gagal ambil metode pembayaran:", err);
-        setErrorMessage("Gagal memuat metode pembayaran. Silakan refresh halaman.");
+        console.error("Failed to fetch payment methods:", err);
+        setErrorMessage("Failed to load payment methods. Please refresh the page.");
       }
     };
     
@@ -204,7 +209,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           setReceiptSettings(data);
         }
       } catch (err) {
-        console.error("Gagal ambil pengaturan struk:", err);
+        console.error("Failed to fetch receipt settings:", err);
       }
     };
     
@@ -214,6 +219,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     }
   }, [isOpen, transactionSuccess]);
 
+  // Handle remove item from cart
   const handleRemoveItem = async (itemId: string) => {
     setRemovingItem(itemId);
     await new Promise(resolve => setTimeout(resolve, 300));
@@ -221,11 +227,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     setRemovingItem(null);
   };
 
+  // Handle process transaction
   const handleProsesTransaksi = async () => {
     if (!kasirAktif) {
       await SweetAlert.fire({
-        title: 'Kasir Tidak Aktif',
-        text: 'Mohon maaf, kasir sedang tidak aktif. Silakan hubungi admin.',
+        title: 'Cashier Inactive',
+        text: 'Sorry, the cashier is currently inactive. Please contact admin.',
         icon: 'warning',
         confirmButtonText: 'OK',
         confirmButtonColor: '#f59e0b'
@@ -234,7 +241,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     }
 
     if (cartItems.length === 0) {
-      setErrorMessage("Keranjang kosong! Silakan tambah barang terlebih dahulu.");
+      setErrorMessage("Cart is empty! Please add items first.");
       return;
     }
 
@@ -243,7 +250,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     );
     if (invalidStock.length > 0) {
       setErrorMessage(
-        invalidStock.map((i) => `${i.nama}: qty ${i.quantity} > stok ${i.stok}`).join("\n")
+        invalidStock.map((i) => `${i.nama}: qty ${i.quantity} > stock ${i.stok}`).join("\n")
       );
       return;
     }
@@ -253,7 +260,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     );
     
     if (!isPaymentMethodActive) {
-      setErrorMessage("Metode pembayaran yang dipilih tidak tersedia");
+      setErrorMessage("Selected payment method is not available");
       return;
     }
 
@@ -264,27 +271,70 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       }
     }
 
-    const bodyData = {
-      barang_dibeli: cartItems.map((item) => ({
-        barang_id: item._id,
-        kode_barang: item._id,
-        nama_barang: item.nama,
-        jumlah: item.quantity,
-        harga_satuan: item.hargaFinal,
-        harga_beli: item.hargaBeli || 0,
-        subtotal: item.quantity * item.hargaFinal,
-        gambar_url: item.gambarUrl || "",
-      })),
+    const barangDibeli = cartItems.map((item) => ({
+      barang_id: item._id,
+      kode_barang: item._id,
+      nama_barang: item.nama,
+      jumlah: item.quantity,
+      harga_satuan: item.hargaFinal,
+      harga_beli: item.hargaBeli || 0,
+      subtotal: item.quantity * item.hargaFinal,
+    }));
+
+    // Get kasir_id from localStorage
+    const storedKasir = localStorage.getItem('kasir');
+    let kasirId: string | null = null;
+    try {
+      const parsed = storedKasir ? JSON.parse(storedKasir) : null;
+      kasirId = parsed?._id || parsed?.id || null;
+      
+      // If no kasirId from localStorage, try to get from token
+      if (!kasirId) {
+        const token = localStorage.getItem('token');
+        if (token) {
+          // Token is usually JWT format, we can decode payload to get kasir ID
+          const base64Url = token.split('.')[1];
+          if (base64Url) {
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map(function(c) {
+                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                })
+                .join('')
+            );
+            const payload = JSON.parse(jsonPayload);
+            kasirId = payload.kasir_id || payload._id || payload.id;
+          }
+        }
+      }
+      
+      console.log("Kasir ID to be used:", kasirId);
+    } catch (err) {
+      console.error("Error getting kasir ID:", err);
+      kasirId = null;
+    }
+
+    const bodyData: Record<string, unknown> = {
+      barang_dibeli: barangDibeli,
       total_harga: total,
       metode_pembayaran: paymentMethod,
+      kasir_id: kasirId,
       status: "pending",
     };
+
+    if (kasirId) {
+      bodyData.kasir_id = kasirId;
+    }
+
+    console.log("Sending transaction data:", JSON.stringify(bodyData, null, 2));
 
     setLoading(true);
     setErrorMessage("");
     
     try {
-      SweetAlert.loading("Memproses transaksi...");
+      SweetAlert.loading("Processing transaction...");
       
       const token = localStorage.getItem('token');
       
@@ -297,11 +347,28 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         body: JSON.stringify(bodyData),
       });
 
-      const responseData: TransactionApiResponse = await res.json();
+      console.log("Response status:", res.status);
+      console.log("Response headers:", res.headers);
+
+      let responseData: {
+        message: string;
+        transaksi: TransactionResponse;
+        midtrans: MidtransData;
+        error?: string;
+      };
+      try {
+        responseData = await res.json();
+        console.log("Response data:", responseData);
+      } catch (_err) {
+        console.error("Failed to parse response JSON:", _err);
+        throw new Error("Server returned invalid response");
+      }
       
       if (!res.ok) {
         SweetAlert.close();
-        throw new Error(responseData.message || "Gagal simpan transaksi");
+        const errorMsg = responseData.message || responseData.error || "Failed to save transaction";
+        console.error("API Error:", errorMsg);
+        throw new Error(errorMsg);
       }
 
       localStorage.removeItem('cartItems');
@@ -309,28 +376,67 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
       SweetAlert.close();
       
-      // Simpan data transaksi untuk modal proses transaksi
-      setProsesTransaksiData({
-        transaksi: responseData.transaksi,
-        midtrans: responseData.midtrans,
-        expiryTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 menit dari sekarang
-        token: responseData.transaksi.order_id
-      });
+      // Save transaction data to localStorage
+      const transactionDataToSave = {
+        cartItems: cartItems,
+        total: total,
+        transactionData: responseData.transaksi,
+        midtransData: responseData.midtrans,
+        expiryTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        token: responseData.transaksi.order_id,
+        paymentMethod: paymentMethod
+      };
+
+      localStorage.setItem('transactionStatus', JSON.stringify({
+        status: 'pending',
+        data: transactionDataToSave,
+        timestamp: new Date().toISOString()
+      }));
       
-      // Buka modal proses transaksi
-      setIsProsesTransaksiOpen(true);
-      
-      // Kirim data transaksi ke parent component
-      onTransactionSuccess(responseData.transaksi);
+      // Check payment method
+      if (isCashPayment) {
+        // For cash payment, show receipt directly
+        onTransactionSuccess(responseData.transaksi);
+      } else if (selectedMethod.toLowerCase().includes('virtual account') || selectedMethod.toLowerCase().includes('e-wallet')) {
+        // For Virtual Account and E-Wallet, open process transaction modal
+        const data = {
+          transaksi: responseData.transaksi,
+          midtrans: responseData.midtrans,
+          expiryTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+          token: responseData.transaksi.order_id
+        };
+        
+        setProsesTransaksiData(data);
+        
+        // Call callback to open ProsesTransaksiModal from Dashboard
+        if (onOpenProsesTransaksi) {
+          onOpenProsesTransaksi(data);
+        } else {
+          setIsProsesTransaksiOpen(true);
+        }
+      } else {
+        // For other non-cash methods, complete directly
+        onTransactionSuccess(responseData.transaksi);
+      }
     } catch (err: unknown) {
       SweetAlert.close();
-      setErrorMessage(err instanceof Error ? err.message : "Terjadi kesalahan transaksi");
-      await SweetAlert.error(err instanceof Error ? err.message : "Terjadi kesalahan transaksi");
+      const error = err instanceof Error ? err.message : "Transaction error occurred";
+      
+      // CUSTOMIZE ERROR MESSAGE HERE
+      let displayError = error;
+      if (error === "Gagal membuat transaksi") {
+        displayError = "Tidak ada kasir yang aktif saat ini";
+      }
+      
+      setErrorMessage(displayError);
+      console.error("Transaction error:", error);
+      await SweetAlert.error(displayError);
     } finally {
       setLoading(false);
     }
   };
 
+  // Helper functions
   const getChannelKey = (channel: { name: string; logo?: string; _id: string }): string => {
     return channel._id || channel.name;
   };
@@ -355,19 +461,34 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     window.print();
   };
 
-  const handleGoToHistory = () => {
-    onClose();
-    // Navigasi ke halaman riwayat
-    window.location.href = '/pesanan';
-  };
-
   const formatCurrency = (value: number | undefined | null): string => {
     if (!value || isNaN(value)) return "Rp 0";
     return `Rp ${value.toLocaleString("id-ID")}`;
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateString: string | Date | undefined | null) => {
+    if (!dateString) return "-";
+    
+    let date: Date;
+    
+    if (typeof dateString === 'string') {
+      // Handle MongoDB date format: {"$date": "2025-10-08T05:04:28.704Z"}
+      try {
+        const parsed = JSON.parse(dateString);
+        if (parsed && parsed.$date) {
+          date = new Date(parsed.$date);
+        } else {
+          date = new Date(dateString);
+        }
+      } catch {
+        date = new Date(dateString);
+      }
+    } else {
+      date = new Date(dateString);
+    }
+    
+    if (isNaN(date.getTime())) return "Invalid Date";
+    
     return date.toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'long',
@@ -375,6 +496,55 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Function to get cashier name from various sources
+  const getKasirName = (): string => {
+    // 1. Check if there's cashier data in transactionData
+    if (transactionData) {
+      // Prioritize kasir_nama if available
+      if (transactionData.kasir_nama) {
+        return transactionData.kasir_nama;
+      }
+      
+      // If not available, use kasir_username
+      if (transactionData.kasir_username) {
+        return transactionData.kasir_username;
+      }
+      
+      // If neither is available, use kasir_id
+      if (transactionData.kasir_id) {
+        return transactionData.kasir_id;
+      }
+    }
+    
+    // 2. Try to get cashier data from localStorage
+    try {
+      const storedKasir = localStorage.getItem('kasir');
+      if (storedKasir) {
+        const parsed = JSON.parse(storedKasir);
+        return parsed?.nama || parsed?.username || parsed?._id || "-";
+      }
+    } catch (err) {
+      console.error("Error getting cashier data from localStorage:", err);
+    }
+    
+    // 3. If all fails, return "-"
+    return "-";
+  };
+
+  // Function to calculate unit price from subtotal and quantity
+  const calculateHargaSatuan = (item: BarangDibeli): number => {
+    if (item.harga_satuan && item.harga_satuan > 0) {
+      return item.harga_satuan;
+    }
+    
+    // Calculate unit price from subtotal and quantity
+    if (item.subtotal && item.jumlah && item.jumlah > 0) {
+      return item.subtotal / item.jumlah;
+    }
+    
+    return 0;
   };
 
   return (
@@ -386,18 +556,16 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             isOpen={isProsesTransaksiOpen}
             onClose={() => {
               setIsProsesTransaksiOpen(false);
-              // Setelah modal proses transaksi ditutup, tampilkan struk jika pembayaran berhasil
-              if (transactionSuccess) {
-                // Tetap tampilkan struk
-              } else {
-                // Jika pembayaran belum berhasil, kembali ke modal transaksi utama
-                onClose();
-              }
             }}
             transaksi={prosesTransaksiData.transaksi}
             midtrans={prosesTransaksiData.midtrans}
             expiryTime={prosesTransaksiData.expiryTime}
             token={prosesTransaksiData.token}
+            onTransactionSuccess={(data) => {
+              if (data) {
+                onTransactionSuccess(data);
+              }
+            }}
           />
           
           <motion.div
@@ -408,7 +576,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             exit="hidden"
             onClick={onClose}
           />
-          
+              
           <motion.div
             className="fixed inset-0 flex items-center justify-center z-50 p-4"
             variants={modalVariants}
@@ -418,20 +586,20 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
           >
             <div 
               className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
             >
               {transactionSuccess && transactionData ? (
-                // Tampilan Struk setelah transaksi berhasil
+                // Receipt view after successful transaction
                 <div className="flex-1 overflow-y-auto">
-                  <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
+                  <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                          <CheckCircle className="w-6 h-6" />
+                          <FileText className="w-6 h-6" />
                         </div>
                         <div>
-                          <h1 className="text-2xl font-bold">Transaksi Berhasil</h1>
-                          <p className="text-amber-100 text-sm">Terima kasih telah melakukan pembelian</p>
+                          <h1 className="text-2xl font-bold">Order Receipt</h1>
+                          <p className="text-green-100 text-sm">Your order details</p>
                         </div>
                       </div>
                       <button 
@@ -445,35 +613,35 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
                   <div className="p-6">
                     <div className="max-w-md mx-auto bg-white shadow-lg rounded-lg p-6 print:w-full print:shadow-none print:mt-0">
-                      {/* HEADER STRUK */}
+                      {/* RECEIPT HEADER */}
                       {receiptSettings.receiptHeader && (
                         <pre className="text-center font-bold mb-4 whitespace-pre-line">
                           {receiptSettings.receiptHeader}
                         </pre>
                       )}
 
-                      <h2 className="text-xl font-bold text-center mb-2">STRUK PEMBELIAN</h2>
+                      <h2 className="text-xl font-bold text-center mb-2">PURCHASE RECEIPT</h2>
                       <p className="text-center text-sm text-gray-600 mb-4">
                         #{transactionData.order_id || transactionData._id || "-"}
                       </p>
 
                       <div className="border-t border-b py-2 mb-4 text-sm">
                         <p>
-                          <span className="font-semibold">Tanggal:</span>{" "}
-                          {formatDate(transactionData.createdAt)}
+                          <span className="font-semibold">Date:</span>{" "}
+                          {formatDate(transactionData.tanggal_transaksi || transactionData.createdAt)}
                         </p>
                         <p>
-                          <span className="font-semibold">Metode:</span>{" "}
+                          <span className="font-semibold">Method:</span>{" "}
                           {transactionData.metode_pembayaran || "-"}
                         </p>
                         <p>
-                          <span className="font-semibold">Kasir:</span>{" "}
-                          {transactionData.kasir_id || "-"}
+                          <span className="font-semibold">Cashier:</span>{" "}
+                          {getKasirName()}
                         </p>
                         <p>
                           <span className="font-semibold">Status:</span>{" "}
                           <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                            Selesai
+                            Completed
                           </span>
                         </p>
                       </div>
@@ -481,9 +649,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                       <table className="w-full text-sm mb-4">
                         <thead className="border-b">
                           <tr>
-                            <th className="text-left py-1">Barang</th>
+                            <th className="text-left py-1">Item</th>
                             <th className="text-center py-1">Qty</th>
-                            <th className="text-right py-1">Harga</th>
+                            <th className="text-right py-1">Price</th>
                             <th className="text-right py-1">Subtotal</th>
                           </tr>
                         </thead>
@@ -494,7 +662,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                                 <td className="py-1">{item.nama_barang}</td>
                                 <td className="py-1 text-center">{item.jumlah}</td>
                                 <td className="py-1 text-right">
-                                  {formatCurrency(item.harga_satuan)}
+                                  {formatCurrency(calculateHargaSatuan(item))}
                                 </td>
                                 <td className="py-1 text-right">
                                   {formatCurrency(item.subtotal)}
@@ -504,7 +672,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                           ) : (
                             <tr>
                               <td colSpan={4} className="py-2 text-center text-gray-500">
-                                Tidak ada data barang
+                                No item data
                               </td>
                             </tr>
                           )}
@@ -518,7 +686,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         </span>
                       </div>
 
-                      {/* FOOTER STRUK */}
+                      {/* RECEIPT FOOTER */}
                       {receiptSettings.receiptFooter && (
                         <pre className="text-center text-sm text-gray-600 mt-4 whitespace-pre-line">
                           {receiptSettings.receiptFooter}
@@ -528,31 +696,24 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                       <div className="flex gap-3 mt-6 print:hidden">
                         <button
                           onClick={onClose}
-                          className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 flex items-center justify-center gap-2"
+                          className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2"
                         >
                           <Home className="w-4 h-4" />
-                          Beranda
-                        </button>
-                        <button
-                          onClick={handleGoToHistory}
-                          className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center justify-center gap-2"
-                        >
-                          <History className="w-4 h-4" />
-                          Riwayat
+                          Close
                         </button>
                         <button
                           onClick={handlePrintReceipt}
                           className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
                         >
                           <Printer className="w-4 h-4" />
-                          Cetak
+                          Print Receipt
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                // Tampilan form transaksi
+                // Transaction form view
                 <>
                   <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
                     <div className="flex items-center justify-between">
@@ -561,8 +722,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                           <ShoppingCart className="w-6 h-6" />
                         </div>
                         <div>
-                          <h1 className="text-2xl font-bold">Proses Transaksi</h1>
-                          <p className="text-amber-100 text-sm">Selesaikan pembayaran Anda</p>
+                          <h1 className="text-2xl font-bold">Process Transaction</h1>
+                          <p className="text-amber-100 text-sm">Complete your payment</p>
                         </div>
                       </div>
                       <button 
@@ -578,13 +739,13 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                     {cartItems.length === 0 ? (
                       <div className="text-center py-10">
                         <div className="text-5xl mb-4">🛒</div>
-                        <h3 className="text-xl font-bold text-gray-700 mb-2">Keranjang Kosong</h3>
-                        <p className="text-gray-500 mb-6">Tambahkan produk untuk memulai transaksi</p>
+                        <h3 className="text-xl font-bold text-gray-700 mb-2">Empty Cart</h3>
+                        <p className="text-gray-500 mb-6">Add products to start a transaction</p>
                         <button
                           onClick={onClose}
                           className="px-6 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors"
                         >
-                          Kembali ke Beranda
+                          Back to Home
                         </button>
                       </div>
                     ) : (
@@ -601,7 +762,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         <div>
                           <h2 className="text-lg font-bold text-gray-800 mb-3 flex items-center">
                             <ShoppingCart className="w-5 h-5 mr-2 text-amber-500" />
-                            Daftar Belanja
+                            Shopping List
                           </h2>
                           <div className="bg-gray-50 rounded-xl p-1 max-h-60 overflow-y-auto">
                             {cartItems.map((item) => (
@@ -645,7 +806,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                                       onClick={() => handleRemoveItem(item._id)}
                                       disabled={removingItem === item._id}
                                       className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
-                                      title="Hapus dari keranjang"
+                                      title="Remove from cart"
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </button>
@@ -659,24 +820,24 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         <div>
                           <h2 className="text-lg font-bold text-gray-800 mb-3 flex items-center">
                             <CreditCard className="w-5 h-5 mr-2 text-amber-500" />
-                            Metode Pembayaran
+                            Payment Method
                           </h2>
                           
                           {paymentMethods.length === 0 ? (
                             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
                               <AlertCircle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
                               <p className="text-yellow-700 font-medium text-sm">
-                                Tidak ada metode pembayaran yang tersedia.
+                                No payment methods available.
                               </p>
                               <p className="text-yellow-600 text-xs mt-1">
-                                Silakan hubungi admin untuk mengaktifkan metode pembayaran.
+                                Please contact admin to activate payment methods.
                               </p>
                             </div>
                           ) : (
                             <div className="space-y-4">
                               <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                  Pilih Metode Pembayaran
+                                  Select Payment Method
                                 </label>
                                 <select
                                   value={selectedMethod}
@@ -698,7 +859,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                               {paymentMethods.find((m) => m.method === selectedMethod)?.channels.length && !isCashPayment ? (
                                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                                   <label className="block text-sm font-semibold text-gray-700 mb-3">
-                                    Pilih Channel Pembayaran
+                                    Select Payment Channel
                                   </label>
                                   <div className="grid grid-cols-2 gap-2">
                                     {paymentMethods
@@ -713,7 +874,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                                             onClick={() => handleChannelSelect(ch)}
                                             className={`p-3 rounded-lg border transition-all duration-200 flex items-center space-x-2 ${
                                               isSelected
-                                                ? "border-amber-500 bg-amber-50 shadow-sm"
+                                                ? (selectedMethod.toLowerCase().includes('e-wallet') 
+                                                    ? "border-purple-500 bg-purple-50 shadow-sm" 
+                                                    : "border-amber-500 bg-amber-50 shadow-sm")
                                                 : "border-gray-200 bg-gray-50 hover:border-gray-300"
                                             }`}
                                           >
@@ -727,12 +890,20 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                                               getPaymentMethodIcon(selectedMethod)
                                             )}
                                             <span className={`text-sm font-medium ${
-                                              isSelected ? "text-amber-700" : "text-gray-700"
+                                              isSelected 
+                                                ? (selectedMethod.toLowerCase().includes('e-wallet') 
+                                                    ? "text-purple-700" 
+                                                    : "text-amber-700")
+                                                : "text-gray-700"
                                             }`}>
                                               {ch.name}
                                             </span>
                                             {isSelected && (
-                                              <CheckCircle className="w-4 h-4 text-amber-500 ml-auto" />
+                                              <CheckCircle className={`w-4 h-4 ml-auto ${
+                                                selectedMethod.toLowerCase().includes('e-wallet') 
+                                                  ? "text-purple-500" 
+                                                  : "text-amber-500"
+                                              }`} />
                                             )}
                                           </button>
                                         );
@@ -740,9 +911,20 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                                   </div>
                                   
                                   {selectedChannel && (
-                                    <div className="mt-3 p-2 bg-amber-50 rounded-lg border border-amber-200">
-                                      <p className="text-xs text-amber-700 font-medium">
-                                        ✅ Pembayaran melalui <strong>{selectedChannel}</strong>
+                                    <div className={`mt-3 p-2 rounded-lg border ${
+                                      selectedMethod.toLowerCase().includes('e-wallet') 
+                                        ? "bg-purple-50 border-purple-200" 
+                                        : "bg-amber-50 border-amber-200"
+                                    }`}>
+                                      <p className={`text-xs font-medium ${
+                                        selectedMethod.toLowerCase().includes('e-wallet') 
+                                          ? "text-purple-700" 
+                                          : "text-amber-700"
+                                      }`}>
+                                        ✅ Payment via <strong>{selectedChannel}</strong>
+                                        {selectedMethod.toLowerCase().includes('e-wallet') && (
+                                          <span> using <QrCode className="inline w-3 h-3 mx-1" /> QRIS</span>
+                                        )}
                                       </p>
                                     </div>
                                   )}
@@ -752,14 +934,14 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                                   <div className="flex items-center space-x-2">
                                     <Wallet className="w-5 h-5 text-amber-500" />
                                     <p className="text-amber-700 font-medium text-sm">
-                                      ✅ Pembayaran tunai dipilih
+                                      ✅ Cash payment selected
                                     </p>
                                   </div>
                                 </div>
                               ) : (
                                 <div className="bg-gray-50 rounded-xl p-4 text-center">
                                   <p className="text-gray-600 text-sm">
-                                    Tidak ada channel yang tersedia untuk metode pembayaran ini.
+                                    No channels available for this payment method.
                                   </p>
                                 </div>
                               )}
@@ -770,7 +952,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4 rounded-xl shadow-lg text-white">
                           <div className="flex justify-between items-center">
                             <div>
-                              <p className="text-amber-100 text-xs">Total Pembayaran</p>
+                              <p className="text-amber-100 text-xs">Total Payment</p>
                               <h3 className="text-xl font-bold">Rp {total.toLocaleString("id-ID")}</h3>
                             </div>
                             <Wallet className="w-6 h-6" />
@@ -786,7 +968,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         onClick={onClose}
                         className="px-5 py-2.5 bg-white text-gray-700 rounded-lg font-medium border border-gray-300 hover:bg-gray-100 transition-colors"
                       >
-                        Batal
+                        Cancel
                       </button>
                       
                       <button
@@ -797,12 +979,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         {loading ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Memproses...</span>
+                            <span>Processing...</span>
                           </>
                         ) : (
                           <>
                             <CreditCard className="w-4 h-4" />
-                            <span>Proses Transaksi</span>
+                            <span>Process Transaction</span>
                           </>
                         )}
                       </button>

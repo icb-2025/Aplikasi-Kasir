@@ -6,11 +6,9 @@ import AuthGuard from "./auth/AuthGuard";
 import DashboardRedirect from "./auth/DashboardRedirect";
 import NotFound from "./auth/notif/404notfound";
 import Transaction from "./pages/transaksi/index";
-import ProsesTransaksi from "./pages/transaksi/proses-transaksi";
+// import ProsesTransaksi from "./pages/transaksi/proses-transaksi";
 import StatusPesananPage from "./pages/pesanan/index";
-// import RiwayatPage from "./pages/RiwayatPage";
-import type { Barang } from "./admin/stok-barang";
-import PembelianBerhasil from "./pages/notif/PembelianBerhasil";
+
 
 // Kasir
 import KasirDashboard from "./kasir/dashboard";
@@ -27,12 +25,17 @@ import MenegerSettingsPage from "./meneger/settings";
 import AdminRouter from "./admin/router";
 
 // Auth
-import LoginForm from "./auth/pages/login"; // Menggunakan LoginForm yang sudah ada
+import LoginForm from "./auth/pages/login";
 import RegisterPage from "./auth/pages/register";
+import LoginSuccess from "./auth/components/LoginSuccess"; // Tambahkan import ini
 
 // Profile
 import ProfilePage from "./pages/ProfileUsers/profile/index";
 
+// Import tipe Barang
+import type { Barang } from "./admin/stok-barang";
+
+// Definisi tipe untuk props router
 interface RouterProps {
   dataBarang: Barang[];
   setDataBarang: React.Dispatch<React.SetStateAction<Barang[]>>;
@@ -49,10 +52,13 @@ const AppRouter = ({ dataBarang, setDataBarang }: RouterProps) => {
           {/* Auth Routes - hanya bisa diakses jika belum login */}
           <Route path="/login" element={<AuthOnlyRoute><LoginForm /></AuthOnlyRoute>} />
           <Route path="/register" element={<AuthOnlyRoute><RegisterPage /></AuthOnlyRoute>} />
+          
+          {/* Login Success Route - untuk menangani callback dari Google OAuth */}
+          <Route path="/login-success" element={<LoginSuccess />} />
 
           {/* Halaman Transaksi - bisa diakses oleh siapa saja */}
           <Route path="/transaksi" element={<Transaction />} />
-          <Route path="/transaksi/proses/:token" element={<ProsesTransaksi />} />
+          {/* <Route path="/proses-transaksi" element={<ProsesTransaksi />} /> */}
 
           {/* Status Pesanan - memerlukan login */}
           <Route 
@@ -64,29 +70,19 @@ const AppRouter = ({ dataBarang, setDataBarang }: RouterProps) => {
             } 
           />
 
-          {/* Halaman Riwayat - memerlukan login */}
-          {/* <Route 
-            path="/riwayat" 
-            element={
-              <AuthGuard>
-                <RiwayatPage />
-              </AuthGuard>
-            } 
-          /> */}
-
           {/* Perbarui rute PembelianBerhasil untuk menerima token */}
-          <Route path="/pembelian-berhasil/:token" element={<PembelianBerhasil />} />
+          
 
           {/* Halaman 404 */}
           <Route path="/not-found" element={<NotFound />} />
 
-          {/* Halaman Profil - hanya bisa diakses oleh users */}
+          {/* Halaman Profil - bisa diakses oleh semua role yang login */}
           <Route 
             path="/profile" 
             element={
-              <ProtectedRoute allowedRoles={['users']}>
+              <AuthGuard>
                 <ProfilePage />
-              </ProtectedRoute>
+              </AuthGuard>
             } 
           />
 

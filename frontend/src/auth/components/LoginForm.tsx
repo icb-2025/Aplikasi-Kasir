@@ -1,9 +1,12 @@
+// src/auth/components/LoginForm.tsx
 import React, { useState, useEffect } from "react";
 import { FaUser, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from '../hooks/useAuth';
 import type { Variants } from "framer-motion";
+import logologin from '../../../public/images/logologin.jpg';
+import googleLogo from '../../../public/images/google.jpg';
 
 export default function LoginForm() {
   const [form, setForm] = useState({ username: "", password: "" });
@@ -11,17 +14,24 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isFocused, setIsFocused] = useState({ username: false, password: false });
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirect jika sudah login
+  // Cleanup useEffect untuk mereset status loading saat komponen unmount
+  useEffect(() => {
+    return () => {
+      if (isGoogleLoading) {
+        setIsGoogleLoading(false);
+      }
+    };
+  }, [isGoogleLoading]);
+
   useEffect(() => {
     if (auth.user && !auth.isLoading) {
-      // Cek apakah ada lokasi yang disimpan sebelumnya
       const from = location.state?.from?.pathname || '/';
       
-      // Redirect ke dashboard sesuai role
       if (auth.user.role === 'admin') {
         navigate('/admin/dashboard');
       } else if (auth.user.role === 'manajer') {
@@ -69,27 +79,6 @@ export default function LoginForm() {
       
       if (!result.success) {
         setError(result.message || "Username atau password salah");
-      } else {
-        // Redirect akan ditangani oleh useEffect di atas
-        // Tapi kita tetap perlu handle redirect manual untuk kasus tertentu
-        const from = location.state?.from?.pathname;
-        
-        if (from && from !== '/login' && from !== '/register') {
-          navigate(from);
-        } else {
-          // Redirect ke dashboard sesuai role
-          const role = auth.user?.role;
-          
-          if (role === 'admin') {
-            navigate('/admin/dashboard');
-          } else if (role === 'manajer') {
-            navigate('/manajer/dashboard');
-          } else if (role === 'kasir') {
-            navigate('/kasir/dashboard');
-          } else {
-            navigate('/');
-          }
-        }
       }
     } catch (err: unknown) {
       console.error('Login error:', err);
@@ -99,7 +88,14 @@ export default function LoginForm() {
     }
   };
 
-  // Animasi untuk container utama
+  const handleGoogleLogin = () => {
+    setIsGoogleLoading(true);
+    // Simpan URL saat ini untuk redirect setelah login
+    sessionStorage.setItem('redirectAfterLogin', location.pathname);
+    // Arahkan ke endpoint Google OAuth
+    window.location.href = 'https://6aaf6381d70d.ngrok-free.app/api/auth/google';
+  };
+
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: { 
@@ -111,7 +107,6 @@ export default function LoginForm() {
     }
   };
 
-  // Animasi untuk bagian kiri
   const leftVariants: Variants = {
     hidden: { x: -100, opacity: 0 },
     visible: { 
@@ -125,7 +120,6 @@ export default function LoginForm() {
     }
   };
 
-  // Animasi untuk bagian kanan
   const rightVariants: Variants = {
     hidden: { x: 100, opacity: 0 },
     visible: { 
@@ -140,7 +134,6 @@ export default function LoginForm() {
     }
   };
 
-  // Animasi untuk form
   const formVariants: Variants = {
     hidden: { scale: 0.9, opacity: 0 },
     visible: { 
@@ -154,7 +147,6 @@ export default function LoginForm() {
     }
   };
 
-  // Animasi untuk input
   const inputVariants: Variants = {
     rest: { scale: 1 },
     focus: { 
@@ -163,7 +155,6 @@ export default function LoginForm() {
     }
   };
 
-  // Animasi untuk tombol
   const buttonVariants: Variants = {
     rest: { scale: 1 },
     hover: { 
@@ -176,7 +167,6 @@ export default function LoginForm() {
     }
   };
 
-  // Animasi untuk error message
   const errorVariants: Variants = {
     hidden: { opacity: 0, y: -10 },
     visible: { 
@@ -198,13 +188,21 @@ export default function LoginForm() {
       initial="hidden"
       animate="visible"
     >
-      {/* Bagian Kiri */}
       <motion.div
         variants={leftVariants}
-        className="hidden md:flex w-1/2 bg-gradient-to-br from-blue-600 to-purple-600 text-white flex-col justify-center items-center p-10 relative"
+        className="hidden md:flex w-1/2 bg-gradient-to-br from-orange-500 to-yellow-400 text-white flex-col justify-center items-center p-10 relative overflow-hidden"
       >
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={logologin} 
+            alt="Kasir App Background" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/80 to-yellow-400/80"></div>
+        </div>
+        
         <motion.div 
-          className="absolute -top-20 -left-20 w-40 h-40 rounded-full bg-purple-500 opacity-20"
+          className="absolute -top-20 -left-20 w-40 h-40 rounded-full bg-yellow-500 opacity-20"
           animate={{
             scale: [1, 1.2, 1],
             rotate: [0, 10, 0],
@@ -216,7 +214,7 @@ export default function LoginForm() {
           }}
         />
         <motion.div 
-          className="absolute -bottom-20 -right-20 w-60 h-60 rounded-full bg-blue-500 opacity-20"
+          className="absolute -bottom-20 -right-20 w-60 h-60 rounded-full bg-orange-500 opacity-20"
           animate={{
             scale: [1, 1.3, 1],
             rotate: [0, -15, 0],
@@ -228,28 +226,29 @@ export default function LoginForm() {
           }}
         />
         
-        <motion.h1 
-          className="text-5xl font-bold mb-6 z-10"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-        >
-          Kasir App
-        </motion.h1>
-        <motion.p 
-          className="text-xl max-w-md text-center z-10"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.7, duration: 0.5 }}
-        >
-          Kelola transaksi dan produk dengan mudah, cepat, dan aman.
-        </motion.p>
+        <div className="z-10 flex flex-col items-center justify-center">
+          <motion.h1 
+            className="text-5xl font-bold mb-6 text-center"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+          >
+            Kasir App
+          </motion.h1>
+          <motion.p 
+            className="text-xl max-w-md text-center"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.7, duration: 0.5 }}
+          >
+            Kelola transaksi dan produk dengan mudah, cepat, dan aman.
+          </motion.p>
+        </div>
       </motion.div>
 
-      {/* Bagian Kanan (Form) */}
       <motion.div
         variants={rightVariants}
-        className="flex w-full md:w-1/2 justify-center items-center bg-gradient-to-br from-gray-50 to-gray-100 p-6"
+        className="flex w-full md:w-1/2 justify-center items-center bg-gradient-to-br from-amber-50 to-yellow-50 p-6"
       >
         <motion.form
           onSubmit={handleSubmit}
@@ -262,14 +261,13 @@ export default function LoginForm() {
             transition={{ delay: 0.3 }}
           >
             <h2 className="text-3xl font-bold text-center mb-2 text-gray-800">
-              Selamat Datang 👋
+              Selamat Datang 
             </h2>
             <p className="text-gray-500 text-center mb-8">
               Silakan login untuk melanjutkan
             </p>
           </motion.div>
 
-          {/* Error Message dengan animasi */}
           <AnimatePresence>
             {error && (
               <motion.div
@@ -286,7 +284,6 @@ export default function LoginForm() {
             )}
           </AnimatePresence>
 
-          {/* Username Input */}
           <motion.div 
             className="mb-6"
             variants={inputVariants}
@@ -294,9 +291,9 @@ export default function LoginForm() {
             whileFocus="focus"
             animate={isFocused.username ? "focus" : "rest"}
           >
-            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-blue-500 transition-colors">
+            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-orange-500 transition-colors">
               <motion.div
-                animate={{ color: isFocused.username ? "#3B82F6" : "#9CA3AF" }}
+                animate={{ color: isFocused.username ? "#F97316" : "#9CA3AF" }}
                 transition={{ duration: 0.2 }}
               >
                 <FaUser className="text-xl mr-3" />
@@ -315,7 +312,6 @@ export default function LoginForm() {
             </div>
           </motion.div>
 
-          {/* Password Input */}
           <motion.div 
             className="mb-8"
             variants={inputVariants}
@@ -323,9 +319,9 @@ export default function LoginForm() {
             whileFocus="focus"
             animate={isFocused.password ? "focus" : "rest"}
           >
-            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-blue-500 transition-colors">
+            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-orange-500 transition-colors">
               <motion.div
-                animate={{ color: isFocused.password ? "#3B82F6" : "#9CA3AF" }}
+                animate={{ color: isFocused.password ? "#F97316" : "#9CA3AF" }}
                 transition={{ duration: 0.2 }}
               >
                 <FaLock className="text-xl mr-3" />
@@ -353,7 +349,6 @@ export default function LoginForm() {
             </div>
           </motion.div>
 
-          {/* Login Button */}
           <motion.button
             variants={buttonVariants}
             initial="rest"
@@ -361,7 +356,7 @@ export default function LoginForm() {
             whileTap="tap"
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all disabled:opacity-70"
+            className="w-full bg-gradient-to-r from-orange-500 to-yellow-400 text-white py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all disabled:opacity-70 mb-4"
           >
             {isLoading ? (
               <span className="flex items-center justify-center">
@@ -374,9 +369,38 @@ export default function LoginForm() {
             ) : 'Login'}
           </motion.button>
 
-          {/* Tombol Register */}
+          <motion.button
+            variants={buttonVariants}
+            initial="rest"
+            whileHover="hover"
+            whileTap="tap"
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={isGoogleLoading}
+            className="w-full bg-white border-2 border-gray-200 text-gray-700 py-3 rounded-xl font-medium shadow-md hover:shadow-lg transition-all flex items-center justify-center disabled:opacity-70 mb-6"
+          >
+            {isGoogleLoading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Memproses...
+              </span>
+            ) : (
+              <>
+                <img 
+                  src={googleLogo} 
+                  alt="Google Logo" 
+                  className="w-5 h-5 mr-3"
+                />
+                Login dengan Google
+              </>
+            )}
+          </motion.button>
+
           <motion.div 
-            className="mt-6 text-center"
+            className="mt-4 text-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
@@ -390,7 +414,7 @@ export default function LoginForm() {
                 whileTap="tap"
                 type="button"
                 onClick={() => navigate('/register')}
-                className="text-blue-500 hover:text-blue-700 font-medium"
+                className="text-orange-500 hover:text-orange-700 font-medium"
               >
                 Daftar di sini
               </motion.button>

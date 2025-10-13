@@ -14,7 +14,9 @@ import {
   Clock,
   XCircle,
   X,
-  Printer
+  Printer,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
@@ -30,30 +32,23 @@ interface BarangDibeli {
 }
 
 interface PesananAPI {
-  _id: string;
-  nomor_transaksi: string;
-  tanggal_transaksi: string;
-  barang_dibeli: BarangDibeli[];
-  total_harga: number;
-  metode_pembayaran: string;
+  order_id: string;
+  nama_barang: BarangDibeli[];
   status: string;
+  metode_pembayaran: string;
+  total_harga: number;
   kasir_id: string;
   createdAt: string;
-  updatedAt: string;
-  __v: number;
 }
 
 interface Pesanan {
-  _id: string;
-  nomor_transaksi: string;
-  tanggal_transaksi: string;
-  barang_dibeli: BarangDibeli[];
-  total_harga: number;
-  metode_pembayaran: string;
+  order_id: string;
+  nama_barang: BarangDibeli[];
   status: string;
+  metode_pembayaran: string;
+  total_harga: number;
   kasir_id: string;
   createdAt: string;
-  updatedAt: string;
 }
 
 interface Kasir {
@@ -69,7 +64,12 @@ interface LocationState {
   message?: string;
 }
 
-const API_URL = "http://192.168.110.16:5000/api/admin/status-pesanan";
+interface ApiResponse {
+  message: string;
+  riwayat: PesananAPI[];
+}
+
+const API_URL = "http://192.168.110.16:5000/api/users/history";
 
 const StatusPesananPage = () => {
   const [filterStatus, setFilterStatus] = useState<string>("semua");
@@ -80,6 +80,8 @@ const StatusPesananPage = () => {
   const [selectedPesanan, setSelectedPesanan] = useState<Pesanan | null>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [kasir, setKasir] = useState<Kasir | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
  
   const location = useLocation();
   
@@ -89,15 +91,30 @@ const StatusPesananPage = () => {
   const fetchPesanan = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/all`);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
       if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
       
-      const data: PesananAPI[] = await response.json();
-      setPesananList(data);
+      const data: ApiResponse = await response.json();
+      
+      // Periksa apakah data memiliki properti riwayat dan itu adalah array
+      if (data && data.riwayat && Array.isArray(data.riwayat)) {
+        setPesananList(data.riwayat);
+      } else {
+        console.error("Data format is invalid:", data);
+        setPesananList([]);
+        SweetAlert.error("Format data tidak valid");
+      }
     } catch (error) {
       console.error("Error:", error);
       SweetAlert.error("Gagal mengambil data pesanan");
+      setPesananList([]); // Set ke array kosong saat error
     } finally {
       setLoading(false);
     }
@@ -133,35 +150,55 @@ const StatusPesananPage = () => {
   useEffect(() => {
     if (locationState?.transaksiTerbaru) {
       setPesananList(prev => {
+        // Pastikan prev adalah array
+        const prevArray = Array.isArray(prev) ? prev : [];
+        
         // Cek apakah transaksi sudah ada untuk menghindari duplikat
-        const alreadyExists = prev.some(item => item._id === locationState.transaksiTerbaru?._id);
+        const alreadyExists = prevArray.some(item => item.order_id === locationState.transaksiTerbaru?.order_id);
         if (alreadyExists) {
-          return prev.map(item => 
-            item._id === locationState.transaksiTerbaru?._id 
+          return prevArray.map(item => 
+            item.order_id === locationState.transaksiTerbaru?.order_id 
               ? locationState.transaksiTerbaru 
               : item
           );
         }
-        return [locationState.transaksiTerbaru as Pesanan, ...prev];
+        return [locationState.transaksiTerbaru as Pesanan, ...prevArray];
       });
     }
   }, [locationState]);
 
-  // Filter pesanan berdasarkan status
-  const filteredPesanan = filterStatus === "semua" 
-    ? pesananList 
-    : pesananList.filter(pesanan => pesanan.status === filterStatus);
+  // Reset halaman saat filter atau pencarian berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, searchTerm]);
 
-  // Filter berdasarkan pencarian
-  const searchedPesanan = filteredPesanan.filter(
-    (item) =>
-      (item.nomor_transaksi ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.metode_pembayaran ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.status ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.barang_dibeli?.some(barang => 
-        barang.nama_barang.toLowerCase().includes(searchTerm.toLowerCase())
-      ) ?? false)
-  );
+  // Filter pesanan berdasarkan status - tambahkan pengecekan array
+  const filteredPesanan = filterStatus === "semua" 
+    ? (Array.isArray(pesananList) ? pesananList : [])
+    : (Array.isArray(pesananList) ? pesananList.filter(pesanan => pesanan.status === filterStatus) : []);
+
+  // Filter berdasarkan pencarian - tambahkan pengecekan array
+  const searchedPesanan = Array.isArray(filteredPesanan) 
+    ? filteredPesanan.filter(
+        (item) =>
+          (item.order_id ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.metode_pembayaran ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.status ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.nama_barang?.some(barang => 
+            barang.nama_barang.toLowerCase().includes(searchTerm.toLowerCase())
+          ) ?? false)
+      )
+    : [];
+
+  // Pagination logic - tambahkan pengecekan array
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = Array.isArray(searchedPesanan) ? searchedPesanan.slice(indexOfFirstItem, indexOfLastItem) : [];
+  const totalPages = Array.isArray(searchedPesanan) ? Math.ceil(searchedPesanan.length / itemsPerPage) : 0;
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
 
   // Fungsi untuk mendapatkan class warna berdasarkan status
   const getStatusColor = (status: string) => {
@@ -193,9 +230,18 @@ const StatusPesananPage = () => {
     }
   };
 
-  // Fungsi untuk format tanggal
+  // Fungsi untuk format tanggal dengan penanganan error yang lebih baik
   const formatTanggal = (dateString: string) => {
     try {
+      // Coba parsing tanggal
+      const date = new Date(dateString);
+      
+      // Periksa apakah tanggal valid
+      if (isNaN(date.getTime())) {
+        console.error("Invalid date:", dateString);
+        return "Tanggal tidak valid";
+      }
+      
       const options: Intl.DateTimeFormatOptions = { 
         weekday: 'short', 
         year: 'numeric', 
@@ -204,10 +250,11 @@ const StatusPesananPage = () => {
         hour: '2-digit',
         minute: '2-digit'
       };
-      return new Date(dateString).toLocaleDateString('id-ID', options);
+      
+      return date.toLocaleDateString('id-ID', options);
     } catch (error) {
       console.error("Error formatting date:", error);
-      return dateString;
+      return "Format tanggal error";
     }
   };
 
@@ -217,13 +264,10 @@ const StatusPesananPage = () => {
     return `Rp ${value.toLocaleString("id-ID")}`;
   };
 
-  // Summary statistics
-  const totalPesanan = pesananList.length;
-  const pendingPesanan = pesananList.filter(item => item.status === "pending").length;
-  const diprosesPesanan = pesananList.filter(item => item.status === "diproses").length;
-  const dikirimPesanan = pesananList.filter(item => item.status === "dikirim").length;
-  const selesaiPesanan = pesananList.filter(item => item.status === "selesai").length;
-  const dibatalkanPesanan = pesananList.filter(item => item.status === "dibatalkan").length;
+  // Summary statistics - tambahkan pengecekan array
+  const totalPesanan = Array.isArray(pesananList) ? pesananList.length : 0;
+  const selesaiPesanan = Array.isArray(pesananList) ? pesananList.filter(item => item.status === "selesai").length : 0;
+  const dibatalkanPesanan = Array.isArray(pesananList) ? pesananList.filter(item => item.status === "dibatalkan").length : 0;
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -374,7 +418,7 @@ const StatusPesananPage = () => {
             <div className="flex flex-wrap items-center gap-4">
               <span className="text-sm font-medium text-gray-700">Filter Status:</span>
               <div className="flex flex-wrap gap-2">
-                {["semua", "pending", "diproses", "dikirim", "selesai", "dibatalkan"].map(
+                {["semua", "selesai", "dibatalkan"].map(
                   (status) => (
                     <button
                       key={status}
@@ -394,7 +438,7 @@ const StatusPesananPage = () => {
           </div>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-6 mb-6">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-6">
             <div className="bg-white overflow-hidden shadow rounded-lg border border-gray-200 hover:shadow-md transition-all">
               <div className="px-4 py-5 sm:p-6">
                 <div className="flex items-center">
@@ -408,66 +452,6 @@ const StatusPesananPage = () => {
                       <dt className="text-sm font-medium text-gray-500 truncate">Total</dt>
                       <dd className="flex items-baseline">
                         <div className="text-2xl font-semibold text-gray-900">{totalPesanan}</div>
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg border border-gray-200 hover:shadow-md transition-all">
-              <div className="px-4 py-5 sm:p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-yellow-100 rounded-md p-3">
-                    <svg className="h-6 w-6 text-yellow-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Pending</dt>
-                      <dd className="flex items-baseline">
-                        <div className="text-2xl font-semibold text-gray-900">{pendingPesanan}</div>
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg border border-gray-200 hover:shadow-md transition-all">
-              <div className="px-4 py-5 sm:p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                    <svg className="h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Diproses</dt>
-                      <dd className="flex items-baseline">
-                        <div className="text-2xl font-semibold text-gray-900">{diprosesPesanan}</div>
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg border border-gray-200 hover:shadow-md transition-all">
-              <div className="px-4 py-5 sm:p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-indigo-100 rounded-md p-3">
-                    <svg className="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Dikirim</dt>
-                      <dd className="flex items-baseline">
-                        <div className="text-2xl font-semibold text-gray-900">{dikirimPesanan}</div>
                       </dd>
                     </dl>
                   </div>
@@ -537,107 +521,176 @@ const StatusPesananPage = () => {
             </div>
           ) : (
             /* Daftar Pesanan */
-            <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr key="table-header">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metode Pembayaran</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {searchedPesanan.map((pesanan) => (
-                    <tr key={pesanan._id} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm text-gray-700">
-                          <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                          <div>
-                            <div>{formatTanggal(pesanan.tanggal_transaksi).split(',')[0]}</div>
-                            <div className="text-xs text-gray-500">{formatTanggal(pesanan.tanggal_transaksi).split(',')[1]}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 max-w-xs">
-                          {pesanan.barang_dibeli && pesanan.barang_dibeli.length > 0 ? (
-                            <div className="space-y-1">
-                              {pesanan.barang_dibeli.slice(0, 2).map((item, index) => (
-                                <div key={`${pesanan._id}-item-${index}`} className="flex justify-between">
-                                  <span className="font-medium">{item.nama_barang}</span>
-                                  <span className="text-gray-500 text-xs">
-                                    {item.jumlah} x {formatCurrency(item.harga_satuan)}
-                                  </span>
-                                </div>
-                              ))}
-                              {pesanan.barang_dibeli.length > 2 && (
-                                <div className="text-xs text-gray-500 italic">
-                                  +{pesanan.barang_dibeli.length - 2} item lainnya
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-gray-500 text-sm">Tidak ada item</div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-gray-900">
-                          {formatCurrency(pesanan.total_harga)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm text-gray-700">
-                          <CreditCard className="h-4 w-4 mr-2 text-gray-400" />
-                          {pesanan.metode_pembayaran}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(pesanan.status)}`}>
-                          <div className="flex items-center">
-                            {getStatusIcon(pesanan.status)}
-                            <span className="ml-1 capitalize">{pesanan.status}</span>
-                          </div>
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button 
-                            onClick={() => handleViewReceipt(pesanan)}
-                            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center transition-colors"
-                            title="Lihat Detail"
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            <span>Lihat</span>
-                          </button>
-                          <button 
-                            onClick={async () => {
-                              setSelectedPesanan(pesanan);
-                              // Fetch kasir data before printing
-                              if (pesanan.kasir_id) {
-                                const kasirData = await fetchKasirById(pesanan.kasir_id);
-                                setKasir(kasirData);
-                              } else {
-                                setKasir(null);
-                              }
-                              handlePrintReceipt();
-                            }}
-                            className="px-3 py-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 flex items-center transition-colors"
-                            title="Cetak Struk"
-                          >
-                            <Printer className="h-4 w-4 mr-1" />
-                            <span>Cetak</span>
-                          </button>
-                        </div>
-                      </td>
+            <>
+              <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr key="table-header">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metode Pembayaran</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {currentItems.map((pesanan) => (
+                      <tr key={pesanan.order_id} className="hover:bg-gray-50 transition-colors duration-150">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-sm text-gray-700">
+                            <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+                            <div>
+                              <div>{formatTanggal(pesanan.createdAt).split(',')[0]}</div>
+                              <div className="text-xs text-gray-500">{formatTanggal(pesanan.createdAt).split(',')[1]}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 max-w-xs">
+                            {pesanan.nama_barang && pesanan.nama_barang.length > 0 ? (
+                              <div className="space-y-1">
+                                {pesanan.nama_barang.slice(0, 2).map((item, index) => (
+                                  <div key={`${pesanan.order_id}-item-${index}`} className="flex justify-between">
+                                    <span className="font-medium">{item.nama_barang}</span>
+                                    <span className="text-gray-500 text-xs">
+                                      {item.jumlah} x {formatCurrency(item.harga_satuan)}
+                                    </span>
+                                  </div>
+                                ))}
+                                {pesanan.nama_barang.length > 2 && (
+                                  <div className="text-xs text-gray-500 italic">
+                                    +{pesanan.nama_barang.length - 2} item lainnya
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-gray-500 text-sm">Tidak ada item</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {formatCurrency(pesanan.total_harga)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-sm text-gray-700">
+                            <CreditCard className="h-4 w-4 mr-2 text-gray-400" />
+                            {pesanan.metode_pembayaran}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(pesanan.status)}`}>
+                            <div className="flex items-center">
+                              {getStatusIcon(pesanan.status)}
+                              <span className="ml-1 capitalize">{pesanan.status}</span>
+                            </div>
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <button 
+                              onClick={() => handleViewReceipt(pesanan)}
+                              className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center transition-colors"
+                              title="Lihat Detail"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              <span>Lihat</span>
+                            </button>
+                            <button 
+                              onClick={async () => {
+                                setSelectedPesanan(pesanan);
+                                // Fetch kasir data before printing
+                                if (pesanan.kasir_id) {
+                                  const kasirData = await fetchKasirById(pesanan.kasir_id);
+                                  setKasir(kasirData);
+                                } else {
+                                  setKasir(null);
+                                }
+                                handlePrintReceipt();
+                              }}
+                              className="px-3 py-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 flex items-center transition-colors"
+                              title="Cetak Struk"
+                            >
+                              <Printer className="h-4 w-4 mr-1" />
+                              <span>Cetak</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-gray-700">
+                    Menampilkan <span className="font-medium">{indexOfFirstItem + 1}</span> hingga{" "}
+                    <span className="font-medium">
+                      {Math.min(indexOfLastItem, searchedPesanan.length)}
+                    </span>{" "}
+                    dari <span className="font-medium">{searchedPesanan.length}</span> hasil
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={prevPage}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-1 rounded-md ${
+                        currentPage === 1
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    
+                    <div className="flex space-x-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => paginate(pageNum)}
+                            className={`px-3 py-1 rounded-md ${
+                              currentPage === pageNum
+                                ? "bg-amber-500 text-white"
+                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={nextPage}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-1 rounded-md ${
+                        currentPage === totalPages
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Informasi Status */}
@@ -650,19 +703,13 @@ const StatusPesananPage = () => {
             </h4>
             <ul className="text-sm text-amber-700 space-y-1">
               <li>
-                • <span className="font-medium">Pending</span>: Pesanan sedang menunggu pembayaran
+                • <span className="font-medium">Semua</span>: Menampilkan semua status pesanan
               </li>
               <li>
-                • <span className="font-medium">Diproses</span>: Pesanan sedang diproses
+                • <span className="font-medium">Selesai</span>: Pesanan yang telah selesai diproses
               </li>
               <li>
-                • <span className="font-medium">Dikirim</span>: Pesanan sedang dalam pengiriman
-              </li>
-              <li>
-                • <span className="font-medium">Selesai</span>: Pesanan telah selesai
-              </li>
-              <li>
-                • <span className="font-medium">Dibatalkan</span>: Pesanan telah dibatalkan
+                • <span className="font-medium">Dibatalkan</span>: Pesanan yang telah dibatalkan
               </li>
             </ul>
             <p className="text-xs text-amber-600 mt-2">
@@ -720,13 +767,13 @@ const StatusPesananPage = () => {
                   <div className="max-w-md mx-auto bg-white shadow-lg rounded-lg p-6 print:w-full print:shadow-none print:mt-0">
                     <h2 className="text-xl font-bold text-center mb-2">STRUK PEMBELIAN</h2>
                     <p className="text-center text-sm text-gray-600 mb-4">
-                      #{selectedPesanan.nomor_transaksi}
+                      #{selectedPesanan.order_id}
                     </p>
 
                     <div className="border-t border-b py-2 mb-4 text-sm">
                       <p>
                         <span className="font-semibold">Tanggal:</span>{" "}
-                        {formatTanggal(selectedPesanan.tanggal_transaksi)}
+                        {formatTanggal(selectedPesanan.createdAt)}
                       </p>
                       <p>
                         <span className="font-semibold">Metode:</span>{" "}
@@ -734,7 +781,7 @@ const StatusPesananPage = () => {
                       </p>
                       <p>
                         <span className="font-semibold">Kasir:</span>{" "}
-                        {kasir ? kasir.nama : selectedPesanan.kasir_id || "-"}
+                        {kasir?.nama || kasir?.username || selectedPesanan.kasir_id || "-"}
                       </p>
                       <p>
                         <span className="font-semibold">Status:</span>{" "}
@@ -754,9 +801,9 @@ const StatusPesananPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedPesanan.barang_dibeli && selectedPesanan.barang_dibeli.length > 0 ? (
-                          selectedPesanan.barang_dibeli.map((item: BarangDibeli, idx: number) => (
-                            <tr key={`${selectedPesanan._id}-receipt-item-${idx}`} className="border-b">
+                        {selectedPesanan.nama_barang && selectedPesanan.nama_barang.length > 0 ? (
+                          selectedPesanan.nama_barang.map((item: BarangDibeli, idx: number) => (
+                            <tr key={`${selectedPesanan.order_id}-receipt-item-${idx}`} className="border-b">
                               <td className="py-1">{item.nama_barang}</td>
                               <td className="py-1 text-center">{item.jumlah}</td>
                               <td className="py-1 text-right">

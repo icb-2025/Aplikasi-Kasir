@@ -1,21 +1,21 @@
-// src/pages/componentUtama/proses-transaksi/index.tsx
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
 import { 
-  X, 
-  Clock, 
-  Copy, 
   AlertCircle, 
-  Loader2,
-  CreditCard,
-  Smartphone,
-  Wallet,
-  QrCode
+  Loader2
 } from "lucide-react";
 import SweetAlert from "../../../components/SweetAlert";
 
-// Define interfaces
+import Header from "./components/Header";
+import TimerCountdown from "./components/TimerCountdown";
+import PaymentInfo from "./components/PaymentInfo";
+import PurchaseDetails from "./components/PurchaseDetails";
+import VirtualAccountPayment from "./components/PaymentMethodDetails/VirtualAccountPayment";
+import QRISPayment from "./components/PaymentMethodDetails/QRISPayment";
+import CashPayment from "./components/PaymentMethodDetails/CashPayment";
+import FooterActions from "./components/FooterActions";
+
 interface BarangDibeli {
   kode_barang: string;
   nama_barang: string;
@@ -34,9 +34,12 @@ interface TransactionResponse {
   tanggal_transaksi: string;
   barang_dibeli: BarangDibeli[];
   total_harga: number;
+  hargaFinal?: number;
   metode_pembayaran: string;
   status: string;
   kasir_id?: string;
+  kasir_nama?: string;
+  kasir_username?: string;
   createdAt: string;
   updatedAt: string;
   no_va?: string;
@@ -65,9 +68,9 @@ interface ProsesTransaksiModalProps {
   midtrans: MidtransData | null;
   expiryTime?: string;
   token?: string;
+  onTransactionSuccess?: (transactionData: TransactionResponse) => void;
 }
 
-// Animasi variants
 const backdropVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
@@ -101,36 +104,334 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
   transaksi,
   midtrans,
   expiryTime,
-  token
+  token,
+  onTransactionSuccess
 }) => {
+  // State
   const [isPaymentSuccess, setIsPaymentSuccess] = useState<boolean>(false);
   const [isExpired, setIsExpired] = useState<boolean>(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState<boolean>(false);
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
-  const [timeLeft, setTimeLeft] = useState<number>(300); // 5 menit dalam detik
+  const [timeLeft, setTimeLeft] = useState<number>(300);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [qrCodeLoading, setQrCodeLoading] = useState<boolean>(true);
   const [qrCodeError, setQrCodeError] = useState<boolean>(false);
-  const [paymentType, setPaymentType] = useState<'va' | 'qris' | 'ewallet' | 'tunai' | null>(null);
+  const [paymentType, setPaymentType] = useState<'va' | 'qris' | 'tunai' | null>(null);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
-  const [parsedOrderId, setParsedOrderId] = useState<string | null>(null);
-  const [parsedTransactionStatus, setParsedTransactionStatus] = useState<string | null>(null);
-  const [parsedStatusCode, setParsedStatusCode] = useState<string | null>(null);
+  const [autoRefreshCount, setAutoRefreshCount] = useState<number>(0);
+  const [currentTransaction, setCurrentTransaction] = useState<TransactionResponse | null>(null);
+  const [hasTriggeredSuccess, setHasTriggeredSuccess] = useState<boolean>(false);
+  const [hasCheckedStatus, setHasCheckedStatus] = useState<boolean>(false);
+  const [manuallyCheckStatus, setManuallyCheckStatus] = useState<boolean>(false);
   
-  // Generate unique key for localStorage based on transaction ID
+  // State terpisah untuk menyimpan data barang dan no_va
+  const [barangDibeli, setBarangDibeli] = useState<BarangDibeli[]>([]);
+  const [noVa, setNoVa] = useState<string>("");
+  
+  // State untuk menyimpan data kasir
+  const [kasirData, setKasirData] = useState<{
+    kasir_id?: string;
+    kasir_nama?: string;
+    kasir_username?: string;
+  }>({});
+  
+  // Debugging
+  useEffect(() => {
+    console.log("ProsesTransaksiModal - isOpen:", isOpen);
+    console.log("ProsesTransaksiModal - transaksi:", transaksi);
+    console.log("ProsesTransaksiModal - midtrans:", midtrans);
+    console.log("ProsesTransaksiModal - currentTransaction:", currentTransaction);
+    console.log("ProsesTransaksiModal - token:", token);
+    console.log("ProsesTransaksiModal - barangDibeli:", barangDibeli);
+    console.log("ProsesTransaksiModal - noVa:", noVa);
+    console.log("ProsesTransaksiModal - kasirData:", kasirData);
+    console.log("ProsesTransaksiModal - hasCheckedStatus:", hasCheckedStatus);
+    console.log("ProsesTransaksiModal - manuallyCheckStatus:", manuallyCheckStatus);
+  }, [isOpen, transaksi, midtrans, currentTransaction, token, barangDibeli, noVa, kasirData, hasCheckedStatus, manuallyCheckStatus]);
+  
+  // Update currentTransaction dan state terpisah ketika transaksi berubah
+  useEffect(() => {
+    if (transaksi) {
+      setCurrentTransaction(transaksi);
+      // Simpan data barang dan no_va ke state terpisah
+      if (transaksi.barang_dibeli) {
+        setBarangDibeli(transaksi.barang_dibeli);
+      }
+      if (transaksi.no_va) {
+        setNoVa(transaksi.no_va);
+      }
+      
+      // Simpan data kasir dari transaksi awal
+      setKasirData({
+        kasir_id: transaksi.kasir_id,
+        kasir_nama: transaksi.kasir_nama,
+        kasir_username: transaksi.kasir_username
+      });
+    }
+  }, [transaksi]);
+  
   const getStorageKey = useCallback((suffix: string) => {
     const orderId = transaksi?.order_id || midtrans?.order_id || token;
     return `transaksi_${orderId}_${suffix}`;
   }, [transaksi, midtrans, token]);
 
-  // Initialize timer from localStorage or calculate remaining time
-  useEffect(() => {
-    if (!transaksi || !midtrans || isInitialized) return;
+  // Function to clear transaction storage
+  const clearTransactionStorage = useCallback(() => {
+    const orderId = transaksi?.order_id || midtrans?.order_id || token;
+    if (orderId) {
+      const storageKey = `transaksi_${orderId}_`;
+      localStorage.removeItem(`${storageKey}success`);
+      localStorage.removeItem(`${storageKey}expired`);
+      localStorage.removeItem(`${storageKey}timeLeft`);
+      localStorage.removeItem('transactionStatus');
+    }
+  }, [transaksi, midtrans, token]);
+
+  // checkTransactionStatus
+  const checkTransactionStatus = useCallback(async (orderId: string, isManualCheck = false) => {
+    // Jika ini adalah cek manual, set flag ke true
+    if (isManualCheck) {
+      setManuallyCheckStatus(true);
+    }
     
-    const orderId = transaksi?.order_id || midtrans?.order_id;
+    // Jika status sudah pernah dicek untuk transaksi ini dan ini bukan cek manual, lewati
+    if (hasCheckedStatus && !isManualCheck) {
+      console.log("Status already checked for this transaction, skipping...");
+      return;
+    }
+    
+    setIsCheckingStatus(true);
+    try {
+      console.log(`Mengecek status transaksi untuk order ID: ${orderId}`);
+      
+      const baseUrl = "http://192.168.110.16:5000";
+      const tokenLocal = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (tokenLocal) headers['Authorization'] = `Bearer ${tokenLocal}`;
+      
+      const url = `${baseUrl}/api/transaksi/public/status/${orderId}`;
+      console.log("Menggunakan URL API:", url);
+      
+      const response = await fetch(url, { headers });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("Respons dari API berhasil:", data);
+      
+      // Validasi data sebelum digunakan
+      if (!data) {
+        console.error("Data transaksi tidak valid:", data);
+        throw new Error("Data transaksi tidak valid");
+      }
+      
+      // Gabungkan data dari API dengan data yang sudah tersimpan di state
+      const normalizedData = {
+        ...data,
+        // Gunakan data barang dari state jika tidak ada di response
+        barang_dibeli: data.barang_dibeli || barangDibeli,
+        total_harga: data.total_harga || 0,
+        tanggal_transaksi: data.tanggal_transaksi || data.createdAt || new Date().toISOString(),
+        nomor_transaksi: data.nomor_transaksi || data.order_id || '-',
+        // Gunakan no_va dari state jika tidak ada di response
+        no_va: data.no_va || noVa,
+        // Tambahkan data kasir dari state
+        kasir_id: data.kasir_id || kasirData.kasir_id,
+        kasir_nama: data.kasir_nama || kasirData.kasir_nama,
+        kasir_username: data.kasir_username || kasirData.kasir_username,
+      };
+      
+      // Update currentTransaction dengan data terbaru
+      setCurrentTransaction(normalizedData);
+      
+      // Tandai bahwa status sudah dicek
+      setHasCheckedStatus(true);
+      
+      // Periksa status dari respons API
+      if (data.status === 'selesai') {
+        console.log("Pembayaran berhasil, langsung menuju struk pembayaran");
+        setIsPaymentSuccess(true);
+        
+        // Tampilkan SweetAlert untuk pembayaran berhasil
+        await SweetAlert.fire({
+          title: 'Pembayaran Berhasil!',
+          html: `
+            <div class="text-left">
+              <p>Terima kasih, pembayaran Anda telah berhasil diproses.</p>
+              <p class="mt-2"><strong>Nomor Transaksi:</strong> ${normalizedData.nomor_transaksi}</p>
+              <p><strong>Total Pembayaran:</strong> Rp ${normalizedData.total_harga.toLocaleString('id-ID')}</p>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonText: 'Lihat Struk',
+          confirmButtonColor: '#10B981',
+          timer: 3000,
+          timerProgressBar: true
+        });
+        
+        // Cegah looping dengan flag
+        if (!hasTriggeredSuccess && onTransactionSuccess) {
+          setHasTriggeredSuccess(true);
+          onTransactionSuccess(normalizedData);
+        }
+        
+        // Tutup modal proses transaksi saja
+        setTimeout(() => {
+          onClose(); 
+        }, 1000);
+      } else if (data.status === 'pending') {
+        console.log("Status pembayaran masih pending");
+        // Reset flag jika status kembali ke pending
+        setHasTriggeredSuccess(false);
+        
+        // Tampilkan SweetAlert untuk status pending
+        await SweetAlert.fire({
+          title: 'Menunggu Pembayaran',
+          html: `
+            <div class="text-left">
+              <p>Kami belum menerima konfirmasi pembayaran Anda.</p>
+              <p class="mt-2">Jika Anda sudah melakukan pembayaran, silakan tunggu beberapa saat dan cek kembali statusnya.</p>
+              <p class="mt-2 text-sm text-gray-600">Status akan diperbarui otomatis dalam <strong>15 detik</strong>.</p>
+              ${isManualCheck ? '<p class="mt-2 text-sm text-amber-600">Anda telah melakukan pengecekan manual. Silakan tunggu beberapa saat.</p>' : ''}
+            </div>
+          `,
+          icon: 'info',
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#3B82F6'
+        });
+      } else if (data.status === 'expire') {
+        console.log("Pembayaran kadaluarsa");
+        setIsExpired(true);
+        await SweetAlert.fire({
+          title: 'Pembayaran Kadaluarsa',
+          html: `
+            <div class="text-left">
+              <p>Waktu pembayaran telah habis.</p>
+              <p class="mt-2">Silakan lakukan transaksi kembali untuk mendapatkan kode pembayaran baru.</p>
+            </div>
+          `,
+          icon: 'warning',
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#F59E0B'
+        });
+      } else if (data.status === 'deny' || data.status === 'cancel') {
+        console.log("Pembayaran gagal atau dibatalkan");
+        await SweetAlert.fire({
+          title: 'Pembayaran Gagal',
+          html: `
+            <div class="text-left">
+              <p>Pembayaran Anda gagal atau dibatalkan.</p>
+              <p class="mt-2">Silakan coba lagi atau gunakan metode pembayaran lain.</p>
+            </div>
+          `,
+          icon: 'error',
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#EF4444'
+        });
+      } else {
+        console.log("Status tidak dikenal:", data.status);
+        await SweetAlert.fire({
+          title: 'Status Pembayaran',
+          html: `
+            <div class="text-left">
+              <p>Status pembayaran saat ini: <strong class="text-blue-600">${data.status}</strong></p>
+              <p class="mt-2 text-sm text-gray-600">Jika Anda sudah melakukan pembayaran, silakan tunggu beberapa saat dan cek kembali statusnya.</p>
+            </div>
+          `,
+          icon: 'info',
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#3B82F6'
+        });
+      }
+    } catch (error) {
+      console.error("Error saat mengecek status transaksi:", error);
+      await SweetAlert.fire({
+        title: 'Error',
+        html: `
+          <div class="text-left">
+            <p>Terjadi kesalahan saat mengecek status pembayaran.</p>
+            <p class="mt-2 text-sm text-gray-600">Silakan coba lagi beberapa saat.</p>
+          </div>
+        `,
+        icon: 'error',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#EF4444'
+      });
+    } finally {
+      setIsCheckingStatus(false);
+      // Reset flag manual check setelah selesai
+      if (isManualCheck) {
+        setManuallyCheckStatus(false);
+      }
+    }
+  }, [onTransactionSuccess, onClose, hasTriggeredSuccess, barangDibeli, noVa, kasirData, hasCheckedStatus]);
+
+  // useEffect untuk mendeteksi pembayaran berhasil dari URL
+  useEffect(() => {
+    // Jika pembayaran sudah berhasil, tidak perlu cek lagi
+    if (isPaymentSuccess) return;
+    
+    if (currentTransaction?.metode_pembayaran?.toLowerCase().includes('tunai')) {
+      setIsPaymentSuccess(true);
+      if (onTransactionSuccess && !hasTriggeredSuccess) {
+        setHasTriggeredSuccess(true);
+        onTransactionSuccess(currentTransaction);
+      }
+      return;
+    }
+
+    const extractSearch = (): string => {
+      if (window.location.search && window.location.search.length > 1) return window.location.search;
+      if (window.location.hash && window.location.hash.includes('?')) {
+        return window.location.hash.slice(window.location.hash.indexOf('?'));
+      }
+      try {
+        const u = new URL(window.location.href);
+        return u.search || '';
+      } catch (err) {
+        console.warn('Failed to parse window.location.href', err);
+        return '';
+      }
+    };
+
+    const raw = extractSearch();
+    const qp = new URLSearchParams(raw.startsWith('?') ? raw.slice(1) : raw);
+
+    const orderId = qp.get('order_id') ?? qp.get('orderId');
+
+    console.log('Order ID dari URL:', orderId);
+
+    // Jika ada orderId dari URL, cek status ke backend
+    if (orderId) {
+      checkTransactionStatus(orderId);
+    }
+    
+    // Cek status transaksi saat komponen dimount
+    if (currentTransaction?.status === 'selesai') {
+      console.log("Transaksi sudah selesai, langsung tampilkan struk");
+      setIsPaymentSuccess(true);
+      if (onTransactionSuccess && !hasTriggeredSuccess) {
+        setHasTriggeredSuccess(true);
+        onTransactionSuccess(currentTransaction);
+      }
+      setTimeout(() => {
+        onClose(); 
+      }, 1000);
+    }
+  }, [token, currentTransaction, onTransactionSuccess, checkTransactionStatus, onClose, hasTriggeredSuccess, isPaymentSuccess]);
+
+  // useEffect untuk inisialisasi
+  useEffect(() => {
+    if (!currentTransaction || !midtrans || isInitialized) return;
+    
+    const orderId = currentTransaction?.order_id || midtrans?.order_id;
     if (!orderId) return;
     
-    // Check if transaction is already marked as expired
     const expiredKey = getStorageKey('expired');
     const isExpiredStored = localStorage.getItem(expiredKey) === 'true';
     
@@ -140,7 +441,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
       return;
     }
     
-    // Check if payment is already completed
     const successKey = getStorageKey('success');
     const isSuccessStored = localStorage.getItem(successKey) === 'true';
     
@@ -150,8 +450,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
       return;
     }
     
-    // Calculate remaining time
-    let remainingTime = 300; // Default 5 minutes
+    let remainingTime = 300;
     
     if (expiryTime) {
       const expiryDate = new Date(expiryTime);
@@ -159,16 +458,14 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
       const diffInSeconds = Math.floor((expiryDate.getTime() - now.getTime()) / 1000);
       
       if (diffInSeconds <= 0) {
-        // Transaction already expired
         localStorage.setItem(expiredKey, 'true');
         setIsExpired(true);
         setIsInitialized(true);
         return;
       }
       
-      remainingTime = Math.min(diffInSeconds, 300); // Cap at 5 minutes
+      remainingTime = Math.min(diffInSeconds, 300);
     } else {
-      // Try to get remaining time from localStorage
       const timeKey = getStorageKey('timeLeft');
       const storedTime = localStorage.getItem(timeKey);
       
@@ -182,21 +479,19 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     
     setTimeLeft(remainingTime);
     setIsInitialized(true);
-  }, [transaksi, midtrans, expiryTime, token, isInitialized, getStorageKey]);
+  }, [currentTransaction, midtrans, expiryTime, token, isInitialized, getStorageKey]);
 
-  // Save timer to localStorage and handle expiration
+  // useEffect untuk timer countdown
   useEffect(() => {
     if (!isInitialized || isExpired || isPaymentSuccess) return;
     
     if (timeLeft <= 0) {
-      // Mark transaction as expired
       const expiredKey = getStorageKey('expired');
       localStorage.setItem(expiredKey, 'true');
       setIsExpired(true);
       return;
     }
     
-    // Save remaining time to localStorage
     const timeKey = getStorageKey('timeLeft');
     localStorage.setItem(timeKey, timeLeft.toString());
     
@@ -207,48 +502,68 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     return () => clearTimeout(timerId);
   }, [timeLeft, isInitialized, isExpired, isPaymentSuccess, getStorageKey]);
 
-  // Cleanup localStorage when transaction is completed or cancelled
+  // useEffect untuk membersihkan localStorage
   useEffect(() => {
     if (isPaymentSuccess || isExpired) {
-      const orderId = transaksi?.order_id || midtrans?.order_id || token;
+      const orderId = currentTransaction?.order_id || midtrans?.order_id || token;
       if (!orderId) return;
       
-      // Save completion status
       if (isPaymentSuccess) {
         const successKey = getStorageKey('success');
         localStorage.setItem(successKey, 'true');
       }
       
-      // Clean up timer data
       const timeKey = getStorageKey('timeLeft');
       localStorage.removeItem(timeKey);
     }
-  }, [isPaymentSuccess, isExpired, transaksi, midtrans, token, getStorageKey]);
+  }, [isPaymentSuccess, isExpired, currentTransaction, midtrans, token, getStorageKey]);
 
-  // Debugging: Cek token dan transaksi
+  // useEffect untuk auto refresh status pembayaran VA
+  useEffect(() => {
+    if (paymentType === 'va' && !isPaymentSuccess && !isExpired && timeLeft > 0) {
+      const interval = setInterval(() => {
+        if (autoRefreshCount < 20) {
+          const orderId = currentTransaction?.order_id || midtrans?.order_id || token;
+          if (orderId) {
+            checkTransactionStatus(orderId).then(() => {
+              setAutoRefreshCount(prev => prev + 1);
+            });
+          }
+        }
+      }, 15000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [paymentType, isPaymentSuccess, isExpired, timeLeft, autoRefreshCount, currentTransaction, midtrans, token, checkTransactionStatus]);
+
+  // useEffect untuk reset auto refresh count
+  useEffect(() => {
+    setAutoRefreshCount(0);
+  }, [paymentType]);
+
+  // useEffect untuk menentukan tipe pembayaran
   useEffect(() => {
     console.log("Token dari URL:", token);
-    console.log("Data transaksi dari state:", transaksi);
+    console.log("Data transaksi dari state:", currentTransaction);
     console.log("Data midtrans dari state:", midtrans);
     
-    // Tentukan jenis pembayaran berdasarkan data
-    if (transaksi && midtrans) {
-      if (transaksi.metode_pembayaran?.includes('Virtual Account') || midtrans.payment_type === 'bank_transfer') {
+    if (currentTransaction && midtrans) {
+      if (currentTransaction.metode_pembayaran?.includes('Virtual Account') || midtrans.payment_type === 'bank_transfer') {
         setPaymentType('va');
-      } else if (transaksi.metode_pembayaran?.includes('QRIS') || midtrans.payment_type === 'qris') {
-        setPaymentType('qris');
-      } else if (transaksi.metode_pembayaran?.includes('E-Wallet') || 
+      } else if (currentTransaction.metode_pembayaran?.includes('QRIS') || 
+                currentTransaction.metode_pembayaran?.includes('E-Wallet') || 
+                midtrans.payment_type === 'qris' || 
                 ['gopay', 'shopeepay', 'dana', 'ovo', 'linkaja'].includes(midtrans.payment_type || '')) {
-        setPaymentType('ewallet');
-      } else if (transaksi.metode_pembayaran?.includes('Tunai') || midtrans.payment_type === 'cstore') {
+        setPaymentType('qris');
+      } else if (currentTransaction.metode_pembayaran?.includes('Tunai') || midtrans.payment_type === 'cstore') {
         setPaymentType('tunai');
       }
     }
-  }, [token, transaksi, midtrans]);
+  }, [token, currentTransaction, midtrans]);
 
-  // Fetch QR Code hanya untuk QRIS/E-Wallet
+  // useEffect untuk generate QR code
   useEffect(() => {
-    if (paymentType === 'qris' || paymentType === 'ewallet') {
+    if (paymentType === 'qris') {
       setQrCodeLoading(true);
       setQrCodeError(false);
       
@@ -272,156 +587,23 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     }
   }, [midtrans, paymentType]);
 
-  // Format waktu untuk ditampilkan
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Cek parameter query untuk status pembayaran dari Midtrans
-  useEffect(() => {
-    // Try several places where Midtrans may put callback params
-    const extractSearch = (): string => {
-      if (window.location.search && window.location.search.length > 1) return window.location.search;
-      if (window.location.hash && window.location.hash.includes('?')) {
-        return window.location.hash.slice(window.location.hash.indexOf('?'));
-      }
-      try {
-        const u = new URL(window.location.href);
-        return u.search || '';
-      } catch (err) {
-        console.warn('Failed to parse window.location.href', err);
-        return '';
-      }
-    };
-
-    const raw = extractSearch();
-    const qp = new URLSearchParams(raw.startsWith('?') ? raw.slice(1) : raw);
-
-    const statusCode = qp.get('status') ?? qp.get('status_code');
-    const transactionStatus = qp.get('transaction_status') ?? qp.get('transactionStatus');
-    const orderId = qp.get('order_id') ?? qp.get('orderId');
-
-    console.log('Parsed Midtrans params from URL ->', { statusCode, transactionStatus, orderId });
-
-    setParsedOrderId(orderId);
-    setParsedTransactionStatus(transactionStatus);
-    setParsedStatusCode(statusCode);
-
-    if (statusCode === '200' && (transactionStatus === 'settlement' || transactionStatus === 'capture') && orderId) {
-      setIsPaymentSuccess(true);
-      setTimeout(() => {
-        window.location.href = `/pembelian-berhasil/${token}`;
-      }, 1500);
-      return;
-    }
-
-    if ((statusCode === '202' || transactionStatus === 'deny' || transactionStatus === 'expire' || transactionStatus === 'cancel') && orderId) {
-      setTimeout(() => {
-        window.location.href = '/pembelian-gagal';
-      }, 1500);
-      return;
-    }
-  }, [token]);
-
-  // Fungsi untuk mengecek status transaksi ke API
-  const checkTransactionStatus = async (orderId: string) => {
-    setIsCheckingStatus(true);
-    try {
-      console.log(`Mengecek status transaksi untuk order ID: ${orderId}`);
-      const meta = import.meta as { env?: { VITE_API_BASE_URL?: string; VITE_API_KEY?: string } };
-      const API_BASE = meta.env?.VITE_API_BASE_URL ?? '';
-      const API_KEY = meta.env?.VITE_API_KEY ?? '';
-
-      const tokenLocal = localStorage.getItem('token');
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      if (API_KEY) headers['x-api-key'] = API_KEY;
-      if (tokenLocal) headers['Authorization'] = `Bearer ${tokenLocal}`;
-
-      const url = API_BASE ? `${API_BASE.replace(/\/$/, '')}/api/transaksi/public/status/${orderId}` : `/api/transaksi/public/status/${orderId}`;
-      const response = await fetch(url, { headers });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log("Respons dari API:", data);
-      
-      // Update status berdasarkan respons dari API
-      if (data.status === 'settlement' || data.status === 'selesai') {
-        console.log("Pembayaran berhasil, mengarahkan ke halaman pembelian berhasil");
-        setIsPaymentSuccess(true);
-        
-        setTimeout(() => {
-          window.location.href = `/pembelian-berhasil/${token}`;
-        }, 1500);
-      } else if (data.status === 'pending') {
-        console.log("Status pembayaran masih pending");
-        await SweetAlert.fire({
-          title: 'Pembayaran Pending',
-          text: 'Pembayaran masih dalam proses. Silakan coba lagi beberapa saat.',
-          icon: 'info',
-          confirmButtonText: 'OK'
-        });
-      } else if (data.status === 'expire') {
-        console.log("Pembayaran kadaluarsa");
-        setIsExpired(true);
-        await SweetAlert.fire({
-          title: 'Pembayaran Kadaluarsa',
-          text: 'Waktu pembayaran telah habis. Silakan coba lagi.',
-          icon: 'warning',
-          confirmButtonText: 'OK'
-        });
-      } else if (data.status === 'deny' || data.status === 'cancel') {
-        console.log("Pembayaran gagal atau dibatalkan");
-        await SweetAlert.fire({
-          title: 'Pembayaran Gagal',
-          text: 'Pembayaran gagal atau dibatalkan. Silakan coba lagi.',
-          icon: 'error',
-          confirmButtonText: 'OK'
-        });
-      } else {
-        console.log("Status tidak dikenal:", data.status);
-        await SweetAlert.fire({
-          title: 'Status Pembayaran',
-          text: `Status pembayaran: ${data.status}`,
-          icon: 'info',
-          confirmButtonText: 'OK'
-        });
-      }
-    } catch (error) {
-      console.error("Error saat mengecek status transaksi:", error);
-      await SweetAlert.fire({
-        title: 'Error',
-        text: 'Terjadi kesalahan saat mengecek status pembayaran. Silakan coba lagi.',
-        icon: 'error',
-        confirmButtonText: 'OK'
-      });
-    } finally {
-      setIsCheckingStatus(false);
-    }
-  };
-
-  // Fungsi untuk membatalkan transaksi
+  // cancelTransaction
   const cancelTransaction = async (transactionId: string) => {
     setIsCancelling(true);
     try {
       console.log(`Membatalkan transaksi dengan ID: ${transactionId}`);
-      const meta = import.meta as { env?: { VITE_API_BASE_URL?: string; VITE_API_KEY?: string } };
-      const API_BASE = meta.env?.VITE_API_BASE_URL ?? '';
-      const API_KEY = meta.env?.VITE_API_KEY ?? '';
+      
+      const baseUrl = "http://192.168.110.16:5000";
       const tokenLocal = localStorage.getItem('token');
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
-      if (API_KEY) headers['x-api-key'] = API_KEY;
+      
       if (tokenLocal) headers['Authorization'] = `Bearer ${tokenLocal}`;
-
-      const url = API_BASE ? `${API_BASE.replace(/\/$/, '')}/api/transaksi/cancel/${transactionId}` : `/api/transaksi/cancel/${transactionId}`;
+      
+      const url = `${baseUrl}/api/transaksi/cancel/${transactionId}`;
+      console.log("Menggunakan URL API pembatalan:", url);
+      
       const response = await fetch(url, {
         method: 'PUT',
         headers
@@ -432,14 +614,24 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
       }
       
       const data = await response.json();
-      console.log("Respons pembatalan:", data);
+      console.log("Respons pembatalan berhasil:", data);
       
-      // Tampilkan notifikasi sukses
+      // Bersihkan localStorage setelah pembatalan berhasil
+      clearTransactionStorage();
+      
       await SweetAlert.fire({
         title: 'Pembatalan Berhasil',
-        text: 'Transaksi telah berhasil dibatalkan.',
+        html: `
+          <div class="text-left">
+            <p>Transaksi telah berhasil dibatalkan.</p>
+            <p class="mt-2">Anda akan diarahkan kembali ke halaman transaksi.</p>
+          </div>
+        `,
         icon: 'success',
-        confirmButtonText: 'OK'
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#10B981',
+        timer: 2000,
+        timerProgressBar: true
       });
       
       // Arahkan ke halaman transaksi
@@ -447,185 +639,144 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     } catch (error) {
       console.error("Error saat membatalkan transaksi:", error);
       
-      // Tampilkan notifikasi error
       await SweetAlert.fire({
         title: 'Pembatalan Gagal',
-        text: 'Terjadi kesalahan saat membatalkan transaksi. Silakan coba lagi.',
+        html: `
+          <div class="text-left">
+            <p>Terjadi kesalahan saat membatalkan transaksi.</p>
+            <p class="mt-2 text-sm text-gray-600">Silakan coba lagi atau hubungi admin.</p>
+          </div>
+        `,
         icon: 'error',
-        confirmButtonText: 'OK'
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#EF4444'
       });
     } finally {
       setIsCancelling(false);
     }
   };
 
-  // Fungsi untuk menyalin nomor VA
-  const copyVANumber = (vaNumber: string) => {
-    navigator.clipboard.writeText(vaNumber)
-      .then(() => {
-        SweetAlert.fire({
-          title: 'Berhasil',
-          text: 'Nomor Virtual Account telah disalin!',
-          icon: 'success',
-          timer: 2000,
-          showConfirmButton: false
-        });
-      })
-      .catch(err => {
-        console.error('Gagal menyalin: ', err);
-        SweetAlert.fire({
-          title: 'Error',
-          text: 'Gagal menyalin nomor Virtual Account',
-          icon: 'error',
-          confirmButtonText: 'OK'
-        });
-      });
-  };
-
-  // Menangani pembayaran dengan Midtrans
+  // handlePaymentWithMidtrans
   const handlePaymentWithMidtrans = async () => {
     console.log("Memproses pembayaran dengan Midtrans");
     
-    // Untuk E-Wallet, cek status ke API
-    console.log("Pembayaran E-Wallet, mengecek status ke API");
-    
-    // Ambil order ID untuk mengecek status
-    const orderId = transaksi?.order_id || midtrans?.order_id || parsedOrderId || token;
-    console.log('Checking status for orderId (fallbacks):', { 
-      fromTransaksi: transaksi?.order_id, 
+    const orderId = currentTransaction?.order_id || midtrans?.order_id || token;
+    console.log('Checking status for orderId:', { 
+      fromTransaksi: currentTransaction?.order_id, 
       fromMidtrans: midtrans?.order_id, 
-      parsedOrderId, 
-      parsedTransactionStatus, 
-      parsedStatusCode, 
       token 
     });
 
     if (orderId) {
-      await checkTransactionStatus(orderId);
+      // Panggil checkTransactionStatus dengan parameter true untuk menandai ini adalah cek manual
+      await checkTransactionStatus(orderId, true);
     } else {
       console.error("Order ID tidak ditemukan");
       await SweetAlert.fire({
         title: 'Error',
-        text: 'Order ID tidak ditemukan. Silakan coba lagi.',
+        html: `
+          <div class="text-left">
+            <p>Order ID tidak ditemukan.</p>
+            <p class="mt-2 text-sm text-gray-600">Silakan coba lagi atau hubungi admin.</p>
+          </div>
+        `,
         icon: 'error',
-        confirmButtonText: 'OK'
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#EF4444'
       });
     }
   };
 
-  // Menangani pembayaran dibatalkan
+  // handlePaymentCancel
   const handlePaymentCancel = async () => {
     console.log("Pembayaran dibatalkan");
     
-    // Ambil transaction ID (MongoDB _id) untuk membatalkan transaksi
-    const transactionId = transaksi?._id;
+    const transactionId = currentTransaction?._id;
     if (transactionId) {
-      // Konfirmasi pembatalan dengan SweetAlert
       const result = await SweetAlert.fire({
         title: 'Konfirmasi Pembatalan',
-        text: 'Apakah Anda yakin ingin membatalkan transaksi ini?',
+        html: `
+          <div class="text-left">
+            <p>Apakah Anda yakin ingin membatalkan transaksi ini?</p>
+            <p class="mt-2 text-sm text-gray-600">Tindakan ini tidak dapat dibatalkan.</p>
+          </div>
+        `,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
         confirmButtonText: 'Ya, Batalkan',
         cancelButtonText: 'Tidak'
       });
       
-      // Jika pengguna mengkonfirmasi pembatalan
       if (result.isConfirmed) {
         await cancelTransaction(transactionId);
+      } else {
+        onClose();
       }
     } else {
       console.error("Transaction ID tidak ditemukan");
       await SweetAlert.fire({
         title: 'Error',
-        text: 'ID transaksi tidak ditemukan. Silakan coba lagi.',
+        html: `
+          <div class="text-left">
+            <p>ID transaksi tidak ditemukan.</p>
+            <p class="mt-2 text-sm text-gray-600">Silakan coba lagi atau hubungi admin.</p>
+          </div>
+        `,
         icon: 'error',
-        confirmButtonText: 'OK'
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#EF4444'
       });
       
-      // Tetap arahkan ke halaman transaksi meskipun ada error
-      window.location.href = "/transaksi";
+      onClose();
     }
   };
 
-  // If transaction is expired, prevent further actions
+  // useEffect untuk menampilkan alert saat pembayaran kadaluarsa
   useEffect(() => {
     if (isExpired) {
-      // Show notification if not already shown
       if (isInitialized) {
+        // Bersihkan localStorage saat pembayaran kadaluarsa
+        clearTransactionStorage();
+        
         SweetAlert.fire({
           title: 'Pembayaran Kadaluarsa',
-          text: 'Waktu pembayaran telah habis. Silakan coba lagi.',
+          html: `
+            <div class="text-left">
+              <p>Waktu pembayaran telah habis.</p>
+              <p class="mt-2">Silakan lakukan transaksi kembali untuk mendapatkan kode pembayaran baru.</p>
+            </div>
+          `,
           icon: 'warning',
-          confirmButtonText: 'OK'
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#F59E0B'
         });
       }
     }
-  }, [isExpired, isInitialized]);
+  }, [isExpired, isInitialized, clearTransactionStorage]);
 
-  // If payment is successful, prevent further actions
+  // useEffect untuk menonaktifkan proses pembayaran saat sudah berhasil
   useEffect(() => {
     if (isPaymentSuccess) {
       // Disable any payment processing
     }
   }, [isPaymentSuccess]);
 
-  // Ambil nilai dengan aman untuk ditampilkan
-  const getSafeValue = (value: string | number | null | undefined, defaultValue: string = ""): string => {
-    if (value === null || value === undefined) return defaultValue;
-    if (typeof value === 'number') return value.toLocaleString("id-ID");
-    return value;
-  };
-
-  // Get payment method icon
-  const getPaymentMethodIcon = () => {
-    switch (paymentType) {
-      case 'va':
-        return <CreditCard className="w-5 h-5" />;
-      case 'qris':
-        return <QrCode className="w-5 h-5" />;
-      case 'ewallet':
-        return <Smartphone className="w-5 h-5" />;
-      case 'tunai':
-        return <Wallet className="w-5 h-5" />;
-      default:
-        return <CreditCard className="w-5 h-5" />;
-    }
-  };
-
-  // Get payment method name
-  const getPaymentMethodName = () => {
-    switch (paymentType) {
-      case 'va':
-        return 'Virtual Account';
-      case 'qris':
-        return 'QRIS';
-      case 'ewallet':
-        return 'E-Wallet';
-      case 'tunai':
-        return 'Tunai';
-      default:
-        return transaksi?.metode_pembayaran || 'Metode Pembayaran';
-    }
-  };
-
   return (
     <AnimatePresence>
       {isOpen && (
         <>
           <motion.div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
             variants={backdropVariants}
             initial="hidden"
             animate="visible"
             exit="hidden"
-            onClick={onClose}
           />
-          
+            
           <motion.div
-            className="fixed inset-0 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 flex items-center justify-center z-[60] p-4"
             variants={modalVariants}
             initial="hidden"
             animate="visible"
@@ -635,41 +786,16 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
               className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                      {getPaymentMethodIcon()}
-                    </div>
-                    <div>
-                      <h1 className="text-2xl font-bold">Proses Pembayaran</h1>
-                      <p className="text-blue-100 text-sm">{getPaymentMethodName()}</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={onClose}
-                    className="p-2 rounded-full hover:bg-white/20 transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
+              <Header 
+                onClose={onClose} 
+                paymentType={paymentType} 
+                metodePembayaran={currentTransaction?.metode_pembayaran} 
+              />
 
-              {/* Timer countdown */}
-              <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-5 h-5 text-yellow-600" />
-                    <span className="text-sm font-medium text-yellow-700">Batas waktu pembayaran:</span>
-                  </div>
-                  <div className={`text-xl font-bold ${timeLeft <= 60 ? 'text-red-600' : 'text-yellow-600'}`}>
-                    {formatTime(timeLeft)}
-                  </div>
-                </div>
-              </div>
+              {!isExpired && !isPaymentSuccess && paymentType !== 'tunai' && (
+                <TimerCountdown timeLeft={timeLeft} />
+              )}
 
-              {/* Content */}
               <div className="flex-1 overflow-y-auto p-6">
                 {isExpired ? (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
@@ -697,293 +823,56 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Payment Info */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-blue-800 mb-4">Informasi Pembayaran</h3>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-600">Nomor Transaksi</p>
-                          <p className="font-medium">{transaksi?.nomor_transaksi || "-"}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Tanggal Transaksi</p>
-                          <p className="font-medium">
-                            {transaksi?.tanggal_transaksi ? new Date(transaksi.tanggal_transaksi).toLocaleString('id-ID') : "-"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Metode Pembayaran</p>
-                          <p className="font-medium">{transaksi?.metode_pembayaran || "-"}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Total Pembayaran</p>
-                          <p className="font-medium text-lg">
-                            Rp {getSafeValue(transaksi?.total_harga, "0")}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    <PaymentInfo
+                      nomorTransaksi={currentTransaction?.nomor_transaksi}
+                      tanggalTransaksi={currentTransaction?.tanggal_transaksi}
+                      metodePembayaran={currentTransaction?.metode_pembayaran}
+                      hargaFinal={currentTransaction?.total_harga}
+                    />
 
-                    {/* Purchase Details */}
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4">Detail Pembelian</h3>
-                      
-                      {transaksi?.barang_dibeli && transaksi.barang_dibeli.length > 0 ? (
-                        <div className="overflow-x-auto rounded-lg border border-gray-200">
-                          <table className="w-full">
-                            <thead className="bg-gray-100">
-                              <tr>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Nama Barang
-                                </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Jumlah
-                                </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Harga Satuan
-                                </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Subtotal
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {transaksi.barang_dibeli.map((item, index) => (
-                                <tr key={index}>
-                                  <td className="px-4 py-3 text-sm text-gray-900">{item.nama_barang}</td>
-                                  <td className="px-4 py-3 text-sm text-gray-900">{item.jumlah}</td>
-                                  <td className="px-4 py-3 text-sm text-gray-900">
-                                    Rp {item.harga_satuan.toLocaleString("id-ID")}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-gray-900">
-                                    Rp {item.subtotal.toLocaleString("id-ID")}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <p className="text-gray-500 text-center py-4">Tidak ada detail barang</p>
-                      )}
-                    </div>
+                    {/* Gunakan state barangDibeli secara langsung */}
+                    <PurchaseDetails barangDibeli={barangDibeli} />
 
-                    {/* Payment Method Details */}
-                    {paymentType === 'va' && transaksi && midtrans && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-blue-800 mb-4">Pembayaran Virtual Account</h3>
-                        
-                        <div className="bg-white rounded-lg p-4 border border-blue-300">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <p className="text-sm text-gray-600">Metode Pembayaran</p>
-                              <p className="font-medium text-lg">
-                                {getSafeValue(transaksi.metode_pembayaran)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600">Total Pembayaran</p>
-                              <p className="font-medium text-lg">
-                                Rp {getSafeValue(transaksi.total_harga, "0")}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex flex-col items-center">
-                            <div className="bg-white p-6 rounded-lg border border-gray-200 mb-4 w-full max-w-md">
-                              <p className="text-sm text-gray-600 mb-2">Nomor Virtual Account:</p>
-                              <div className="flex items-center justify-between bg-gray-100 p-3 rounded">
-                                <span className="text-xl font-mono font-bold">
-                                  {transaksi.no_va || midtrans.permata_va_number || midtrans.va_number || "-"}
-                                </span>
-                                <button
-                                  onClick={() => copyVANumber(transaksi.no_va || midtrans.permata_va_number || midtrans.va_number || "")}
-                                  className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center"
-                                >
-                                  <Copy className="w-4 h-4 mr-1" />
-                                  Salin
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="mt-4 text-sm text-gray-600">
-                            <p className="font-medium mb-2">Cara Pembayaran:</p>
-                            <ol className="list-decimal pl-5 space-y-1">
-                              <li>Buka aplikasi mobile banking atau ATM bank Anda</li>
-                              <li>Pilih menu Transfer atau Pembayaran</li>
-                              <li>Pilih menu Virtual Account</li>
-                              <li>Masukkan nomor Virtual Account di atas</li>
-                              <li>Konfirmasi pembayaran dengan jumlah yang benar</li>
-                              <li>Simpan bukti pembayaran Anda</li>
-                            </ol>
-                          </div>
-                        </div>
-                      </div>
+                    {paymentType === 'va' && currentTransaction && midtrans && (
+                      <VirtualAccountPayment
+                        metodePembayaran={currentTransaction.metode_pembayaran}
+                        totalHarga={currentTransaction.total_harga}
+                        noVa={noVa} // Gunakan state noVa
+                        permataVaNumber={midtrans.permata_va_number}
+                        vaNumber={midtrans.va_number}
+                        status={currentTransaction.status}
+                      />
                     )}
                     
-                    {(paymentType === 'qris' || paymentType === 'ewallet') && (
-                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-purple-800 mb-4">
-                          {paymentType === 'qris' ? 'Pembayaran QRIS' : 'Pembayaran E-Wallet'}
-                        </h3>
-                        
-                        <div className="bg-white rounded-lg p-4 border border-purple-300">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <p className="text-sm text-gray-600">Metode Pembayaran</p>
-                              <p className="font-medium text-lg">
-                                {getSafeValue(transaksi?.metode_pembayaran)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600">Total Pembayaran</p>
-                              <p className="font-medium text-lg">
-                                Rp {getSafeValue(transaksi?.total_harga, "0")}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex flex-col items-center">
-                            {qrCodeLoading ? (
-                              <div className="flex justify-center items-center h-64 w-full">
-                                <Loader2 className="animate-spin h-12 w-12 text-purple-500" />
-                              </div>
-                            ) : qrCodeError ? (
-                              <div className="flex flex-col items-center justify-center h-64 w-full">
-                                <div className="bg-red-100 rounded-full p-4 mb-4">
-                                  <AlertCircle className="h-12 w-12 text-red-500" />
-                                </div>
-                                <p className="text-gray-500 text-center">QR Code tidak dapat dimuat. Silakan gunakan URL pembayaran di bawah ini.</p>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="bg-white p-4 rounded-lg border border-gray-200 mb-4">
-                                  {qrCodeUrl ? (
-                                    <img 
-                                      src={qrCodeUrl} 
-                                      alt="QR Code Pembayaran" 
-                                      className="w-64 h-64 object-contain"
-                                      onError={() => {
-                                        console.error("Error loading QR Code image");
-                                        setQrCodeError(true);
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="w-64 h-64 bg-gray-100 flex items-center justify-center">
-                                      <p className="text-gray-500">QR Code tidak tersedia</p>
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                {/* Tampilkan URL pembayaran */}
-                                {qrCodeUrl && (
-                                  <div className="mt-4 w-full max-w-md">
-                                    <p className="text-sm text-gray-600 mb-1">URL Pembayaran:</p>
-                                    <div className="bg-gray-100 p-3 rounded text-sm overflow-x-auto">
-                                      <a 
-                                        href={qrCodeUrl} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="text-blue-600 hover:text-blue-800 break-all"
-                                      >
-                                        {qrCodeUrl}
-                                      </a>
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-2">
-                                      Klik URL di atas untuk membuka halaman pembayaran
-                                    </p>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                          
-                          <div className="mt-4 text-sm text-gray-600">
-                            <p className="font-medium mb-2">Cara Pembayaran:</p>
-                            <ol className="list-decimal pl-5 space-y-1">
-                              <li>Buka aplikasi {paymentType === 'qris' ? 'e-wallet atau mobile banking' : 'E-Wallet'} Anda</li>
-                              <li>Pilih menu Bayar atau Scan</li>
-                              <li>Scan QR Code yang ditampilkan di atas atau klik URL pembayaran</li>
-                              <li>Konfirmasi pembayaran dengan jumlah yang benar</li>
-                              <li>Simpan bukti pembayaran Anda</li>
-                            </ol>
-                          </div>
-                        </div>
-                      </div>
+                    {paymentType === 'qris' && (
+                      <QRISPayment
+                        metodePembayaran={currentTransaction?.metode_pembayaran}
+                        totalHarga={currentTransaction?.total_harga}
+                        qrCodeUrl={qrCodeUrl}
+                        qrCodeLoading={qrCodeLoading}
+                        qrCodeError={qrCodeError}
+                      />
                     )}
                     
                     {paymentType === 'tunai' && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-green-800 mb-4">Pembayaran Tunai</h3>
-                        
-                        <div className="bg-white rounded-lg p-4 border border-green-300">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <p className="text-sm text-gray-600">Metode Pembayaran</p>
-                              <p className="font-medium text-lg">
-                                {getSafeValue(transaksi?.metode_pembayaran)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600">Total Pembayaran</p>
-                              <p className="font-medium text-lg">
-                                Rp {getSafeValue(transaksi?.total_harga, "0")}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="mt-4 text-sm text-gray-600">
-                            <p className="font-medium mb-2">Cara Pembayaran:</p>
-                            <ol className="list-decimal pl-5 space-y-1">
-                              <li>Silakan bayar langsung di kasir</li>
-                              <li>Menunjukkan nomor transaksi kepada kasir</li>
-                              <li>Simpan bukti pembayaran Anda</li>
-                            </ol>
-                          </div>
-                        </div>
-                      </div>
+                      <CashPayment
+                        metodePembayaran={currentTransaction?.metode_pembayaran}
+                        totalHarga={currentTransaction?.total_harga}
+                      />
                     )}
                   </div>
                 )}
               </div>
 
-              {/* Footer */}
-              <div className="border-t border-gray-200 p-4 bg-gray-50">
-                <div className="flex flex-col sm:flex-row justify-end gap-4">
-                  <button
-                    onClick={handlePaymentCancel}
-                    disabled={isCancelling || isCheckingStatus}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:bg-gray-400 flex items-center justify-center"
-                  >
-                    {isCancelling ? (
-                      <>
-                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                        Membatalkan...
-                      </>
-                    ) : (
-                      "Batal"
-                    )}
-                  </button>
-                  <button
-                    onClick={handlePaymentWithMidtrans}
-                    disabled={isCheckingStatus || isExpired || isCancelling}
-                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 flex items-center justify-center"
-                  >
-                    {isCheckingStatus ? (
-                      <>
-                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                        Mengecek Status...
-                      </>
-                    ) : isExpired ? (
-                      "Waktu Habis"
-                    ) : (
-                      "Cek Status Pembayaran"
-                    )}
-                  </button>
-                </div>
-              </div>
+              <FooterActions
+                isCancelling={isCancelling}
+                isCheckingStatus={isCheckingStatus}
+                isExpired={isExpired}
+                onPaymentCancel={handlePaymentCancel}
+                onPaymentWithMidtrans={handlePaymentWithMidtrans}
+                paymentType={paymentType}
+                transactionStatus={currentTransaction?.status}
+              />
             </div>
           </motion.div>
         </>

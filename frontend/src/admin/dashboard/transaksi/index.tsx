@@ -34,6 +34,10 @@ const Transaksi: React.FC = () => {
   const [filterMetode, setFilterMetode] = useState<string>('semua');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedTransaction, setSelectedTransaction] = useState<Transaksi | null>(null);
+  
+  // State untuk pagination
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 5; // Batas 5 item per halaman
 
   useEffect(() => {
     const fetchData = async () => {
@@ -57,6 +61,11 @@ const Transaksi: React.FC = () => {
     fetchData();
   }, []);
 
+  // Reset halaman saat filter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, filterMetode, searchTerm]);
+
   // Filter transaksi
   const filteredTransaksi = transaksi.filter(trans => {
     const matchesStatus = filterStatus === 'semua' || trans.status === filterStatus;
@@ -68,6 +77,16 @@ const Transaksi: React.FC = () => {
     
     return matchesStatus && matchesMetode && matchesSearch;
   });
+
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredTransaksi.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredTransaksi.length / itemsPerPage);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
 
   // Statistik
   const stats = {
@@ -298,14 +317,14 @@ const Transaksi: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTransaksi.length === 0 ? (
+              {currentItems.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                     Tidak ada data transaksi yang ditemukan
                   </td>
                 </tr>
               ) : (
-                filteredTransaksi.map((trans) => (
+                currentItems.map((trans) => (
                   <tr key={trans._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -360,10 +379,56 @@ const Transaksi: React.FC = () => {
         </div>
       </div>
 
-      {/* Info Jumlah Data */}
-      <div className="mt-4 text-sm text-gray-600">
-        Menampilkan {filteredTransaksi.length} dari {transaksi.length} transaksi
-      </div>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <div className="text-sm text-gray-700">
+            Menampilkan {indexOfFirstItem + 1} hingga {Math.min(indexOfLastItem, filteredTransaksi.length)} dari {filteredTransaksi.length} transaksi
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={prevPage}
+              disabled={currentPage === 1}
+              className={`px-3 py-1 rounded-md ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+            >
+              &laquo; Prev
+            </button>
+            
+            <div className="flex space-x-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => paginate(pageNum)}
+                    className={`px-3 py-1 rounded-md ${currentPage === pageNum ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            
+            <button
+              onClick={nextPage}
+              disabled={currentPage === totalPages}
+              className={`px-3 py-1 rounded-md ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+            >
+              Next &raquo;
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal Detail */}
       {selectedTransaction && (

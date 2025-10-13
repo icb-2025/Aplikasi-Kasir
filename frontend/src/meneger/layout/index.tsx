@@ -76,7 +76,7 @@ function Sidebar({
     <>
       {/* Toggle button untuk mobile */}
       <button
-        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-md transition-all duration-300 hover:opacity-90 shadow-md"
+        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-md transition-all duration-300 hover:opacity-90 shadow-md"
         onClick={() => setOpen(!open)}
       >
         {open ? <X className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}
@@ -92,7 +92,7 @@ function Sidebar({
 
       {/* Sidebar utama */}
       <aside
-        className={`fixed top-0 left-0 h-full bg-gradient-to-b from-indigo-700 to-purple-800 text-white p-4 z-50 
+        className={`fixed top-0 left-0 h-full bg-gradient-to-b from-orange-600 to-yellow-500 text-white p-4 z-50 
           transition-all duration-300 ease-in-out shadow-2xl flex flex-col ${
             isMobile
               ? open
@@ -107,7 +107,7 @@ function Sidebar({
         <div className="flex items-center justify-between mb-10 pt-2">
           <div className="flex items-center gap-3">
             <div className="bg-white p-2 rounded-lg shadow-md">
-              <LayoutDashboard className="w-6 h-6 text-indigo-700" />
+              <LayoutDashboard className="w-6 h-6 text-orange-700" />
             </div>
             {!collapsed && <h2 className="text-xl font-bold tracking-wide">Manager</h2>}
           </div>
@@ -130,8 +130,8 @@ function Sidebar({
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                   isActive
-                    ? "bg-white text-indigo-800 font-semibold shadow-md"
-                    : "hover:bg-white/20"
+                    ? "bg-white text-orange-800 font-semibold shadow-md"
+                    : "hover:bg-white/30"
                 }`
               }
               onClick={() => isMobile && setOpen(false)}
@@ -205,7 +205,7 @@ function TopNav() {
             className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-200 border border-gray-200"
             onClick={() => setUserOpen(!userOpen)}
           >
-            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-1 rounded-full">
+            <div className="bg-gradient-to-r from-orange-500 to-yellow-500 p-1 rounded-full">
               <User className="w-5 h-5 text-white" />
             </div>
             <div className="text-left hidden sm:block">
@@ -220,7 +220,7 @@ function TopNav() {
                 <p className="text-sm font-medium text-gray-800">{userName}</p>
                 <p className="text-xs text-gray-500">{userEmail}</p>
               </div>
-              <button className="block w-full text-left px-4 py-3 hover:bg-blue-50 text-sm flex items-center gap-2">
+              <button className="block w-full text-left px-4 py-3 hover:bg-orange-50 text-sm flex items-center gap-2">
                 <Settings className="w-4 h-4" />
                 Pengaturan
               </button>
@@ -244,7 +244,7 @@ function Footer() {
   return (
     <footer className="bg-white text-gray-600 text-center py-3 border-t border-gray-200">
       <p className="text-sm">
-        &copy; {new Date().getFullYear()} SMK Dashboard. All rights reserved.
+        &copy; {new Date().getFullYear()} SMK ICB CINTA TEKNIKA
       </p>
     </footer>
   );

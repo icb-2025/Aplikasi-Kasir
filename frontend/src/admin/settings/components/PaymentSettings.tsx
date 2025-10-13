@@ -48,7 +48,7 @@ interface PaymentSettingsProps {
 
 const PaymentSettings: React.FC<PaymentSettingsProps> = ({ 
   formData, 
-  handlePaymentMethodChange,
+  
   handleChannelLogoChange,
   onTogglePaymentMethod,
   onUpdateChannelName,
@@ -260,17 +260,29 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
     <div className="space-y-8">
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-800">Metode Pembayaran</h2>
-          <button
-            type="button"
-            onClick={() => setShowAddPaymentMethod(!showAddPaymentMethod)}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-200 flex items-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-            </svg>
-            Tambah Metode
-          </button>
+          <h2 className="text-xl font-semibold text-gray-800">Detail Metode Pembayaran</h2>
+          <div className="flex space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowAddPaymentMethod(!showAddPaymentMethod)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200 flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+              </svg>
+              Tambah Metode
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddChannel(!showAddChannel)}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-200 flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+              </svg>
+              Tambah Channel
+            </button>
+          </div>
         </div>
         
         {showAddPaymentMethod && (
@@ -347,47 +359,6 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
             </div>
           </div>
         )}
-        
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {[
-            'Tunai',
-            'Kartu Debit',
-            'Kredit',
-            'QRIS',
-            'Transfer Bank',
-            'E-Wallet',
-            'Virtual Account'
-          ].map((method) => (
-            <div key={method} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-150">
-              <input
-                type="checkbox"
-                id={`method-${method}`}
-                checked={formData.paymentMethods.includes(method)}
-                onChange={(e) => handlePaymentMethodChange(method, e.target.checked)}
-                className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor={`method-${method}`} className="ml-3 block text-sm font-medium text-gray-700">
-                {method}
-              </label>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-800">Detail Metode Pembayaran</h2>
-          <button
-            type="button"
-            onClick={() => setShowAddChannel(!showAddChannel)}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-200 flex items-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-            </svg>
-            Tambah Channel
-          </button>
-        </div>
         
         {showAddChannel && (
           <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">

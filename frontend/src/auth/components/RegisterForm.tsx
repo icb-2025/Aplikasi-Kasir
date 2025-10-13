@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../hooks/useAuth';
 import type { Variants } from "framer-motion";
+import logologin from '../../../public/images/logologin.jpg';
 
 export default function RegisterForm() {
   const [form, setForm] = useState({ 
@@ -11,7 +12,6 @@ export default function RegisterForm() {
     username: "", 
     password: "", 
     confirmPassword: ""
-    // Hapus field role karena akan otomatis 'users'
   });
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -21,7 +21,6 @@ export default function RegisterForm() {
     username: false, 
     password: false,
     confirmPassword: false
-    // Hapus field role
   });
   const [isLoading, setIsLoading] = useState(false);
   const auth = useAuth();
@@ -77,12 +76,12 @@ export default function RegisterForm() {
         return;
       }
       
-      // Hardcode role sebagai 'users'
+      // Hardcode role sebagai 'user'
       const result = await auth.register(
         form.nama_lengkap, 
         form.username, 
         form.password, 
-        'users' // Role otomatis 'users'
+        'user' // Role otomatis 'user'
       );
       
       if (!result.success) {
@@ -198,13 +197,24 @@ export default function RegisterForm() {
       initial="hidden"
       animate="visible"
     >
-      {/* Bagian Kiri */}
+      {/* Bagian Kiri - Dengan Gambar */}
       <motion.div
         variants={leftVariants}
-        className="hidden md:flex w-1/2 bg-gradient-to-br from-blue-600 to-purple-600 text-white flex-col justify-center items-center p-10 relative"
+        className="hidden md:flex w-1/2 bg-gradient-to-br from-orange-500 to-yellow-400 text-white flex-col justify-center items-center p-10 relative overflow-hidden"
       >
+        {/* Gambar Latar Belakang */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={logologin} 
+            alt="Kasir App Background" 
+            className="w-full h-full object-cover"
+          />
+          {/* Overlay untuk memastikan teks tetap terbaca */}
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/80 to-yellow-400/80"></div>
+        </div>
+        
         <motion.div 
-          className="absolute -top-20 -left-20 w-40 h-40 rounded-full bg-purple-500 opacity-20"
+          className="absolute -top-20 -left-20 w-40 h-40 rounded-full bg-yellow-500 opacity-20"
           animate={{
             scale: [1, 1.2, 1],
             rotate: [0, 10, 0],
@@ -216,7 +226,7 @@ export default function RegisterForm() {
           }}
         />
         <motion.div 
-          className="absolute -bottom-20 -right-20 w-60 h-60 rounded-full bg-blue-500 opacity-20"
+          className="absolute -bottom-20 -right-20 w-60 h-60 rounded-full bg-orange-500 opacity-20"
           animate={{
             scale: [1, 1.3, 1],
             rotate: [0, -15, 0],
@@ -228,28 +238,31 @@ export default function RegisterForm() {
           }}
         />
         
-        <motion.h1 
-          className="text-5xl font-bold mb-6 z-10"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-        >
-          Kasir App
-        </motion.h1>
-        <motion.p 
-          className="text-xl max-w-md text-center z-10"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.7, duration: 0.5 }}
-        >
-          Bergabunglah dengan kami untuk mengelola bisnis Anda dengan lebih efisien.
-        </motion.p>
+        {/* Konten di atas gambar */}
+        <div className="z-10 flex flex-col items-center justify-center">
+          <motion.h1 
+            className="text-5xl font-bold mb-6 text-center"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+          >
+            Kasir App
+          </motion.h1>
+          <motion.p 
+            className="text-xl max-w-md text-center"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.7, duration: 0.5 }}
+          >
+            Bergabunglah dengan kami untuk mengelola bisnis Anda dengan lebih efisien.
+          </motion.p>
+        </div>
       </motion.div>
 
       {/* Bagian Kanan (Form) */}
       <motion.div
         variants={rightVariants}
-        className="flex w-full md:w-1/2 justify-center items-center bg-gradient-to-br from-gray-50 to-gray-100 p-6"
+        className="flex w-full md:w-1/2 justify-center items-center bg-gradient-to-br from-amber-50 to-yellow-50 p-6"
       >
         <motion.form
           onSubmit={handleSubmit}
@@ -294,9 +307,9 @@ export default function RegisterForm() {
             whileFocus="focus"
             animate={isFocused.nama_lengkap ? "focus" : "rest"}
           >
-            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-blue-500 transition-colors">
+            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-orange-500 transition-colors">
               <motion.div
-                animate={{ color: isFocused.nama_lengkap ? "#3B82F6" : "#9CA3AF" }}
+                animate={{ color: isFocused.nama_lengkap ? "#F97316" : "#9CA3AF" }}
                 transition={{ duration: 0.2 }}
               >
                 <FaUser className="text-xl mr-3" />
@@ -323,9 +336,9 @@ export default function RegisterForm() {
             whileFocus="focus"
             animate={isFocused.username ? "focus" : "rest"}
           >
-            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-blue-500 transition-colors">
+            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-orange-500 transition-colors">
               <motion.div
-                animate={{ color: isFocused.username ? "#3B82F6" : "#9CA3AF" }}
+                animate={{ color: isFocused.username ? "#F97316" : "#9CA3AF" }}
                 transition={{ duration: 0.2 }}
               >
                 <FaUser className="text-xl mr-3" />
@@ -352,9 +365,9 @@ export default function RegisterForm() {
             whileFocus="focus"
             animate={isFocused.password ? "focus" : "rest"}
           >
-            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-blue-500 transition-colors">
+            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-orange-500 transition-colors">
               <motion.div
-                animate={{ color: isFocused.password ? "#3B82F6" : "#9CA3AF" }}
+                animate={{ color: isFocused.password ? "#F97316" : "#9CA3AF" }}
                 transition={{ duration: 0.2 }}
               >
                 <FaLock className="text-xl mr-3" />
@@ -390,9 +403,9 @@ export default function RegisterForm() {
             whileFocus="focus"
             animate={isFocused.confirmPassword ? "focus" : "rest"}
           >
-            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-blue-500 transition-colors">
+            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-orange-500 transition-colors">
               <motion.div
-                animate={{ color: isFocused.confirmPassword ? "#3B82F6" : "#9CA3AF" }}
+                animate={{ color: isFocused.confirmPassword ? "#F97316" : "#9CA3AF" }}
                 transition={{ duration: 0.2 }}
               >
                 <FaLock className="text-xl mr-3" />
@@ -428,7 +441,7 @@ export default function RegisterForm() {
             whileTap="tap"
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all disabled:opacity-70"
+            className="w-full bg-gradient-to-r from-orange-500 to-yellow-400 text-white py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all disabled:opacity-70"
           >
             {isLoading ? (
               <span className="flex items-center justify-center">
@@ -452,7 +465,7 @@ export default function RegisterForm() {
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="text-blue-500 hover:text-blue-700 font-medium"
+                className="text-orange-500 hover:text-orange-700 font-medium"
               >
                 Login
               </button>

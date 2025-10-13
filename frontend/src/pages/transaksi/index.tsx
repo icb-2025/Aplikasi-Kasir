@@ -258,7 +258,16 @@ const TransaksiPage = () => {
       }
     }
 
-    const bodyData = {
+    const storedUser = localStorage.getItem('user');
+    let kasirId: string | null = null;
+    try {
+      const parsed = storedUser ? JSON.parse(storedUser) : null;
+      kasirId = parsed?._id || parsed?.id || null;
+    } catch {
+      kasirId = null;
+    }
+
+    const bodyData: Record<string, unknown> = {
       barang_dibeli: cartItems.map((item) => ({
         barang_id: item._id,
         kode_barang: item._id,
@@ -273,6 +282,10 @@ const TransaksiPage = () => {
       metode_pembayaran: paymentMethod,
       status: "pending",
     };
+
+    if (kasirId) {
+      (bodyData as Record<string, unknown>).kasir_id = kasirId;
+    }
 
     console.log("Mengirim data transaksi:", bodyData);
 

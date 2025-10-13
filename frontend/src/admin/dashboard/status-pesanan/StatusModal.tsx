@@ -1,6 +1,5 @@
-// src/admin/status-pesanan/StatusModal.tsx
 import React, { useState } from "react";
-import { SweetAlert } from "../../../components/SweetAlert"; // Pastikan path ini benar
+import { SweetAlert } from "../../../components/SweetAlert";
 
 interface StatusModalProps {
   visible: boolean;
@@ -30,7 +29,6 @@ const StatusModal: React.FC<StatusModalProps> = ({
 
   const handleSubmit = async () => {
     if (selectedStatus === currentStatus) {
-      // Perbaikan: Ganti SweetAlert.info dengan SweetAlert.success
       await SweetAlert.success("Status tidak berubah");
       return;
     }
@@ -42,7 +40,6 @@ const StatusModal: React.FC<StatusModalProps> = ({
       await SweetAlert.success("Status berhasil diperbarui");
       onClose();
     } catch {
-      // Perbaikan: Hapus parameter err yang tidak digunakan
       SweetAlert.close();
       SweetAlert.error("Gagal memperbarui status");
     }

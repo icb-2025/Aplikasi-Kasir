@@ -138,7 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
       )}
 
       {/* Sidebar */}
-      <div className={`bg-gradient-to-b from-blue-800 to-blue-900 text-white w-64 fixed inset-y-0 left-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-30 shadow-xl flex flex-col`}>
+      <div className={`bg-gradient-to-b from-orange-600 to-yellow-500 text-white w-64 fixed inset-y-0 left-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-30 shadow-xl flex flex-col`}>
         {/* Logo dengan animasi */}
         <div className="text-white flex items-center justify-between px-4 py-5 flex-shrink-0">
           <div className="flex items-center space-x-2">
@@ -153,23 +153,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
               </div>
             ) : (
               <div className="bg-white p-1.5 rounded-lg shadow-md">
-                <span className="text-blue-800 text-xl font-bold">K+</span>
+                <span className="text-orange-600 text-xl font-bold">K+</span>
               </div>
             )}
             <div className="overflow-hidden">
               <h1 className="text-xl font-bold whitespace-nowrap">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-blue-400">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-200 to-yellow-300">
                   KasirPlus
                 </span>
               </h1>
-              <div className="text-xs text-blue-200 mt-0.5">
+              <div className="text-xs text-orange-100 mt-0.5">
                 Admin Dashboard
               </div>
             </div>
           </div>
           {/* Tombol close untuk mobile */}
           <button 
-            className="md:hidden text-white focus:outline-none p-1 rounded-full hover:bg-blue-700 transition-colors"
+            className="md:hidden text-white focus:outline-none p-1 rounded-full hover:bg-orange-700 transition-colors"
             onClick={onClose}
             aria-label="Tutup sidebar"
           >
@@ -182,7 +182,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
         {/* Tombol Toggle Sidebar untuk Mobile - di dalam sidebar */}
         <div className="md:hidden px-4 py-3 flex-shrink-0">
           <button 
-            className="w-full flex items-center justify-center py-2 bg-blue-700/50 rounded-lg text-white hover:bg-blue-700 transition-colors"
+            className="w-full flex items-center justify-center py-2 bg-orange-700/50 rounded-lg text-white hover:bg-orange-700 transition-colors"
             onClick={onToggle}
             aria-label="Toggle sidebar"
           >
@@ -198,10 +198,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
         </div>
 
         {/* Judul Bergerak di Sidebar dengan Animasi yang Diperbaiki */}
-        <div className="px-4 py-3 bg-blue-700/30 rounded-lg mx-2 mb-4 overflow-hidden flex-shrink-0 relative">
+        <div className="px-4 py-3 bg-orange-700/30 rounded-lg mx-2 mb-4 overflow-hidden flex-shrink-0 relative">
           <div 
             key={marqueeKey}
-            className="text-sm text-blue-200 whitespace-nowrap animate-marquee-smooth"
+            className="text-sm text-orange-100 whitespace-nowrap animate-marquee-smooth"
           >
             🚀 Selamat datang di Panel Admin KasirPlus - Kelola bisnis Anda dengan mudah!
           </div>
@@ -215,7 +215,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
                 <div>
                   <button
                     onClick={(e) => toggleDropdown(item.name, e)}
-                    className={`w-full flex justify-between items-center py-3 px-4 rounded-lg transition-all duration-200 hover:bg-blue-700/60 hover:shadow-md ${isMenuActive(item) ? 'bg-blue-700/60 shadow-md' : ''}`}
+                    className={`w-full flex justify-between items-center py-3 px-4 rounded-lg transition-all duration-200 hover:bg-orange-700/60 hover:shadow-md ${isMenuActive(item) ? 'bg-orange-700/60 shadow-md' : ''}`}
                   >
                     <div className="flex items-center">
                       <span className="mr-3 text-lg">{item.icon}</span>
@@ -243,7 +243,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
                         <Link
                           key={subItem.name}
                           to={subItem.path}
-                          className={`block py-2 px-4 rounded-lg transition-all duration-200 hover:bg-blue-700/40 hover:shadow-md ${location.pathname === subItem.path ? 'bg-blue-700/40 shadow-md' : ''}`}
+                          className={`block py-2 px-4 rounded-lg transition-all duration-200 hover:bg-orange-700/40 hover:shadow-md ${location.pathname === subItem.path ? 'bg-orange-700/40 shadow-md' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (window.innerWidth < 768) {
@@ -252,7 +252,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
                           }}
                         >
                           <div className="flex items-center">
-                            <div className="w-1.5 h-1.5 rounded-full bg-blue-200 mr-3"></div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-orange-200 mr-3"></div>
                             <span className="text-sm">{subItem.name}</span>
                           </div>
                         </Link>
@@ -263,7 +263,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
               ) : (
                 <Link
                   to={item.path!}
-                  className={`flex items-center py-3 px-4 rounded-lg transition-all duration-200 hover:bg-blue-700/60 hover:shadow-md ${location.pathname === item.path ? 'bg-blue-700/60 shadow-md' : ''}`}
+                  className={`flex items-center py-3 px-4 rounded-lg transition-all duration-200 hover:bg-orange-700/60 hover:shadow-md ${location.pathname === item.path ? 'bg-orange-700/60 shadow-md' : ''}`}
                   onClick={() => {
                     if (window.innerWidth < 768) {
                       onClose();
@@ -312,7 +312,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
         }
 
         /* Efek hover pause */
-        .bg-blue-700\\/30:hover .animate-marquee-smooth {
+        .bg-orange-700\\/30:hover .animate-marquee-smooth {
           animation-play-state: paused;
         }
       `}</style>

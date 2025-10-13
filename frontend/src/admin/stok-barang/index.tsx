@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import BarangTable from "./BarangTable";
 import ModalBarang from "./ModalBarang";
 import type { BarangFormData } from "./ModalBarang";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { SweetAlert } from "../../components/SweetAlert";
+import io, { Socket } from "socket.io-client";
 
 export interface BarangAPI {
   _id: string;
@@ -42,20 +43,14 @@ interface ListBarangProps {
 }
 
 const API_URL = "http://192.168.110.16:5000/api/admin/stok-barang";
-
-// Daftar kategori yang tersedia
-const KATEGORI = [
-  "Makanan",
-  "Minuman", 
-  "Cemilan",
-  "Signature"
-];
+const KATEGORI = ["Makanan", "Minuman", "Cemilan", "Signature"];
 
 interface ApiError extends Error {
   message: string;
 }
 
 const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang }) => {
+  const socketRef = useRef<Socket | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -68,13 +63,47 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
   const [formData, setFormData] = useState<BarangFormData>({
     kode: "",
     nama: "",
-    kategori: KATEGORI[0], // Default kategori
+    kategori: KATEGORI[0],
     hargaBeli: "",
     hargaJual: "",
     stok: "",
     gambarUrl: "",
     gambar: null,
   });
+
+  // Inisialisasi Socket.IO
+  useEffect(() => {
+    socketRef.current = io("http://192.168.110.16:5000");
+    
+    // Dengarkan event stockUpdated dari server
+    socketRef.current.on('stockUpdated', (data: { id: string; stok: number }) => {
+      setDataBarang(prevData => 
+        prevData.map(item => {
+          if (item._id === data.id) {
+            const newStok = data.stok;
+            const status = newStok <= 0 
+              ? "habis" 
+              : newStok <= (item.stokMinimal || 5) 
+                ? "hampir habis" 
+                : "aman";
+            return { 
+              ...item, 
+              stok: newStok,
+              status
+            };
+          }
+          return item;
+        })
+      );
+    });
+
+    // Cleanup saat komponen unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [setDataBarang]);
 
   const fetchBarang = useCallback(async () => {
     setLoading(true);
@@ -123,7 +152,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     setFormData({
       kode: "",
       nama: "",
-      kategori: KATEGORI[0], // Reset ke kategori default
+      kategori: KATEGORI[0],
       hargaBeli: "",
       hargaJual: "",
       stok: "",
@@ -172,6 +201,14 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         });
         
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        
+        // Emit event stockUpdated dengan stok 0
+        if (socketRef.current) {
+          socketRef.current.emit('stockUpdated', { 
+            id: id, 
+            stok: 0 
+          });
+        }
         
         SweetAlert.close();
         setDataBarang(prevData => prevData.filter(item => item._id !== id));
@@ -262,6 +299,24 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       SweetAlert.close();
       setIsReloading(true);
       await fetchBarang();
+      
+      // Emit event stockUpdated setelah operasi berhasil
+      if (socketRef.current) {
+        if (isEditing && editId) {
+          socketRef.current.emit('stockUpdated', { 
+            id: editId, 
+            stok: Number(formData.stok) 
+          });
+        } else {
+          // Untuk barang baru, kita perlu mendapatkan ID dari response
+          const newBarang = await res.json();
+          socketRef.current.emit('stockUpdated', { 
+            id: newBarang._id, 
+            stok: Number(formData.stok) 
+          });
+        }
+      }
+      
       resetForm();
       setShowModal(false);
       await SweetAlert.success(isEditing ? "Barang berhasil diperbarui" : "Barang berhasil ditambahkan");

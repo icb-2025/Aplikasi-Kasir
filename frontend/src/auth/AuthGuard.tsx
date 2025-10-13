@@ -1,4 +1,3 @@
-// src/auth/AuthGuard.tsx
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
@@ -20,7 +19,6 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   }
 
   if (!auth.user) {
-    // Simpan lokasi saat ini untuk redirect setelah login
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

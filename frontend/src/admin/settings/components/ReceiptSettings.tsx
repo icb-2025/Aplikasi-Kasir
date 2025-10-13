@@ -72,38 +72,6 @@ const ReceiptSettings: React.FC<ReceiptSettingsProps> = ({ formData, handleInput
           <p className="mt-1 text-sm text-gray-500">Gunakan \n untuk baris baru</p>
         </div>
       </div>
-
-      <div>
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Opsi Struk</h2>
-        <div className="space-y-4">
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="showBarcode"
-              name="showBarcode"
-              checked={formData.showBarcode}
-              onChange={handleInputChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="showBarcode" className="ml-2 block text-sm text-gray-700">
-              Tampilkan Barcode pada struk
-            </label>
-          </div>
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="showCashierName"
-              name="showCashierName"
-              checked={formData.showCashierName}
-              onChange={handleInputChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="showCashierName" className="ml-2 block text-sm text-gray-700">
-              Tampilkan Nama Kasir pada struk
-            </label>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
