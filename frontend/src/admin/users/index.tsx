@@ -4,7 +4,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import SweetAlert from '../../components/SweetAlert';
 import UserModal from './component/usermodal'; // lowercase
 import UserTable from './component/usertable'; // lowercase
-import UserFilter from './component/UserFilter'; // lowercase - perbaikan di sini
+import UserFilter from './component/userfilter'; // lowercase - perbaikan di sini
 
 interface User {
   _id: string;
