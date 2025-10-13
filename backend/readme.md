@@ -1,67 +1,90 @@
 # Aplikasi Kasir - Backend
 
-Backend untuk aplikasi kasir yang mendukung manajemen barang, transaksi, laporan, dan integrasi realtime stok menggunakan Firebase Realtime Database.
+Backend untuk aplikasi kasir yang mendukung manajemen barang, transaksi, laporan, dan integrasi realtime stok menggunakan Firebase Realtime Database (RTDB).
 
 ---
 
 ## Ringkasan Fitur Utama
 
-- Manajemen Transaksi
-   - Menyimpan transaksi, mendukung Midtrans (VA, QRIS, credit card, dsb) dan callback untuk update status.
-   - Stock decrement otomatis saat transaksi (RTDB transaction bila tersedia).
-- Manajemen Barang
-   - CRUD barang (nama, harga, stok, gambar).
-   - Stok disimpan di MongoDB (metadata) dan disinkronkan ke Firebase RTDB untuk realtime updates.
-- Realtime Stok
-   - Perubahan stok ditulis ke Firebase RTDB dan server mem-broadcast event Socket.IO (`stockUpdated`) sehingga UI di browser dapat menerima update tanpa refresh.
-- Pengaturan Metode Pembayaran & Biaya Operasional
-   - CRUD untuk metode pembayaran dan biaya operasional.
-- Laporan
-   - Laporan penjualan bulanan/harian dan per-kasir.
+* **Manajemen Transaksi**
+
+  * Menyimpan transaksi, mendukung Midtrans (VA, QRIS, credit card, dsb) dan callback untuk update status.
+  * Stok berkurang otomatis saat transaksi (via RTDB transaction bila tersedia).
+
+* **Manajemen Barang**
+
+  * CRUD barang (nama, harga, stok, gambar).
+  * Stok disimpan di MongoDB (metadata) dan disinkronkan ke Firebase RTDB untuk update realtime.
+
+* **Realtime Stok**
+
+  * Perubahan stok ditulis ke Firebase RTDB dan server mem-broadcast event Socket.IO (`stockUpdated`) sehingga UI browser menerima update tanpa refresh.
+
+* **Pengaturan Metode Pembayaran & Biaya Operasional**
+
+  * CRUD untuk metode pembayaran dan biaya operasional.
+
+* **Laporan**
+
+  * Laporan penjualan bulanan/harian dan per-kasir.
 
 ---
 
-## Struktur Perubahan Terkait Firebase/Realtime
+## Struktur Perubahan Terkait Firebase / Realtime
 
-- `config/firebaseAdmin.js` — inisialisasi `firebase-admin` (mencari `FIREBASE_SERVICE_ACCOUNT` env var atau `config/firebase-service-account.json`).
-- `scripts/migrate-to-firebase.js` — skrip migrasi data `databarang` dari MongoDB ke RTDB path `/barang/{mongoId}`.
-- `controllers/databarangControllers.js` — sekarang membaca stok dari RTDB (jika tersedia), menulis/sinkron stok ke RTDB saat create/update/delete, dan menyediakan endpoint `POST /api/barang/:id/decrement` untuk decrement atomik.
-- `controllers/datatransaksiController.js` — saat membuat transaksi, stok dikurangi via RTDB transaction (jika tersedia) atau fallback ke MongoDB; rollback stok (cancel/expire) juga menambah stok dan mem-broadcast event.
-- Server kini mem-broadcast event Socket.IO `stockUpdated` setiap kali stok berubah: payload `{ id, stok }`.
+* `config/firebaseAdmin.js` — inisialisasi `firebase-admin` menggunakan:
+
+  * env var `FIREBASE_SERVICE_ACCOUNT` (JSON string) **atau**
+  * file lokal `config/firebase-service-account.json`.
+
+* `scripts/migrate-to-firebase.js` — migrasi data `databarang` dari MongoDB ke RTDB path `/barang/{mongoId}`.
+
+* `controllers/databarangControllers.js`:
+
+  * Membaca stok dari RTDB (jika tersedia) dan merge ke response.
+  * Menulis / sync stok, nama, harga ke RTDB saat create/update/delete.
+  * Menyediakan endpoint `POST /api/barang/:id/decrement` untuk decrement stok atomik.
+
+* `controllers/datatransaksiController.js`:
+
+  * Saat membuat transaksi, stok dikurangi via RTDB transaction (jika tersedia) atau fallback ke MongoDB.
+  * Rollback stok (cancel/expire) menambah stok kembali dan mem-broadcast event.
+
+* Server mem-broadcast event Socket.IO `stockUpdated` setiap kali stok berubah: `{ id, stok }`.
 
 ---
 
 ## Persyaratan
 
-- Node.js (disarankan v18+)
-- MongoDB (Atlas atau lokal)
-- Firebase project dengan Realtime Database dan service account
+* Node.js (disarankan v18+)
+* MongoDB (Atlas atau lokal)
+* Firebase project dengan Realtime Database dan service account
 
 ---
 
 ## Pengaturan & Instalasi
 
-1. Install dependencies
+1. **Install dependencies**
 
 ```bash
 npm install
 ```
 
-2. Siapkan konfigurasi environment (contoh `.env`):
+2. **Siapkan konfigurasi environment** (.env contoh):
 
-- `MONGODB_URI` — connection string MongoDB
-- `PORT` — port server (default 5000)
-- `FIREBASE_SERVICE_ACCOUNT` (opsional) — JSON string service account, atau simpan file di `config/firebase-service-account.json` (jangan commit file ini)
-- `FIREBASE_RTDB_URL` (opsional) — contoh: `https://aplikasi-kasir-21236-default-rtdb.asia-southeast1.firebasedatabase.app`
+* `MONGODB_URI` — connection string MongoDB
+* `PORT` — port server (default 5000)
+* `FIREBASE_SERVICE_ACCOUNT` (opsional) — JSON string service account, atau simpan file di `config/firebase-service-account.json` (jangan commit)
+* `FIREBASE_RTDB_URL` (opsional) — contoh: `https://aplikasi-kasir-21236-default-rtdb.asia-southeast1.firebasedatabase.app`
 
-Contoh set env sementara saat menjalankan migrasi/server (tidak disimpan di shell history):
+**Contoh set env sementara saat menjalankan migrasi/server:**
 
 ```bash
 FIREBASE_RTDB_URL='https://aplikasi-kasir-21236-default-rtdb.asia-southeast1.firebasedatabase.app' node scripts/migrate-to-firebase.js
 FIREBASE_RTDB_URL='https://aplikasi-kasir-21236-default-rtdb.asia-southeast1.firebasedatabase.app' npm start
 ```
 
-3. (Opsi A) Simpan service account ke file lokal (jika memakai opsi file):
+3. **Opsional: Simpan service account ke file lokal**
 
 ```bash
 mkdir -p config
@@ -70,75 +93,74 @@ cat > config/firebase-service-account.json <<'JSON'
 JSON
 ```
 
-Pastikan file ini disebut di `.gitignore` (saya sudah menambahkannya).
+Pastikan file ini ditambahkan di `.gitignore`.
 
 ---
 
-## Migrasi data `databarang` ke Firebase RTDB
-
-Jika Anda ingin memindahkan stok awal ke RTDB (recommended):
+## Migrasi Data `databarang` ke Firebase RTDB
 
 ```bash
-# pastikan env FIREBASE_RTDB_URL benar dan config/firebase-service-account.json ada atau FIREBASE_SERVICE_ACCOUNT di-set
+# Pastikan env FIREBASE_RTDB_URL benar dan file service account ada / FIREBASE_SERVICE_ACCOUNT diset
 node scripts/migrate-to-firebase.js
 ```
 
-Skrip ini akan menulis semua dokumen `databarang` ke `/barang/{mongoId}` di RTDB.
+Skrip ini menulis semua dokumen `databarang` ke `/barang/{mongoId}` di RTDB.
 
 ---
 
-## API penting (ringkasan)
+## API Penting (Ringkasan)
 
-- GET /api/barang — list semua barang (stok di-merge dari RTDB bila tersedia)
-- POST /api/barang — buat barang baru (juga menulis stok awal ke RTDB)
-- PUT /api/barang/:id — update barang (sync ke RTDB)
-- DELETE /api/barang/:id — hapus barang (juga dari RTDB)
-- POST /api/barang/:id/decrement — kurangi stok atomically di RTDB (body: { qty })
+| Method | Endpoint                  | Deskripsi                                  |
+| ------ | ------------------------- | ------------------------------------------ |
+| GET    | /api/barang               | List semua barang (stok merged dari RTDB)  |
+| POST   | /api/barang               | Buat barang baru & tulis stok awal ke RTDB |
+| PUT    | /api/barang/:id           | Update barang & sync ke RTDB               |
+| DELETE | /api/barang/:id           | Hapus barang dari DB & RTDB                |
+| POST   | /api/barang/:id/decrement | Kurangi stok atomically di RTDB            |
 
-- Admin endpoints (contoh):
-   - GET /api/admin/stok-barang — (frontend admin) ambil daftar stok untuk dashboard
+**Admin endpoints:**
 
-Catatan: prefix `/api` dan rute admin diatur di `server.js`.
+* GET /api/admin/stok-barang — ambil daftar stok untuk dashboard admin
 
 ---
 
 ## Realtime di Frontend
 
-Pilihan implementasi di frontend:
+* **Socket.IO:** server mem-broadcast event `stockUpdated` setiap kali stok berubah. Payload: `{ id, stok }`.
+* **Firebase client SDK:** frontend dapat subscribe langsung ke RTDB path `/barang`.
 
-- Socket.IO: server mem-broadcast event `stockUpdated` setiap kali stok berubah. Payload: `{ id, stok }`.
-- Firebase client SDK: frontend dapat subscribe langsung ke RTDB path `/barang` untuk mendapatkan update realtime.
-
-Contoh singkat (Socket.IO client):
+**Contoh Socket.IO client:**
 
 ```js
 import { io } from 'socket.io-client';
-const socket = io('http://192.168.110.16:5000');
+const socket = io('http://localhost:5000');
 socket.on('stockUpdated', ({ id, stok }) => {
    // update UI
 });
 ```
 
-Saya juga menyediakan contoh komponen React/TSX `frontend/StockDashboard.tsx` sebagai starting point untuk dashboard admin.
-
 ---
 
-## Debugging & tips
+## Debugging & Tips
 
-- Jika Anda melihat peringatan tentang URL RTDB (default `.firebaseio.com`) pastikan `FIREBASE_RTDB_URL` diset ke URL RTDB regional Anda (mis. `...-default-rtdb.asia-southeast1.firebasedatabase.app`).
-- Jika stok tidak berubah di UI tanpa reload, pastikan frontend terhubung ke Socket.IO atau ke RTDB client.
+* Pastikan `FIREBASE_RTDB_URL` mengarah ke URL RTDB regional Anda.
+* Jika stok tidak berubah di UI tanpa reload, pastikan frontend terhubung ke Socket.IO atau RTDB client.
+* Network access ke Firebase harus diizinkan (port 443).
 
 ---
 
 ## Keamanan
 
-- Jangan commit file `config/firebase-service-account.json` ke git. Jika key ter-expose, revoke dan generate new key di Firebase Console.
+* Jangan commit `config/firebase-service-account.json` ke git.
+* Jika key ter-expose, revoke dan generate key baru di Firebase Console: [Firebase Admin SDK setup](https://firebase.google.com/docs/admin/setup#initialize-sdk).
 
 ---
 
-Jika Anda mau, saya bisa menambahkan:
+## Opsional / Tambahan
 
-- Skrip demo frontend static (HTML + Socket.IO client) untuk verifikasi cepat.
-- Unit tests untuk endpoint `decrement`.
+* Demo frontend static (HTML + Socket.IO client) untuk verifikasi cepat.
+* Unit tests untuk endpoint `decrement`.
 
-Terakhir — beri tahu saya jika mau saya buat demo HTML atau integrasi langsung ke frontend React Anda.
+---
+
+copyright Aplikasi-Kasir 2025©

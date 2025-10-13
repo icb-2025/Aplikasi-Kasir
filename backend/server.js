@@ -25,16 +25,35 @@ import adminLaporan from "./routes/admin/laporan.js";
 import adminUsers from "./routes/admin/user.js";
 import adminbiayaoperasional from "./routes/admin/biayaoperasional.js";
 import userAuth from "./middleware/user.js";
+import session from "express-session";
+import passport from "./config/passportGoogle.js";
+import googleAuthRoutes from "./routes/googleAuthRoutes.js";
+// import { debugTokenLogger } from "./middleware/debugTokenLogger.js"; //debug all for frontend
 
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 5000;
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "secret",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+// app.use(debugTokenLogger);
+
+
 
 app.use(express.json());
 app.use(cors());
 connectDB();
 
 // pelanggan, kasir
+app.use("/api/auth/google", googleAuthRoutes);
 app.use("/api/barang", barangRoutes);
 app.use("/api/transaksi", userAuth, transaksiRoutes);
 app.use("/api/update-profile", updateProfile);

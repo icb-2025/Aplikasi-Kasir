@@ -109,3 +109,45 @@ export const getLaba = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const getDaftarBulanLaporan = async (req, res) => {
+  try {
+    const laporan = await Laporan.find().sort({ "periode.start": -1 });
+
+    const daftarBulan = laporan.map((lap) => {
+      const date = new Date(lap.periode.start);
+      const namaBulan = date.toLocaleString("id-ID", { month: "long" });
+      const tahun = date.getFullYear();
+
+      return {
+        id: lap._id,
+        nama_bulan: `${namaBulan} ${tahun}`,
+        bulan: date.getMonth() + 1,
+        tahun,
+        createdAt: lap.createdAt,
+      };
+    });
+
+    res.json({ daftar_bulan: daftarBulan });
+  } catch (err) {
+    console.error("Gagal mengambil daftar bulan:", err);
+    res.status(500).json({ message: "Gagal mengambil daftar bulan laporan" });
+  }
+};
+
+export const getLaporanById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const laporan = await Laporan.findById(id).populate("biaya_operasional_id");
+
+    if (!laporan) {
+      return res.status(404).json({ message: "Laporan tidak ditemukan" });
+    }
+
+    res.json(laporan);
+  } catch (err) {
+    console.error("Gagal mengambil laporan:", err);
+    res.status(500).json({ message: "Gagal mengambil laporan bulanan" });
+  }
+};
+

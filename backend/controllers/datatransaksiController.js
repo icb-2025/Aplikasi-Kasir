@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Transaksi from "../models/datatransaksi.js";
 import Barang from "../models/databarang.js"; 
 import db from "../config/firebaseAdmin.js";
@@ -11,7 +12,6 @@ import Counter from "../models/counter.js";
 import Settings from "../models/settings.js";
 import BiayaOperasional from "../models/biayaoperasional.js";
 import { v4 as uuidv4 } from "uuid";
-
 
 async function pilihKasirRoundRobin() {
   // ambil semua kasir yang aktif
@@ -44,28 +44,37 @@ export const addTransaksiToLaporan = async (transaksi) => {
     const startBulan = new Date(tanggal.getFullYear(), tanggal.getMonth(), 1, 0, 0, 0, 0);
     const endBulan = new Date(tanggal.getFullYear(), tanggal.getMonth() + 1, 0, 23, 59, 59, 999);
 
+    // 🔹 Cari laporan bulan ini (cari berdasarkan rentang supaya tidak bergantung pada presisi Date)
     let laporan = await Laporan.findOne({
-      "periode.start": startBulan,
-      "periode.end": endBulan,
+      "periode.start": { $lte: tanggal },
+      "periode.end": { $gte: tanggal }
     });
 
+    // 🔹 Kalau belum ada, buat baru
     if (!laporan) {
-  const biayaTerbaru = await BiayaOperasional.findOne().sort({ createdAt: -1 });
+      const biayaTerbaru = await BiayaOperasional.findOne().sort({ createdAt: -1 });
 
-  laporan = new Laporan({
-    periode: { start: startBulan, end: endBulan },
-    laporan_penjualan: { harian: [], mingguan: [], bulanan: [] },
-    laba: { total_laba: 0, detail: [] },
-    rekap_metode_pembayaran: [],
-    biaya_operasional_id: biayaTerbaru?._id, 
-  });
-}
+      // Hitung pengeluaran total dari seluruh barang (harga_beli * stok)
+      const semuaBarang = await Barang.find();
+      const totalPengeluaran = semuaBarang.reduce((acc, b) => acc + (b.harga_beli * b.stok), 0);
 
+      laporan = new Laporan({
+  periode: { start: startBulan, end: endBulan },
+  laporan_penjualan: { harian: [], mingguan: [], bulanan: [] },
+  laba: { total_laba: 0, detail: [] },
+  rekap_metode_pembayaran: [],
+  biaya_operasional_id: biayaTerbaru?._id,
+  pengeluaran: totalPengeluaran
+});
+    }
 
+    // 🔹 Ambil laporan harian (toleran terhadap tanggal yang disimpan sebagai Date atau String)
     const tanggalHarian = tanggal.toISOString().split("T")[0];
-    let laporanHarian = laporan.laporan_penjualan.harian.find(
-      (h) => h.tanggal === tanggalHarian
-    );
+    let laporanHarian = laporan.laporan_penjualan.harian.find((h) => {
+      if (!h) return false;
+      if (h.tanggal instanceof Date) return h.tanggal.toISOString().split("T")[0] === tanggalHarian;
+      return String(h.tanggal) === tanggalHarian;
+    });
 
     if (!laporanHarian) {
       laporanHarian = {
@@ -76,42 +85,54 @@ export const addTransaksiToLaporan = async (transaksi) => {
       laporan.laporan_penjualan.harian.push(laporanHarian);
     }
 
+    // 🔹 Hitung ulang harga jual, laba, dll
     let totalHargaFix = 0;
 
-  transaksi.barang_dibeli = await Promise.all(
-  transaksi.barang_dibeli.map(async (barang) => {
-    const jumlah = barang.jumlah || 1;
-    const hargaJual = barang.harga_satuan || 0;
+    transaksi.barang_dibeli = await Promise.all(
+      transaksi.barang_dibeli.map(async (barang) => {
+        const jumlah = barang.jumlah || 1;
+        const hargaJual = barang.harga_satuan || 0;
 
-    const produk = await Barang.findOne({ kode_barang: barang.kode_barang });
-    const hargaBeli = produk ? produk.harga_beli : 0;
+        const produk = await Barang.findOne({
+          $or: [
+            (mongoose.Types.ObjectId.isValid(barang.kode_barang)
+              ? { _id: new mongoose.Types.ObjectId(barang.kode_barang) }
+              : null),
+            { kode_barang: barang.kode_barang },
+            { nama_barang: barang.nama_barang },
+          ].filter(Boolean),
+        });
 
-    const subtotal = hargaJual * jumlah;
-    const labaItem = (hargaJual - hargaBeli) * jumlah;
+        const hargaBeli = produk ? produk.harga_beli : 0;
 
-    totalHargaFix += subtotal;
+        const subtotal = hargaJual * jumlah;
+        const labaItem = (hargaJual - hargaBeli) * jumlah;
 
-    laporan.laba.detail.push({
-      kode_barang: barang.kode_barang,
-      produk: barang.nama_barang,
-      harga_jual: hargaJual,
-      harga_beli: hargaBeli,
-      jumlah,
-      subtotal,
-      laba: labaItem,
-    });
+        totalHargaFix += subtotal;
 
-    return {
-      ...barang,
-      harga_satuan: hargaJual,
-      subtotal,
-      harga_beli: hargaBeli
-    };
-  })
-);
+        laporan.laba.detail.push({
+          nomor_transaksi: transaksi.nomor_transaksi,
+          kode_barang: barang.kode_barang,
+          produk: barang.nama_barang,
+          harga_jual: hargaJual,
+          harga_beli: hargaBeli,
+          jumlah,
+          subtotal,
+          laba: labaItem,
+        });
+
+        return {
+          ...barang,
+          harga_satuan: hargaJual,
+          subtotal,
+          harga_beli: hargaBeli,
+        };
+      })
+    );
 
     transaksi.total_harga = totalHargaFix;
 
+    // 🔹 Tambahkan transaksi ke laporan harian
     laporanHarian.transaksi.push({
       nomor_transaksi: transaksi.nomor_transaksi,
       total_harga: transaksi.total_harga,
@@ -121,6 +142,7 @@ export const addTransaksiToLaporan = async (transaksi) => {
 
     laporanHarian.total_harian += transaksi.total_harga;
 
+    // 🔹 Update rekap metode pembayaran
     const existingRekap = laporan.rekap_metode_pembayaran.find(
       (r) => r.metode === transaksi.metode_pembayaran
     );
@@ -134,24 +156,21 @@ export const addTransaksiToLaporan = async (transaksi) => {
       });
     }
 
-    laporan.laba.total_laba = laporan.laba.detail.reduce(
-      (acc, item) => acc + (item.laba || 0),
-      0
-    );
+    // 🔹 Rehitung laba bersih (penjualan - modal - biaya operasional)
+    const totalLabaKotor = laporan.laba.detail.reduce((acc, item) => acc + (item.laba || 0), 0);
 
     const biayaOperasional = await BiayaOperasional.findById(laporan.biaya_operasional_id);
-const totalBiayaOperasional = biayaOperasional?.total || 0;
+    const totalBiayaOperasional = biayaOperasional?.total || 0;
 
-laporan.laba.total_laba = 
-  laporan.laba.detail.reduce((acc, item) => acc + (item.laba || 0), 0) 
-  - totalBiayaOperasional;
-
+    // ✅ Laba bersih = laba kotor - biaya operasional - pengeluaran
+    laporan.laba.total_laba =
+      totalLabaKotor - totalBiayaOperasional - (laporan.pengeluaran || 0);
 
     await laporan.save();
 
-    console.log("Transaksi berhasil disimpan");
+    console.log("✅ Transaksi berhasil disimpan dan laporan diperbarui");
   } catch (err) {
-    console.error("Gagal menambahkan ke laporan:", err);
+    console.error("❌ Gagal menambahkan ke laporan:", err);
   }
 };
 
@@ -301,10 +320,24 @@ if (!kasirUsername) {
 }
 
 
-    const barangFinal = barang_dibeli.map(item => ({
+    const barangFinal = await Promise.all(
+  barang_dibeli.map(async (item) => {
+    const barangData = await Barang.findOne({
+      $or: [
+        { _id: item.kode_barang },
+        { kode_barang: item.kode_barang },
+        { nama_barang: item.nama_barang },
+      ],
+    });
+
+    return {
       ...item,
+      kode_barang: barangData?.kode_barang || item.kode_barang,
       subtotal: item.jumlah * item.harga_satuan,
-    }));
+    };
+  })
+);
+
 
     const transaksi = new Transaksi({
       ...req.body,
@@ -318,6 +351,10 @@ if (!kasirUsername) {
     });
 
     await transaksi.save();
+
+    if (transaksi.status === "selesai") {
+      await addTransaksiToLaporan(transaksi)
+    }
 
     // 🔹 Midtrans handling
     let midtransResponse = {};

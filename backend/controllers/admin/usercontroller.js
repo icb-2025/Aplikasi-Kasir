@@ -15,13 +15,6 @@ export const getUsers = async (req, res) => {
 export const addUser = async (req, res) => {
   try {
     console.log("📩 Data diterima:", req.body);
-
-    // Hash password sebelum menyimpan
-    if (req.body.password) {
-      const salt = await bcrypt.genSalt(10);
-      req.body.password = await bcrypt.hash(req.body.password, salt);
-    }
-
     const newUser = new User(req.body);
     await newUser.save();
     res.json({ message: "User berhasil ditambahkan!" });

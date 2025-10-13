@@ -45,3 +45,10 @@ Notes and caveats
 If you want, I can:
 - Add automated tests for the decrement endpoint.
 - Add a small client example that listens to RTDB changes via the regular Firebase JS SDK.
+
+
+
+You can add this file on folder config/ "firebase-service-account.json"
+and you must register on https://console.firebase.google.com -> add database -> settings -> service accounts -> Generate new private key, and you can download that file json and then you can paste in file config/firebase-service-account.json
+
+copyright Aplikasi-Kasir 2025©

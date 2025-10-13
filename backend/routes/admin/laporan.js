@@ -5,7 +5,9 @@ import {
     getLaporanByPeriode,
     getRingkasanPenjualan,
     getRekapMetodePembayaran,
-    getLaba
+    getLaba,
+    getDaftarBulanLaporan,
+    getLaporanById
 } from "../../controllers/admin/laporancontroller.js";
 
 const router = express.Router();
@@ -18,6 +20,9 @@ router.get("/periode", getLaporanByPeriode);
 
 // Admin ACC pesanan (pending -> selesai)
 router.get("/ringkasan", getRingkasanPenjualan);
+
+router.get("/bulan", getDaftarBulanLaporan);
+router.get("/:id", getLaporanById);
 
 // Admin batalkan pesanan
 router.get("/metode-pembayaran", getRekapMetodePembayaran);
