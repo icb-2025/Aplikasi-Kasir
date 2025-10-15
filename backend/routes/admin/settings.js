@@ -16,8 +16,11 @@ import {
   togglePaymentMethod,
   updateChannelLogo,
   deleteChannelFromMethod,
-  toggleChannelStatus
+  toggleChannelStatus,
+  updateUserProfilePicture,
+  updateDefaultProfilePicture
 } from "../../controllers/admin/settingscontroller.js";
+import apiMiddleware from "../../middleware/api.js";
 
 const router = express.Router();
 
@@ -39,5 +42,8 @@ router.delete("/payment-methods/channel", deleteChannelFromMethod); // ⬅️ un
 router.put("/payment-methods/channel-name", updateChannelName); // ⬅️ untuk ganti nama channel
 router.put("/store", upload.single("storeLogo"), updateStoreInfo);// update info toko dengan logo
 router.put("/general", updateGeneralSettings);// update pengaturan umum
+router.put("/users/:userId/profile-picture", apiMiddleware(), upload.single("profilePicture"), updateUserProfilePicture)
+router.put("/default", apiMiddleware(), upload.single("profilePicture"), updateDefaultProfilePicture)
+
 
 export default router;

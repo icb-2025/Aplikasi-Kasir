@@ -12,17 +12,22 @@ const settingsSchema = new Schema({
   receiptFooter: { type: String, default: "Terima kasih telah berbelanja!" },
   showBarcode: { type: Boolean, default: false },
   showCashierName: { type: Boolean, default: true },
+  defaultProfilePicture: {
+  type: String,
+  default: "https://t3.ftcdn.net/jpg/05/87/76/66/360_F_587766653_PkBNyGx7mQh9l1XXPtCAq1lBgOsLl6xH.jpg"
+},
+
 
   payment_methods: [
   {
     method: { type: String, required: true },
-    isActive: { type: Boolean, default: true }, // Tambahkan properti ini
+    isActive: { type: Boolean, default: true },
     logo: { type: String },
     channels: [
       {
         name: { type: String, required: true },
         logo: { type: String },
-        isActive: { type: Boolean, default: true } // status aktif/nonaktif
+        isActive: { type: Boolean, default: true }
       }
     ]
   }

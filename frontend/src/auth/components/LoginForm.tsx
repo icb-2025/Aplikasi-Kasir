@@ -93,7 +93,7 @@ export default function LoginForm() {
     // Simpan URL saat ini untuk redirect setelah login
     sessionStorage.setItem('redirectAfterLogin', location.pathname);
     // Arahkan ke endpoint Google OAuth
-    window.location.href = 'https://6aaf6381d70d.ngrok-free.app/api/auth/google';
+    window.location.href = 'https://bf45610fab5b.ngrok-free.app/api/auth/google';
   };
 
   const containerVariants: Variants = {

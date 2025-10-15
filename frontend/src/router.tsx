@@ -5,7 +5,7 @@ import AuthOnlyRoute from "./auth/AuthOnlyRoute";
 import AuthGuard from "./auth/AuthGuard";
 import DashboardRedirect from "./auth/DashboardRedirect";
 import NotFound from "./auth/notif/404notfound";
-import Transaction from "./pages/transaksi/index";
+
 // import ProsesTransaksi from "./pages/transaksi/proses-transaksi";
 import StatusPesananPage from "./pages/pesanan/index";
 
@@ -55,11 +55,6 @@ const AppRouter = ({ dataBarang, setDataBarang }: RouterProps) => {
           
           {/* Login Success Route - untuk menangani callback dari Google OAuth */}
           <Route path="/login-success" element={<LoginSuccess />} />
-
-          {/* Halaman Transaksi - bisa diakses oleh siapa saja */}
-          <Route path="/transaksi" element={<Transaction />} />
-          {/* <Route path="/proses-transaksi" element={<ProsesTransaksi />} /> */}
-
           {/* Status Pesanan - memerlukan login */}
           <Route 
             path="/pesanan" 

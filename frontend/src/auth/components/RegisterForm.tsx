@@ -483,5 +483,4 @@ export default function RegisterForm() {
         </motion.form>
       </motion.div>
     </motion.div>
-  );
-}
+  )};

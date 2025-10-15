@@ -598,8 +598,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                           <FileText className="w-6 h-6" />
                         </div>
                         <div>
-                          <h1 className="text-2xl font-bold">Order Receipt</h1>
-                          <p className="text-green-100 text-sm">Your order details</p>
+                          <h1 className="text-2xl font-bold">Struk Pesanan</h1>
+                          <p className="text-green-100 text-sm">Detail pesanan Anda</p>
                         </div>
                       </div>
                       <button 
@@ -613,35 +613,35 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
                   <div className="p-6">
                     <div className="max-w-md mx-auto bg-white shadow-lg rounded-lg p-6 print:w-full print:shadow-none print:mt-0">
-                      {/* RECEIPT HEADER */}
+                      {/* Struk */}
                       {receiptSettings.receiptHeader && (
                         <pre className="text-center font-bold mb-4 whitespace-pre-line">
                           {receiptSettings.receiptHeader}
                         </pre>
                       )}
 
-                      <h2 className="text-xl font-bold text-center mb-2">PURCHASE RECEIPT</h2>
+                      <h2 className="text-xl font-bold text-center mb-2">STRUK PEMBELIAN</h2>
                       <p className="text-center text-sm text-gray-600 mb-4">
                         #{transactionData.order_id || transactionData._id || "-"}
                       </p>
 
                       <div className="border-t border-b py-2 mb-4 text-sm">
                         <p>
-                          <span className="font-semibold">Date:</span>{" "}
+                          <span className="font-semibold">Tanggal:</span>{" "}
                           {formatDate(transactionData.tanggal_transaksi || transactionData.createdAt)}
                         </p>
                         <p>
-                          <span className="font-semibold">Method:</span>{" "}
+                          <span className="font-semibold">Metode:</span>{" "}
                           {transactionData.metode_pembayaran || "-"}
                         </p>
                         <p>
-                          <span className="font-semibold">Cashier:</span>{" "}
+                          <span className="font-semibold">Kasir:</span>{" "}
                           {getKasirName()}
                         </p>
                         <p>
                           <span className="font-semibold">Status:</span>{" "}
                           <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                            Completed
+                            Selesai
                           </span>
                         </p>
                       </div>
@@ -651,7 +651,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                           <tr>
                             <th className="text-left py-1">Item</th>
                             <th className="text-center py-1">Qty</th>
-                            <th className="text-right py-1">Price</th>
+                            <th className="text-right py-1">Harga</th>
                             <th className="text-right py-1">Subtotal</th>
                           </tr>
                         </thead>
@@ -672,7 +672,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                           ) : (
                             <tr>
                               <td colSpan={4} className="py-2 text-center text-gray-500">
-                                No item data
+                                tidak ada data yang di beli
                               </td>
                             </tr>
                           )}
@@ -699,14 +699,14 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                           className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2"
                         >
                           <Home className="w-4 h-4" />
-                          Close
+                          Tutup
                         </button>
                         <button
                           onClick={handlePrintReceipt}
                           className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
                         >
                           <Printer className="w-4 h-4" />
-                          Print Receipt
+                          Cetak
                         </button>
                       </div>
                     </div>

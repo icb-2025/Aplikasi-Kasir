@@ -48,14 +48,14 @@ export const deleteLaporan = async (req, res) => {
 
 // Fungsi untuk update laporan ketika ada transaksi selesai
 export const updateLaporanDenganTransaksi = async (trx) => {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const tanggal = trx.tanggal_transaksi ? new Date(trx.tanggal_transaksi) : new Date();
+  const startOfMonth = new Date(tanggal.getFullYear(), tanggal.getMonth(), 1, 0, 0, 0);
+  const endOfMonth = new Date(tanggal.getFullYear(), tanggal.getMonth() + 1, 0, 23, 59, 59);
 
-  // Cari laporan bulan berjalan
+  // Cari laporan bulan transaksi ini (rentang)
   let laporan = await Laporan.findOne({
-    "periode.start": { $lte: now },
-    "periode.end": { $gte: now }
+    "periode.start": { $lte: tanggal },
+    "periode.end": { $gte: tanggal }
   });
 
   // Kalau belum ada, bikin baru untuk bulan ini
@@ -64,30 +64,39 @@ export const updateLaporanDenganTransaksi = async (trx) => {
       laporan_penjualan: { harian: [], mingguan: [], bulanan: [] },
       periode: { start: startOfMonth, end: endOfMonth },
       laba: { total_laba: 0, detail: [] },
-      pengeluaran: [],
+      pengeluaran: 0,
       rekap_metode_pembayaran: []
     });
   }
 
-  // === Update harian ===
-  const tglStr = trx.tanggal_transaksi.toISOString().split("T")[0];
-  let harian = laporan.laporan_penjualan.harian.find(h => 
-    h.tanggal.toISOString().split("T")[0] === tglStr
-  );
+  // === Update harian (idempotent) ===
+  const tglStr = tanggal.toISOString().split("T")[0];
+  let harian = laporan.laporan_penjualan.harian.find(h => {
+    if (!h) return false;
+    if (h.tanggal instanceof Date) return h.tanggal.toISOString().split("T")[0] === tglStr;
+    return String(h.tanggal) === tglStr;
+  });
+
+  // Pastikan transaksi belum ada di laporan harian untuk menghindari double count
+  const alreadyRecorded = harian && Array.isArray(harian.transaksi) && harian.transaksi.some(t => t && (t.order_id === trx.order_id || t.nomor_transaksi === trx.nomor_transaksi));
+  if (alreadyRecorded) {
+    return; // sudah ter-record, tidak perlu update ulang
+  }
 
   if (!harian) {
     laporan.laporan_penjualan.harian.push({
-      tanggal: trx.tanggal_transaksi,
-      jumlah_transaksi: 1,
-      total_penjualan: trx.total_harga
+      tanggal: tglStr,
+      transaksi: [{ nomor_transaksi: trx.nomor_transaksi, order_id: trx.order_id, total_harga: trx.total_harga, barang_dibeli: trx.barang_dibeli, tanggal_transaksi: tanggal }],
+      total_harian: trx.total_harga
     });
   } else {
-    harian.jumlah_transaksi += 1;
-    harian.total_penjualan += trx.total_harga;
+    harian.transaksi = harian.transaksi || [];
+    harian.transaksi.push({ nomor_transaksi: trx.nomor_transaksi, order_id: trx.order_id, total_harga: trx.total_harga, barang_dibeli: trx.barang_dibeli, tanggal_transaksi: tanggal });
+    harian.total_harian = (harian.total_harian || 0) + trx.total_harga;
   }
 
   // === Update mingguan ===
-  const weekNumber = Math.ceil((trx.tanggal_transaksi.getDate()) / 7);
+  const weekNumber = Math.ceil((tanggal.getDate()) / 7);
   let mingguan = laporan.laporan_penjualan.mingguan.find(m => m.minggu_ke === weekNumber);
 
   if (!mingguan) {
@@ -102,7 +111,7 @@ export const updateLaporanDenganTransaksi = async (trx) => {
   }
 
   // === Update bulanan ===
-  const bulanKey = `${trx.tanggal_transaksi.getFullYear()}-${trx.tanggal_transaksi.getMonth() + 1}`;
+  const bulanKey = `${tanggal.getFullYear()}-${String(tanggal.getMonth() + 1).padStart(2, '0')}`;
   let bulanan = laporan.laporan_penjualan.bulanan.find(b => b.bulan === bulanKey);
 
   if (!bulanan) {
@@ -125,6 +134,23 @@ export const updateLaporanDenganTransaksi = async (trx) => {
     });
   } else {
     metode.total += trx.total_harga;
+  }
+
+  // Update detail laba (tambahkan setiap item dari trx jika belum ada)
+  laporan.laba.detail = laporan.laba.detail || [];
+  if (Array.isArray(trx.barang_dibeli)) {
+    trx.barang_dibeli.forEach(item => {
+      // tambahkan entri laba dengan nomor_transaksi untuk traceability
+      laporan.laba.detail.push({
+        kode_barang: item.kode_barang,
+        produk: item.nama_barang,
+        harga_jual: item.harga_satuan || item.harga_jual || 0,
+        harga_beli: item.harga_beli || 0,
+        jumlah: item.jumlah || 1,
+        subtotal: item.subtotal || (item.harga_satuan || 0) * (item.jumlah || 1),
+        laba: (item.harga_satuan || 0) - (item.harga_beli || 0)
+      });
+    });
   }
 
   await laporan.save();

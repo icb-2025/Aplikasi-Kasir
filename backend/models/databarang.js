@@ -15,3 +15,4 @@ const barangSchema = new Schema({
 const Barang = model("Barang", barangSchema, "Data-Barang");
 
 export default Barang;
+  

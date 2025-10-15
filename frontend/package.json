@@ -1,3 +1,4 @@
+
 {
   "name": "frontend",
   "private": true,
@@ -56,3 +57,4 @@
     "vite": "^7.1.2"
   }
 }
+

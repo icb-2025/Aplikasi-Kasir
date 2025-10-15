@@ -3,3 +3,4 @@ node_modules
 uploads
 package-lock.json
 package.json
+config/firebase-service-account.json

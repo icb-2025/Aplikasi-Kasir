@@ -17,9 +17,8 @@ export default defineConfig({
   server: {
     // Tambahkan semua host ngrok yang Anda gunakan
     allowedHosts: [
-      'f7d4cfc0f177.ngrok-free.app',
-      'ad5497bc1a80.ngrok-free.app', // Host yang diblokir
-      '6aaf6381d70d.ngrok-free.app'  // Host backend teman Anda
+      'bf45610fab5b.ngrok-free.app',
+      '0ca7d236de79.ngrok-free.app'
     ],
     proxy: {
       '/api/admin/stok-barang': {
@@ -34,31 +33,31 @@ export default defineConfig({
       },
       // Proxy untuk Google OAuth
       '/api/auth/google': {
-        target: 'https://6aaf6381d70d.ngrok-free.app', // Gunakan URL backend teman Anda
+        target: 'https://bf45610fab5b.ngrok-free.app', // Gunakan URL backend teman Anda
         changeOrigin: true,
         secure: false,
       },
       // Tambahkan proxy untuk endpoint users/me
       '/api/users/me': {
-        target: 'https://6aaf6381d70d.ngrok-free.app',
+        target: 'https://bf45610fab5b.ngrok-free.app',
         changeOrigin: true,
         secure: false,
       },
       // Proxy untuk endpoint cart
       '/api/cart': {
-        target: 'https://6aaf6381d70d.ngrok-free.app',
+        target: 'https://bf45610fab5b.ngrok-free.app',
         changeOrigin: true,
         secure: false,
       },
       // Proxy untuk endpoint transaksi
       '/api/transaksi/public/status': {
-        target: 'https://6aaf6381d70d.ngrok-free.app',
+        target: 'https://bf45610fab5b.ngrok-free.app',
         changeOrigin: true,
         secure: false,
       },
       // Proxy untuk endpoint users/history
       '/api/users/history': {
-        target: 'https://6aaf6381d70d.ngrok-free.app',
+        target: 'https://bf45610fab5b.ngrok-free.app',
         changeOrigin: true,
         secure: false,
       },
