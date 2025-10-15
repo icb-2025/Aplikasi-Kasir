@@ -1,5 +1,7 @@
 # 🛒 Kasir Plus
 
+![KasirPlus Dashboard Preview](https://res.cloudinary.com/dmrpx33rn/image/upload/v1760515106/barang/oxiiws3cvc8ilrcvthts.png)
+
 [![Node.js](https://img.shields.io/badge/Node.js-v18-green)](https://nodejs.org/) 
 [![React](https://img.shields.io/badge/React-v18-blue)](https://reactjs.org/) 
 [![MongoDB](https://img.shields.io/badge/MongoDB-v6-green)](https://www.mongodb.com/) 
@@ -8,6 +10,7 @@
 
 **Kasir Plus** adalah sistem Point of Sale (POS) modern yang memudahkan pengelolaan **transaksi penjualan, stok barang, dan laporan keuangan**.  
 Tersedia frontend interaktif dan backend API dengan **real-time update**, serta integrasi pembayaran **Midtrans (sandbox)**.
+
 
 ---------------------------------------------------------------------
 
