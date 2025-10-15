@@ -7,26 +7,38 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "https://6aaf6381d70d.ngrok-free.app/api/auth/google/callback",
+      callbackURL: "https://bf45610fab5b.ngrok-free.app/api/auth/google/callback",
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
+        const email = profile.emails?.[0]?.value;
+        const username = email ? email.split("@")[0] : profile.id;
+        const nama_lengkap = profile.displayName;
+        const foto_profile = profile.photos?.[0]?.value || null;
+
+        // 🔍 Cari user berdasarkan googleId
         let user = await User.findOne({ googleId: profile.id });
 
         if (!user) {
           user = await User.create({
             googleId: profile.id,
-            username: profile.emails[0].value,
-            nama_lengkap: profile.displayName,
-            profilePicture: profile.photos[0]?.value || null,
+            username,
+            email,
+            nama_lengkap,
+            profilePicture: foto_profile,
             role: "user",
             status: "aktif",
           });
         } else {
+          // Update data jika berubah
+          user.nama_lengkap = nama_lengkap;
+          user.profilePicture = foto_profile;
+          user.email = email;
           user.status = "aktif";
           await user.save();
         }
 
+        // 🔥 Kirim ke next middleware (callback router)
         return done(null, user);
       } catch (err) {
         return done(err, null);
