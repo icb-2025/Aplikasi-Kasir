@@ -14,8 +14,8 @@ Tersedia frontend interaktif dan backend API dengan **real-time update**, serta 
 ## 🎯 Fitur Utama
 
 ### 👤 Autentikasi Pengguna
-- Multi-role: Admin, Manajer, Kasir, Users
-- Login & Logout aman
+- Multi-role: Admin, Manajer, Kasir, User
+- Login & Logout + Login via Google
 
 ### 🛍️ Manajemen Produk
 - CRUD produk & kategori
@@ -26,6 +26,7 @@ Tersedia frontend interaktif dan backend API dengan **real-time update**, serta 
 - Tambah item ke keranjang
 - Checkout dan beli langsung
 - Integrasi **Midtrans Sandbox** untuk pembayaran online
+- Pembayaran (VA, E-Wallet via qris, Tunai)
 - Riwayat transaksi lengkap
 
 ### 📊 Laporan
@@ -45,8 +46,10 @@ Tersedia frontend interaktif dan backend API dengan **real-time update**, serta 
 - Node.js + Express + MongoDB
 - Endpoint CRUD lengkap untuk produk, kategori, transaksi
 - Socket.io untuk **update stok & transaksi real-time**
-- dan memakai firebase untuk real-time update stok 
+- Firebase untuk real-time update stok barang 
 - Integrasi Midtrans untuk payment gateway
+- Cloudinary untuk upload & penyimpanan gambar
+- CORS diaktifkan untuk memungkinkan akses frontend ke backend melalui API
 
 ------------------------------------------------------------------
 
@@ -54,7 +57,7 @@ Tersedia frontend interaktif dan backend API dengan **real-time update**, serta 
 
 Kasir-Plus/
 ├─ frontend/ # React + TypeScript + Tailwind + Framer Motion + Recharts + Lucide
-├─ backend/ # Node.js + Express + MongoDB + Socket.io + Midtrans
+├─ backend/ # Node.js + Express + MongoDB + Socket.io + Midtrans + Cloudinary
 ├─ README.md
 └─ .gitignore
 
@@ -65,9 +68,9 @@ Kasir-Plus/
 ## 🚀 Teknologi & Tools
 
 - **Frontend:** React, TypeScript, TailwindCSS, Framer Motion, Recharts, Lucide, Axios, Socket.io-client  
-- **Backend:** Node.js, Express, MongoDB, Mongoose, Socket.io, Midtrans  
-- **Database:** MongoDB  
-- **Payment Gateway:** Midtrans (sandbox)  
+- **Backend:** Node.js, Express, MongoDB, Mongoose, Socket.io, Midtrans, Cloudinary
+- **Database:** MongoDB, Firebase
+- **Payment Gateway:** Midtrans (sandbox)
 - **Lainnya:** Git, GitHub, Ngrok  
 
 -------------------------------------------------------------------
@@ -83,7 +86,7 @@ npm run dev
 cd backend
 npm install
 # Buat file .env berdasarkan .env.example
-node server.js   # atau npm run start
+npm start   # npm start dengan nodemon
 
 3️⃣ Koneksi MongoDB
 MONGO_URI=mongodb://localhost:27017/nama_database
@@ -116,3 +119,4 @@ MIDTRANS_IS_PRODUCTION=false
 📈 Real-Time Update
 
 Socket.io digunakan untuk update stok & transaksi secara real-time antar user di frontend.
+
