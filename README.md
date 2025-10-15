@@ -1,7 +1,5 @@
 # 🛒 Kasir Plus
 
-![KasirPlus Dashboard Preview](dasboard.PNG)
-
 [![Node.js](https://img.shields.io/badge/Node.js-v18-green)](https://nodejs.org/) 
 [![React](https://img.shields.io/badge/React-v18-blue)](https://reactjs.org/) 
 [![MongoDB](https://img.shields.io/badge/MongoDB-v6-green)](https://www.mongodb.com/) 
@@ -121,5 +119,6 @@ MIDTRANS_IS_PRODUCTION=false
 📈 Real-Time Update
 
 Socket.io digunakan untuk update stok & transaksi secara real-time antar user di frontend.
+
 
 
