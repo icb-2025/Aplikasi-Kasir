@@ -84,6 +84,42 @@ interface TransactionStatusData {
 
 const API_BASE_URL = 'http://192.168.110.16:5000';
 
+interface BarangInput {
+  _id?: string;
+  kode?: string;
+  kode_barang?: string;
+  nama?: string;
+  nama_barang?: string;
+  kategori?: string;
+  hargaBeli?: number;
+  harga_beli?: number;
+  hargaJual?: number;
+  harga_jual?: number;
+  stok?: number;
+  stokMinimal?: number;
+  stok_minimal?: number;
+  hargaFinal?: number;
+  gambarUrl?: string;
+  gambar_url?: string;
+  status?: string;
+}
+
+const normalizeBarangData = (barang: BarangInput): Barang => {
+  return {
+    _id: barang._id || '',
+    kode: barang.kode || barang.kode_barang || '',
+    nama: barang.nama || barang.nama_barang || 'Tanpa Nama',
+    kategori: barang.kategori || 'Lainnya',
+    hargaBeli: barang.hargaBeli || barang.harga_beli || 0,
+    hargaJual: barang.hargaJual || barang.harga_jual || 0,
+    stok: barang.stok || 0,
+    stokMinimal: barang.stokMinimal || barang.stok_minimal || 5,
+    hargaFinal: barang.hargaFinal || 0,
+    gambarUrl: barang.gambarUrl || barang.gambar_url || '',
+    status: barang.status || 'aman'
+  };
+};
+
 const Dashboard = ({ dataBarang }: DashboardProps) => {
   const navigate = useNavigate();
   const authContext = useContext(AuthContext);
@@ -94,6 +130,9 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
   }
   
   const { user } = authContext;
+  
+  const toastRef = useRef<{[key: string]: string | number}>({});
+  const lastToastTime = useRef<{[key: string]: number}>({});
   
   const [searchTerm, setSearchTerm] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -109,7 +148,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
   const [transactionSuccess, setTransactionSuccess] = useState(false);
   const [transactionData, setTransactionData] = useState<TransactionResponse | undefined>(undefined);
   const [isCartLoading, setIsCartLoading] = useState(false);
-  const [barangList, setBarangList] = useState<Barang[]>(dataBarang);
+  const [barangList, setBarangList] = useState<Barang[]>(dataBarang.map(normalizeBarangData));
   
   const [prosesTransaksiData, setProsesTransaksiData] = useState<{
     transaksi: TransactionResponse | null;
@@ -120,6 +159,39 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     transaksi: null,
     midtrans: null
   });
+  
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info', id: string = 'default') => {
+    const now = Date.now();
+    const lastTime = lastToastTime.current[id] || 0;
+    
+    if (now - lastTime < 1500) {
+      if (toastRef.current[id]) {
+        toast.update(toastRef.current[id], {
+          render: message,
+          type,
+          autoClose: 1500,
+        });
+        return;
+      }
+    }
+    
+    const toastId = toast[type](message, {
+      position: "top-right",
+      autoClose: 1500,
+      hideProgressBar: true,
+      closeOnClick: true,
+      pauseOnHover: false,
+      draggable: true,
+      progress: undefined,
+    });
+    
+    toastRef.current[id] = toastId;
+    lastToastTime.current[id] = now;
+    
+    setTimeout(() => {
+      delete toastRef.current[id];
+    }, 2000);
+  }, []);
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -134,12 +206,30 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
   ];
   
   useEffect(() => {
-    setBarangList(dataBarang);
+    setBarangList(dataBarang.map(normalizeBarangData));
   }, [dataBarang]);
 
   useEffect(() => {
     socketRef.current = io(API_BASE_URL);
     
+    socketRef.current.on('barang:created', (newBarang: BarangInput) => {
+      const normalizedBarang = normalizeBarangData(newBarang);
+      setBarangList(prevList => [...prevList, normalizedBarang]);
+    });
+
+    socketRef.current.on('barang:updated', (updatedBarang: BarangInput) => {
+      const normalizedBarang = normalizeBarangData(updatedBarang);
+      setBarangList(prevList => 
+        prevList.map(item => item._id === normalizedBarang._id ? normalizedBarang : item)
+      );
+    });
+
+    socketRef.current.on('barang:deleted', (payload: { id: string; nama?: string }) => {
+      const { id } = payload;
+      setBarangList(prevList => prevList.filter(item => item._id !== id));
+      setCart(prevCart => prevCart.filter(item => item._id !== id));
+    });
+
     socketRef.current.on('stockUpdated', (data: { id: string; stok: number }) => {
       setBarangList(prevList => 
         prevList.map(item => {
@@ -164,20 +254,14 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         prevCart.map(item => {
           if (item._id === data.id) {
             if (data.stok <= 0) {
-              toast.warning(`${item.nama} has run out of stock. Removed from cart.`, {
-                position: "top-right", autoClose: 3000, hideProgressBar: false,
-                closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
-              });
+              showToast(`${item.nama} has run out of stock. Removed from cart.`, 'warning', `stock-${item._id}`);
               return { ...item, quantity: 0 };
             }
             if (item.quantity > data.stok) {
-              toast.warning(`Stock of ${item.nama} has decreased. Quantity in cart adjusted.`, {
-                position: "top-right", autoClose: 3000, hideProgressBar: false,
-                closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
-              });
+              showToast(`Stock of ${item.nama} has decreased. Quantity in cart adjusted.`, 'warning', `stock-${item._id}`);
               return { ...item, quantity: data.stok };
             }
-            return { ...item, stok: data.stok, status };
+            return { ...item, stok: data.stok };
           }
           return item;
         }).filter(item => item.quantity > 0)
@@ -186,10 +270,14 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
 
     return () => {
       if (socketRef.current) {
+        socketRef.current.off('barang:created');
+        socketRef.current.off('barang:updated');
+        socketRef.current.off('barang:deleted');
+        socketRef.current.off('stockUpdated');
         socketRef.current.disconnect();
       }
     };
-  }, []);
+  }, [showToast]);
   
   const fetchCart = useCallback(async (): Promise<CartItem[]> => {
     const token = localStorage.getItem('token');
@@ -310,7 +398,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
           setCart(cartData);
         } catch (error) {
           console.error('Failed to load cart:', error);
-          toast.error('Failed to load cart');
+          showToast('Failed to load cart', 'error', 'load-cart');
         } finally {
           setIsCartLoading(false);
         }
@@ -320,7 +408,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     } else {
       setCart([]);
     }
-  }, [user, fetchCart]);
+  }, [user, fetchCart, showToast]);
 
   const saveTransactionStatus = useCallback((status: 'pending' | 'success' | 'expired' | 'cancelled', data?: TransactionStatusData) => {
     const transactionData = {
@@ -372,21 +460,13 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
                 if (data.transactionData && data.midtransData) {
                   setProsesTransaksiData({
                     transaksi: data.transactionData,
-                    midtrans: data.midtransData,
+                    midtrans: data.midtrans,
                     expiryTime: data.expiryTime || undefined,
                     token: data.token || undefined
                   });
                   setIsProsesTransaksiModalOpen(true);
                   
-                  toast.info('Melanjutkan proses pembayaran', {
-                    position: "top-right",
-                    autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                    progress: undefined,
-                  });
+                  showToast('Melanjutkan proses pembayaran', 'info', 'continue-payment');
                   return;
                 }
                 
@@ -394,15 +474,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
                   setCart(data.cartItems);
                   setIsTransactionModalOpen(true);
                   
-                  toast.info('Melanjutkan transaksi tertunda', {
-                    position: "top-right",
-                    autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                    progress: undefined,
-                  });
+                  showToast('Melanjutkan transaksi tertunda', 'info', 'continue-transaction');
                   return;
                 }
                 
@@ -423,7 +495,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         clearTransactionStatus();
       }
     }
-  }, [clearTransactionStatus]);
+  }, [clearTransactionStatus, showToast]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -441,10 +513,16 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
   }, []);
   
   const filteredBarang = barangList.filter(item => {
-    const matchesSearch = item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (item.kode?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-                         item.kategori.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "Semua" || item.kategori === selectedCategory;
+    if (!item) return false;
+    
+    const matchesSearch = 
+      (item.nama && item.nama.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.kode && item.kode.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.kategori && item.kategori.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesCategory = selectedCategory === "Semua" || 
+      (item.kategori && item.kategori === selectedCategory);
+    
     return matchesSearch && matchesCategory;
   });
 
@@ -462,10 +540,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       const currentStock = currentProduct ? currentProduct.stok : product.stok;
       
       if (qty > currentStock) {
-        toast.error(`Insufficient stock! Available stock: ${currentStock}`, {
-          position: "top-right", autoClose: 3000, hideProgressBar: false,
-          closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
-        });
+        showToast(`Insufficient stock! Available stock: ${currentStock}`, 'error', `stock-${product._id}`);
         return;
       }
       
@@ -476,10 +551,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         if (existingItem) {
           const newQty = existingItem.quantity + qty;
           if (newQty > currentStock) {
-            toast.error(`Quantity exceeds stock! Available stock: ${currentStock}`, {
-              position: "top-right", autoClose: 3000, hideProgressBar: false,
-              closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
-            });
+            showToast(`Quantity exceeds stock! Available stock: ${currentStock}`, 'error', `stock-${product._id}`);
             setIsAnimating(false);
             return;
           }
@@ -487,22 +559,16 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
           await updateItemQuantity(product._id, newQty);
           const updatedCart = await fetchCart();
           setCart(updatedCart);
-          toast.success(`${product.nama} updated in cart`, {
-            position: "top-right", autoClose: 2000, hideProgressBar: false,
-            closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
-          });
+          showToast(`${product.nama} updated in cart`, 'success', `cart-${product._id}`);
         } else {
           await addItemToCart(product._id, qty);
           const updatedCart = await fetchCart();
           setCart(updatedCart);
-          toast.success(`${product.nama} added to cart`, {
-            position: "top-right", autoClose: 2000, hideProgressBar: false,
-            closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
-          });
+          showToast(`${product.nama} added to cart`, 'success', `cart-${product._id}`);
         }
       } catch (error) {
         console.error('Error adding to cart:', error);
-        toast.error('Failed to add item to cart');
+        showToast('Failed to add item to cart', 'error', 'cart-error');
       } finally {
         setSelectedProduct(null);
         setQuantity(1);
@@ -518,7 +584,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       setCart(updatedCart);
     } catch (error) {
       console.error('Error removing from cart:', error);
-      toast.error('Failed to remove item from cart');
+      showToast('Failed to remove item from cart', 'error', 'remove-error');
     }
   };
 
@@ -530,10 +596,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     const currentStock = currentProduct ? currentProduct.stok : product.stok;
     
     if (newQuantity > currentStock) {
-      toast.error(`Quantity exceeds stock! Available stock: ${currentStock}`, {
-        position: "top-right", autoClose: 3000, hideProgressBar: false,
-        closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
-      });
+      showToast(`Quantity exceeds stock! Available stock: ${currentStock}`, 'error', `stock-${productId}`);
       return;
     }
     
@@ -548,7 +611,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       setCart(updatedCart);
     } catch (error) {
       console.error('Error updating quantity:', error);
-      toast.error('Failed to update quantity');
+      showToast('Failed to update quantity', 'error', 'update-error');
     }
   };
 
@@ -558,10 +621,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       const currentStock = currentProduct ? currentProduct.stok : product.stok;
       
       if (qty > currentStock) {
-        toast.error(`Insufficient stock! Available stock: ${currentStock}`, {
-          position: "top-right", autoClose: 3000, hideProgressBar: false,
-          closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined,
-        });
+        showToast(`Insufficient stock! Available stock: ${currentStock}`, 'error', `stock-${product._id}`);
         return;
       }
       
@@ -578,7 +638,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         setIsTransactionModalOpen(true);
       } catch (error) {
         console.error('Error adding to cart for buy now:', error);
-        toast.error('Failed to add item to cart');
+        showToast('Failed to add item to cart', 'error', 'buy-now-error');
       }
     });
   };
@@ -586,7 +646,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
   const handleCheckout = () => {
     checkLoginAndProceed(() => {
       if (cart.length === 0) {
-        toast.error('Shopping cart is still empty');
+        showToast('Shopping cart is still empty', 'error', 'empty-cart');
         return;
       }
       
@@ -597,7 +657,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       });
       
       if (hasInvalidItems) {
-        toast.error('Some items in cart exceed available stock. Please update your cart.');
+        showToast('Some items in cart exceed available stock. Please update your cart.', 'error', 'invalid-stock');
         return;
       }
       
@@ -656,7 +716,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       }
     } catch (error) {
       console.error('Error clearing cart after transaction:', error);
-      toast.error('Failed to clear cart after transaction');
+      showToast('Failed to clear cart after transaction', 'error', 'clear-cart-error');
     }
   };
 
@@ -669,7 +729,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     setTransactionSuccess(false);
     setTransactionData(undefined);
     setIsTransactionModalOpen(false);
-    console.log("Modal closed, state reset");
   };
 
   const handleResetProsesTransaksi = () => {
@@ -680,13 +739,20 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     });
   };
 
-  useEffect(() => {
-    console.log("Modal state changed:", isTransactionModalOpen);
-  }, [isTransactionModalOpen]);
-
   return (
     <MainLayout>
-      <ToastContainer />
+      <ToastContainer 
+        position="top-right"
+        autoClose={1500}
+        hideProgressBar
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss={false}
+        draggable
+        pauseOnHover={false}
+        theme="light"
+      />
       
       <div className="bg-white shadow-md rounded-b-xl">
         <div className="max-w-10x4 mx-auto px-4 sm:px-6 lg:px-8">
@@ -801,7 +867,17 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
             <div className="flex items-center gap-4 mb-6">
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
                 {selectedProduct.gambarUrl ? (
-                  <img src={selectedProduct.gambarUrl} alt={selectedProduct.nama} className="w-full h-full object-cover rounded-2xl" />
+                  <img 
+                    src={selectedProduct.gambarUrl} 
+                    alt={selectedProduct.nama} 
+                    className="w-full h-full object-cover rounded-2xl"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "https://via.placeholder.com/80?text=No+Image";
+                      target.classList.add("object-contain");
+                      target.classList.add("p-2");
+                    }}
+                  />
                 ) : (
                   <span className="text-3xl">🍔</span>
                 )}
@@ -860,7 +936,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
                   <>
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3,7.938l3-2.647z"></path>
                     </svg>
                     Processing...
                   </>

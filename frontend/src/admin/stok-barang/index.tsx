@@ -58,7 +58,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [isReloading, setIsReloading] = useState(false);
   const [serverError, setServerError] = useState(false);
   const [formData, setFormData] = useState<BarangFormData>({
     kode: "",
@@ -71,11 +70,76 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     gambar: null,
   });
 
-  // Inisialisasi Socket.IO
+  // Fungsi untuk generate kode barang acak 9 karakter
+  const generateRandomCode = () => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 9; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+  };
+
+  // Inisialisasi Socket.IO dengan event yang lebih lengkap
   useEffect(() => {
     socketRef.current = io("http://192.168.110.16:5000");
     
-    // Dengarkan event stockUpdated dari server
+    // Dengarkan event tambah barang
+    socketRef.current.on('barang:created', (newBarang: BarangAPI) => {
+      const mappedBarang: Barang = {
+        _id: newBarang._id,
+        kode: newBarang.kode_barang,
+        nama: newBarang.nama_barang,
+        kategori: newBarang.kategori,
+        hargaBeli: newBarang.harga_beli,
+        hargaJual: newBarang.harga_jual,
+        stok: newBarang.stok,
+        stokMinimal: newBarang.stok_minimal || 5,
+        hargaFinal: newBarang.hargaFinal,
+        gambarUrl: newBarang.gambar_url,
+        status: newBarang.status || (newBarang.stok <= 0 ? "habis" : newBarang.stok <= (newBarang.stok_minimal || 5) ? "hampir habis" : "aman"),
+      };
+      
+      setDataBarang(prevData => [...prevData, mappedBarang]);
+    });
+
+    // Dengarkan event update barang
+    socketRef.current.on('barang:updated', (updatedBarang: BarangAPI) => {
+      const mappedBarang: Barang = {
+        _id: updatedBarang._id,
+        kode: updatedBarang.kode_barang,
+        nama: updatedBarang.nama_barang,
+        kategori: updatedBarang.kategori,
+        hargaBeli: updatedBarang.harga_beli,
+        hargaJual: updatedBarang.harga_jual,
+        stok: updatedBarang.stok,
+        stokMinimal: updatedBarang.stok_minimal || 5,
+        hargaFinal: updatedBarang.hargaFinal,
+        gambarUrl: updatedBarang.gambar_url,
+        status: updatedBarang.status || (updatedBarang.stok <= 0 ? "habis" : updatedBarang.stok <= (updatedBarang.stok_minimal || 5) ? "hampir habis" : "aman"),
+      };
+      
+      setDataBarang(prevData => 
+        prevData.map(item => item._id === updatedBarang._id ? mappedBarang : item)
+      );
+    });
+
+    // Dengarkan event hapus barang
+    // Payload may include { id, nama } or only { id } depending on server implementation.
+    socketRef.current.on('barang:deleted', (payload: { id: string; nama?: string }) => {
+      const { id, nama } = payload;
+
+      // Derive name from current state if server didn't provide it
+      setDataBarang(prevData => {
+        const found = prevData.find(item => item._id === id);
+        const nameToShow = nama ?? found?.nama ?? 'Tanpa Nama';
+        // Tampilkan notifikasi ringan di console atau gunakan SweetAlert jika ingin UX konsisten
+        console.info(`Barang dihapus: ${nameToShow}`);
+        return prevData.filter(item => item._id !== id);
+      });
+    });
+
+    // Dengarkan event stockUpdated dari server (untuk update stok real-time)
     socketRef.current.on('stockUpdated', (data: { id: string; stok: number }) => {
       setDataBarang(prevData => 
         prevData.map(item => {
@@ -100,6 +164,10 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     // Cleanup saat komponen unmount
     return () => {
       if (socketRef.current) {
+        socketRef.current.off('barang:created');
+        socketRef.current.off('barang:updated');
+        socketRef.current.off('barang:deleted');
+        socketRef.current.off('stockUpdated');
         socketRef.current.disconnect();
       }
     };
@@ -133,7 +201,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     } finally {
       setLoading(false);
       setInitialLoad(false);
-      setIsReloading(false);
     }
   }, [setDataBarang]);
 
@@ -201,14 +268,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         });
         
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        
-        // Emit event stockUpdated dengan stok 0
-        if (socketRef.current) {
-          socketRef.current.emit('stockUpdated', { 
-            id: id, 
-            stok: 0 
-          });
-        }
         
         SweetAlert.close();
         setDataBarang(prevData => prevData.filter(item => item._id !== id));
@@ -297,25 +356,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       }
 
       SweetAlert.close();
-      setIsReloading(true);
-      await fetchBarang();
-      
-      // Emit event stockUpdated setelah operasi berhasil
-      if (socketRef.current) {
-        if (isEditing && editId) {
-          socketRef.current.emit('stockUpdated', { 
-            id: editId, 
-            stok: Number(formData.stok) 
-          });
-        } else {
-          // Untuk barang baru, kita perlu mendapatkan ID dari response
-          const newBarang = await res.json();
-          socketRef.current.emit('stockUpdated', { 
-            id: newBarang._id, 
-            stok: Number(formData.stok) 
-          });
-        }
-      }
+      // Tidak perlu fetchBarang di sini karena update real-time akan menangani
       
       resetForm();
       setShowModal(false);
@@ -327,17 +368,14 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       SweetAlert.error(error.message || "Gagal menyimpan barang");
     } finally {
       setActionLoading(false);
-      setIsReloading(false);
     }
   };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      {(actionLoading || isReloading) && (
+      {actionLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <LoadingSpinner />
-          </div>
+          <LoadingSpinner />
         </div>
       )}
 
@@ -355,24 +393,14 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
                 className="pl-3 pr-4 py-2 border border-gray-300 rounded-lg w-full"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                disabled={actionLoading || isReloading}
+                disabled={actionLoading}
               />
               <button
                 onClick={() => setShowModal(true)}
                 className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                disabled={actionLoading || isReloading}
+                disabled={actionLoading}
               >
                 Tambah Barang
-              </button>
-              <button
-                onClick={() => {
-                  setIsReloading(true);
-                  fetchBarang();
-                }}
-                className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                disabled={actionLoading || isReloading}
-              >
-                Refresh Data
               </button>
             </div>
           </div>
@@ -389,10 +417,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
               <h3 className="text-xl font-semibold text-gray-700 mb-2">Server Tidak Dapat Dihubungi</h3>
               <p className="text-gray-500 mb-4">Tidak dapat mengambil data barang. Silakan periksa koneksi server atau coba lagi nanti.</p>
               <button
-                onClick={() => {
-                  setIsReloading(true);
-                  fetchBarang();
-                }}
+                onClick={fetchBarang}
                 className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Coba Lagi
@@ -428,8 +453,9 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
           setShowModal(false);
           resetForm();
         }}
-        loading={actionLoading || isReloading}
+        loading={actionLoading}
         kategoriOptions={KATEGORI}
+        onGenerateCode={() => handleInputChange("kode", generateRandomCode())}
       />
     </div>
   );

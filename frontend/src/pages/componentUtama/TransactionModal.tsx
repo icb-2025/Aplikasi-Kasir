@@ -376,7 +376,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
       SweetAlert.close();
       
-      // Save transaction data to localStorage
+      // Save transaction data to localStorage with stage 'payment'
       const transactionDataToSave = {
         cartItems: cartItems,
         total: total,
@@ -389,6 +389,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
       localStorage.setItem('transactionStatus', JSON.stringify({
         status: 'pending',
+        stage: 'payment',
         data: transactionDataToSave,
         timestamp: new Date().toISOString()
       }));

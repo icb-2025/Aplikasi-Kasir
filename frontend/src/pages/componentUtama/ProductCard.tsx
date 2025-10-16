@@ -7,7 +7,7 @@ interface ProductCardProps {
   onBuyNow: (product: Barang, quantity: number) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onBuyNow }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {     // , onBuyNow
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -122,7 +122,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onBuyNo
             </svg>
             Keranjang
           </button>
-          <button
+          {/* <button
             onClick={() => onBuyNow(product, 1)}
             disabled={product.stok === 0}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center ${
@@ -135,7 +135,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onBuyNo
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             Beli
-          </button>
+          </button> */}
         </div>
       </div>
     </div>
