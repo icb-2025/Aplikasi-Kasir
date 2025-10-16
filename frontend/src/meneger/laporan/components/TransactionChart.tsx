@@ -14,6 +14,16 @@ import {
 import { Bar } from 'react-chartjs-2';
 import type { TooltipItem } from 'chart.js';
 import { formatMethodName } from './utils';
+import { 
+  Landmark, 
+  Wallet, 
+  TrendingUp, 
+  CreditCard,
+  Smartphone,
+  Building2,
+  University,
+  QrCode
+} from 'lucide-react';
 
 // Register ChartJS components
 ChartJS.register(
@@ -39,6 +49,19 @@ interface TransactionChartProps {
     _id: string;
   }>;
 }
+
+// Dapatkan icon berdasarkan metode pembayaran
+const getPaymentIcon = (method: string): React.ReactNode => {
+  if (method.includes('Virtual Account')) return <Landmark className="h-5 w-5 text-blue-500" />;
+  if (method.includes('E-Wallet')) return <Wallet className="h-5 w-5 text-green-500" />;
+  if (method.includes('Tunai')) return <TrendingUp className="h-5 w-5 text-yellow-500" />;
+  if (method.includes('Kartu Kredit')) return <CreditCard className="h-5 w-5 text-purple-500" />;
+  if (method.includes('QRIS')) return <QrCode className="h-5 w-5 text-indigo-500" />;
+  if (method.includes('Gerai')) return <Building2 className="h-5 w-5 text-orange-500" />;
+  if (method.includes('Indomaret')) return <Smartphone className="h-5 w-5 text-red-500" />;
+  if (method.includes('Alfamart')) return <University className="h-5 w-5 text-blue-700" />;
+  return <CreditCard className="h-5 w-5 text-gray-500" />;
+};
 
 const TransactionChart: React.FC<TransactionChartProps> = ({
   rekapMetodePembayaran,
@@ -260,8 +283,9 @@ const TransactionChart: React.FC<TransactionChartProps> = ({
             
             return (
               <div key={payment._id} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h4 className="font-medium text-gray-800 mb-2">
-                  {formatMethodName(payment.metode)}
+                <h4 className="font-medium text-gray-800 mb-2 flex items-center">
+                  {getPaymentIcon(payment.metode)}
+                  <span className="ml-2">{formatMethodName(payment.metode)}</span>
                 </h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>

@@ -1,5 +1,12 @@
 // src/meneger/settings/PaymentSettings.tsx
+import { useState, useEffect } from 'react';
 import type { PaymentMethod, PaymentChannel } from './index';
+
+interface PaymentStatus {
+  method: string;
+  status: string;
+  totalActiveChannels: number;
+}
 
 interface PaymentSettingsProps {
   payment_methods: PaymentMethod[];
@@ -21,7 +28,7 @@ const getPaymentIcon = (methodName: string) => {
     return (
       <div className="bg-blue-100 p-3 rounded-lg">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 2 0 00-3-3H6a3 2 0 00-3 3v8a3 3 0 003 3z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 2 0 00-3-3H6a3 2 0 00-3 3v8a3 2 0 003 3z" />
         </svg>
       </div>
     );
@@ -62,7 +69,7 @@ const getPaymentIcon = (methodName: string) => {
     return (
       <div className="bg-gray-100 p-3 rounded-lg">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 2 0 00-3-3H6a3 2 0 00-3 3v8a3 3 0 003 3z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 2 0 00-3-3H6a3 2 0 00-3 3v8a3 2 0 003 3z" />
         </svg>
       </div>
     );
@@ -148,6 +155,49 @@ const getChannelIcon = (channelName: string) => {
 export default function PaymentSettings({
   payment_methods
 }: PaymentSettingsProps) {
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus[]>([]);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [errorStatus, setErrorStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPaymentStatus = async () => {
+      try {
+        setLoadingStatus(true);
+        const response = await fetch('http://192.168.110.16:5000/api/manager/settings/status');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setPaymentStatus(data.data);
+        setErrorStatus(null);
+      } catch (error) {
+        console.error('Error fetching payment status:', error);
+        setErrorStatus('Gagal memuat status pembayaran');
+      } finally {
+        setLoadingStatus(false);
+      }
+    };
+
+    fetchPaymentStatus();
+  }, []);
+
+  // Fungsi untuk mendapatkan status pembayaran berdasarkan nama metode
+  const getStatusForMethod = (methodName: string): PaymentStatus | null => {
+    return paymentStatus.find(status => status.method === methodName) || null;
+  };
+
+  // Fungsi untuk menentukan apakah saluran aktif atau tidak
+  const isChannelActive = (methodName: string): boolean => {
+    const statusInfo = getStatusForMethod(methodName);
+    if (!statusInfo) return false;
+    
+    // Jika metode pembayaran aktif dan memiliki saluran aktif, kita asumsikan saluran aktif
+    // Karena API tidak memberikan status per saluran, kita gunakan status metode
+    return statusInfo.status === 'Aktif' && statusInfo.totalActiveChannels > 0;
+  };
+
   return (
     <div className="p-6 bg-white">
       <div className="mb-8">
@@ -155,20 +205,69 @@ export default function PaymentSettings({
         <p className="text-gray-600">Berikut adalah daftar metode pembayaran yang tersedia</p>
       </div>
       
+      {/* Error Status */}
+      {errorStatus && (
+        <div className="mb-6 bg-red-50 p-4 rounded-lg">
+          <div className="flex items-center mb-2">
+            <svg className="w-5 h-5 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <p className="text-red-800 font-medium">{errorStatus}</p>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-2 px-4 py-2 bg-red-100 text-red-800 rounded-lg text-sm hover:bg-red-200 transition"
+          >
+            Muat Ulang
+          </button>
+        </div>
+      )}
+      
       <div className="space-y-6">
         {payment_methods.map((method, methodIndex) => {
           const isQris = method.method.toLowerCase().includes('qris') || method.method.toLowerCase().includes('qr');
+          const statusInfo = getStatusForMethod(method.method);
           
           return (
             <div key={method._id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
               <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center">
-                  <div className="mr-4">
-                    {getPaymentIcon(method.method)}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="mr-4">
+                      {getPaymentIcon(method.method)}
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      {method.method || `Metode Pembayaran #${methodIndex + 1}`}
+                    </h3>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    {method.method || `Metode Pembayaran #${methodIndex + 1}`}
-                  </h3>
+                  
+                  {/* Status Badge */}
+                  <div className="flex items-center">
+                    {loadingStatus ? (
+                      <div className="flex items-center text-sm text-gray-500">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Memuat...
+                      </div>
+                    ) : statusInfo ? (
+                      <>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          statusInfo.status === 'Aktif' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {statusInfo.status}
+                        </span>
+                        <span className="ml-3 text-sm text-gray-600">
+                          {statusInfo.totalActiveChannels} saluran aktif
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-500">Status tidak tersedia</span>
+                    )}
+                  </div>
                 </div>
               </div>
               
@@ -208,6 +307,16 @@ export default function PaymentSettings({
                         <div className="font-medium text-gray-800">{method.method}</div>
                         <div className="text-xs text-gray-500">Metode pembayaran QRIS</div>
                       </div>
+                      {/* Status indicator untuk QRIS */}
+                      {statusInfo && (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          statusInfo.status === 'Aktif' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {statusInfo.status}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -219,25 +328,42 @@ export default function PaymentSettings({
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {method.channels.map((channel: PaymentChannel, channelIndex: number) => (
-                        <div key={channel._id} className="flex items-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                          <div className="mr-3">
-                            {channel.logo ? (
-                              <img 
-                                src={channel.logo} 
-                                alt={channel.name} 
-                                className="h-10 w-10 object-contain"
-                              />
-                            ) : (
-                              getChannelIcon(channel.name)
-                            )}
+                      {method.channels.map((channel: PaymentChannel, channelIndex: number) => {
+                        const channelActive = isChannelActive(method.method);
+                        return (
+                          <div 
+                            key={channel._id} 
+                            className={`flex items-center p-4 bg-gray-50 rounded-lg border-l-4 ${
+                              channelActive ? 'border-green-500' : 'border-red-500'
+                            }`}
+                          >
+                            <div className="mr-3">
+                              {channel.logo ? (
+                                <img 
+                                  src={channel.logo} 
+                                  alt={channel.name} 
+                                  className="h-10 w-10 object-contain"
+                                />
+                              ) : (
+                                getChannelIcon(channel.name)
+                              )}
+                            </div>
+                            <div className="flex-grow">
+                              <div className="flex items-center justify-between">
+                                <div className="font-medium text-gray-800">{channel.name}</div>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  channelActive 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {channelActive ? 'Aktif' : 'Nonaktif'}
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-500">Saluran #{channelIndex + 1}</div>
+                            </div>
                           </div>
-                          <div className="flex-grow">
-                            <div className="font-medium text-gray-800">{channel.name}</div>
-                            <div className="text-xs text-gray-500">Saluran #{channelIndex + 1}</div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     
                     {method.channels.length === 0 && (

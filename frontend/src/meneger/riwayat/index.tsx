@@ -24,7 +24,7 @@ interface RiwayatTransaksiAPI {
   barang_dibeli: BarangDibeli[];
   total_harga: number;
   metode_pembayaran: string;
-  kasir_id: Kasir;
+  kasir_id: string; // Perbaikan: Ubah tipe data menjadi string
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -86,6 +86,13 @@ const MenegerRiwayatPage = () => {
         const tahun = originalDate.getFullYear().toString();
         const hari = originalDate.toLocaleDateString("id-ID", { weekday: "long" }).toLowerCase();
 
+        // Perbaikan: Buat objek kasir dari string kasir_id
+        const kasirObj: Kasir = {
+          _id: item.kasir_id,
+          nama_lengkap: item.kasir_id,
+          username: item.kasir_id
+        };
+
         return {
           id: item._id,
           nomor_transaksi: item.nomor_transaksi,
@@ -98,7 +105,7 @@ const MenegerRiwayatPage = () => {
           total: item.total_harga,
           status: item.status,
           metode_pembayaran: item.metode_pembayaran,
-          kasir: item.kasir_id,
+          kasir: kasirObj, // Gunakan objek kasir yang baru dibuat
           detail: item.barang_dibeli,
           originalDate,
           bulan,
@@ -221,7 +228,7 @@ const MenegerRiwayatPage = () => {
     new Set(dataRiwayat.map(trx => trx.metode_pembayaran))
   ).map(payment => ({ value: payment, label: payment }));
 
-  // Fixed kasirOptions
+  // Perbaikan: Buat kasirOptions dengan benar
   const kasirOptions = Array.from(
     new Set(
       dataRiwayat
@@ -293,20 +300,19 @@ const MenegerRiwayatPage = () => {
     pageNumbers.push(i);
   }
   const visiblePageNumbers = pageNumbers.slice(adjustedStartPage - 1, endPage);
-    if (loading) {
-      return (
-        <MenegerLayout>
-          <div className="flex flex-col items-center justify-center h-96">
-            <LoadingSpinner />
-           {}
-          </div>
-        </MenegerLayout>
-      );
-    }
+
+  if (loading) {
+    return (
+      <MenegerLayout>
+        <div className="flex flex-col items-center justify-center h-96">
+          <LoadingSpinner />
+        </div>
+      </MenegerLayout>
+    );
+  }
 
   return (
     <MenegerLayout>
-         
       <div className="max-w-7xl mx-auto p-4 md:p-6">
         <div className="mb-6 md:mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
@@ -454,9 +460,6 @@ const MenegerRiwayatPage = () => {
             </p>
           </div>
         )}
-
-        {/* Loading State - Using LoadingSpinner component */}
-
 
         {/* Error State */}
         {error && (
@@ -708,7 +711,6 @@ const MenegerRiwayatPage = () => {
         )}
       </div>
     </MenegerLayout>
-    
   );
 };
 

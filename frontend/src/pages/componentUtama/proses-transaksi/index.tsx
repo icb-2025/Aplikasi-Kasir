@@ -107,7 +107,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
   token,
   onTransactionSuccess
 }) => {
-  // State
   const [isPaymentSuccess, setIsPaymentSuccess] = useState<boolean>(false);
   const [isExpired, setIsExpired] = useState<boolean>(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState<boolean>(false);
@@ -122,38 +121,19 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
   const [currentTransaction, setCurrentTransaction] = useState<TransactionResponse | null>(null);
   const [hasTriggeredSuccess, setHasTriggeredSuccess] = useState<boolean>(false);
   const [hasCheckedStatus, setHasCheckedStatus] = useState<boolean>(false);
-  const [manuallyCheckStatus, setManuallyCheckStatus] = useState<boolean>(false);
   
-  // State terpisah untuk menyimpan data barang dan no_va
   const [barangDibeli, setBarangDibeli] = useState<BarangDibeli[]>([]);
   const [noVa, setNoVa] = useState<string>("");
   
-  // State untuk menyimpan data kasir
   const [kasirData, setKasirData] = useState<{
     kasir_id?: string;
     kasir_nama?: string;
     kasir_username?: string;
   }>({});
   
-  // Debugging
-  useEffect(() => {
-    console.log("ProsesTransaksiModal - isOpen:", isOpen);
-    console.log("ProsesTransaksiModal - transaksi:", transaksi);
-    console.log("ProsesTransaksiModal - midtrans:", midtrans);
-    console.log("ProsesTransaksiModal - currentTransaction:", currentTransaction);
-    console.log("ProsesTransaksiModal - token:", token);
-    console.log("ProsesTransaksiModal - barangDibeli:", barangDibeli);
-    console.log("ProsesTransaksiModal - noVa:", noVa);
-    console.log("ProsesTransaksiModal - kasirData:", kasirData);
-    console.log("ProsesTransaksiModal - hasCheckedStatus:", hasCheckedStatus);
-    console.log("ProsesTransaksiModal - manuallyCheckStatus:", manuallyCheckStatus);
-  }, [isOpen, transaksi, midtrans, currentTransaction, token, barangDibeli, noVa, kasirData, hasCheckedStatus, manuallyCheckStatus]);
-  
-  // Update currentTransaction dan state terpisah ketika transaksi berubah
   useEffect(() => {
     if (transaksi) {
       setCurrentTransaction(transaksi);
-      // Simpan data barang dan no_va ke state terpisah
       if (transaksi.barang_dibeli) {
         setBarangDibeli(transaksi.barang_dibeli);
       }
@@ -161,7 +141,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
         setNoVa(transaksi.no_va);
       }
       
-      // Simpan data kasir dari transaksi awal
       setKasirData({
         kasir_id: transaksi.kasir_id,
         kasir_nama: transaksi.kasir_nama,
@@ -175,7 +154,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     return `transaksi_${orderId}_${suffix}`;
   }, [transaksi, midtrans, token]);
 
-  // Function to clear transaction storage
   const clearTransactionStorage = useCallback(() => {
     const orderId = transaksi?.order_id || midtrans?.order_id || token;
     if (orderId) {
@@ -187,14 +165,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     }
   }, [transaksi, midtrans, token]);
 
-  // checkTransactionStatus
   const checkTransactionStatus = useCallback(async (orderId: string, isManualCheck = false) => {
-    // Jika ini adalah cek manual, set flag ke true
-    if (isManualCheck) {
-      setManuallyCheckStatus(true);
-    }
-    
-    // Jika status sudah pernah dicek untuk transaksi ini dan ini bukan cek manual, lewati
     if (hasCheckedStatus && !isManualCheck) {
       console.log("Status already checked for this transaction, skipping...");
       return;
@@ -224,40 +195,30 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
       const data = await response.json();
       console.log("Respons dari API berhasil:", data);
       
-      // Validasi data sebelum digunakan
       if (!data) {
         console.error("Data transaksi tidak valid:", data);
         throw new Error("Data transaksi tidak valid");
       }
       
-      // Gabungkan data dari API dengan data yang sudah tersimpan di state
       const normalizedData = {
         ...data,
-        // Gunakan data barang dari state jika tidak ada di response
         barang_dibeli: data.barang_dibeli || barangDibeli,
         total_harga: data.total_harga || 0,
         tanggal_transaksi: data.tanggal_transaksi || data.createdAt || new Date().toISOString(),
         nomor_transaksi: data.nomor_transaksi || data.order_id || '-',
-        // Gunakan no_va dari state jika tidak ada di response
         no_va: data.no_va || noVa,
-        // Tambahkan data kasir dari state
         kasir_id: data.kasir_id || kasirData.kasir_id,
         kasir_nama: data.kasir_nama || kasirData.kasir_nama,
         kasir_username: data.kasir_username || kasirData.kasir_username,
       };
       
-      // Update currentTransaction dengan data terbaru
       setCurrentTransaction(normalizedData);
-      
-      // Tandai bahwa status sudah dicek
       setHasCheckedStatus(true);
       
-      // Periksa status dari respons API
       if (data.status === 'selesai') {
         console.log("Pembayaran berhasil, langsung menuju struk pembayaran");
         setIsPaymentSuccess(true);
         
-        // Tampilkan SweetAlert untuk pembayaran berhasil
         await SweetAlert.fire({
           title: 'Pembayaran Berhasil!',
           html: `
@@ -274,22 +235,18 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
           timerProgressBar: true
         });
         
-        // Cegah looping dengan flag
         if (!hasTriggeredSuccess && onTransactionSuccess) {
           setHasTriggeredSuccess(true);
           onTransactionSuccess(normalizedData);
         }
         
-        // Tutup modal proses transaksi saja
         setTimeout(() => {
           onClose(); 
         }, 1000);
       } else if (data.status === 'pending') {
         console.log("Status pembayaran masih pending");
-        // Reset flag jika status kembali ke pending
         setHasTriggeredSuccess(false);
         
-        // Tampilkan SweetAlert untuk status pending
         await SweetAlert.fire({
           title: 'Menunggu Pembayaran',
           html: `
@@ -307,6 +264,8 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
       } else if (data.status === 'expire') {
         console.log("Pembayaran kadaluarsa");
         setIsExpired(true);
+        clearTransactionStorage();
+        
         await SweetAlert.fire({
           title: 'Pembayaran Kadaluarsa',
           html: `
@@ -364,16 +323,10 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
       });
     } finally {
       setIsCheckingStatus(false);
-      // Reset flag manual check setelah selesai
-      if (isManualCheck) {
-        setManuallyCheckStatus(false);
-      }
     }
-  }, [onTransactionSuccess, onClose, hasTriggeredSuccess, barangDibeli, noVa, kasirData, hasCheckedStatus]);
+  }, [onTransactionSuccess, onClose, hasTriggeredSuccess, barangDibeli, noVa, kasirData, hasCheckedStatus, clearTransactionStorage]);
 
-  // useEffect untuk mendeteksi pembayaran berhasil dari URL
   useEffect(() => {
-    // Jika pembayaran sudah berhasil, tidak perlu cek lagi
     if (isPaymentSuccess) return;
     
     if (currentTransaction?.metode_pembayaran?.toLowerCase().includes('tunai')) {
@@ -406,12 +359,10 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
 
     console.log('Order ID dari URL:', orderId);
 
-    // Jika ada orderId dari URL, cek status ke backend
     if (orderId) {
       checkTransactionStatus(orderId);
     }
     
-    // Cek status transaksi saat komponen dimount
     if (currentTransaction?.status === 'selesai') {
       console.log("Transaksi sudah selesai, langsung tampilkan struk");
       setIsPaymentSuccess(true);
@@ -425,7 +376,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     }
   }, [token, currentTransaction, onTransactionSuccess, checkTransactionStatus, onClose, hasTriggeredSuccess, isPaymentSuccess]);
 
-  // useEffect untuk inisialisasi
   useEffect(() => {
     if (!currentTransaction || !midtrans || isInitialized) return;
     
@@ -481,7 +431,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     setIsInitialized(true);
   }, [currentTransaction, midtrans, expiryTime, token, isInitialized, getStorageKey]);
 
-  // useEffect untuk timer countdown
   useEffect(() => {
     if (!isInitialized || isExpired || isPaymentSuccess) return;
     
@@ -502,7 +451,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     return () => clearTimeout(timerId);
   }, [timeLeft, isInitialized, isExpired, isPaymentSuccess, getStorageKey]);
 
-  // useEffect untuk membersihkan localStorage
   useEffect(() => {
     if (isPaymentSuccess || isExpired) {
       const orderId = currentTransaction?.order_id || midtrans?.order_id || token;
@@ -518,7 +466,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     }
   }, [isPaymentSuccess, isExpired, currentTransaction, midtrans, token, getStorageKey]);
 
-  // useEffect untuk auto refresh status pembayaran VA
   useEffect(() => {
     if (paymentType === 'va' && !isPaymentSuccess && !isExpired && timeLeft > 0) {
       const interval = setInterval(() => {
@@ -536,12 +483,10 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     }
   }, [paymentType, isPaymentSuccess, isExpired, timeLeft, autoRefreshCount, currentTransaction, midtrans, token, checkTransactionStatus]);
 
-  // useEffect untuk reset auto refresh count
   useEffect(() => {
     setAutoRefreshCount(0);
   }, [paymentType]);
 
-  // useEffect untuk menentukan tipe pembayaran
   useEffect(() => {
     console.log("Token dari URL:", token);
     console.log("Data transaksi dari state:", currentTransaction);
@@ -561,7 +506,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     }
   }, [token, currentTransaction, midtrans]);
 
-  // useEffect untuk generate QR code
   useEffect(() => {
     if (paymentType === 'qris') {
       setQrCodeLoading(true);
@@ -587,7 +531,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     }
   }, [midtrans, paymentType]);
 
-  // cancelTransaction
   const cancelTransaction = async (transactionId: string) => {
     setIsCancelling(true);
     try {
@@ -616,7 +559,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
       const data = await response.json();
       console.log("Respons pembatalan berhasil:", data);
       
-      // Bersihkan localStorage setelah pembatalan berhasil
       clearTransactionStorage();
       
       await SweetAlert.fire({
@@ -634,8 +576,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
         timerProgressBar: true
       });
       
-      // Arahkan ke halaman transaksi
-      window.location.href = "/transaksi";
+      window.location.href = "/";
     } catch (error) {
       console.error("Error saat membatalkan transaksi:", error);
       
@@ -656,7 +597,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     }
   };
 
-  // handlePaymentWithMidtrans
   const handlePaymentWithMidtrans = async () => {
     console.log("Memproses pembayaran dengan Midtrans");
     
@@ -668,7 +608,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     });
 
     if (orderId) {
-      // Panggil checkTransactionStatus dengan parameter true untuk menandai ini adalah cek manual
       await checkTransactionStatus(orderId, true);
     } else {
       console.error("Order ID tidak ditemukan");
@@ -687,7 +626,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     }
   };
 
-  // handlePaymentCancel
   const handlePaymentCancel = async () => {
     console.log("Pembayaran dibatalkan");
     
@@ -733,11 +671,9 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     }
   };
 
-  // useEffect untuk menampilkan alert saat pembayaran kadaluarsa
   useEffect(() => {
     if (isExpired) {
       if (isInitialized) {
-        // Bersihkan localStorage saat pembayaran kadaluarsa
         clearTransactionStorage();
         
         SweetAlert.fire({
@@ -756,7 +692,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     }
   }, [isExpired, isInitialized, clearTransactionStorage]);
 
-  // useEffect untuk menonaktifkan proses pembayaran saat sudah berhasil
   useEffect(() => {
     if (isPaymentSuccess) {
       // Disable any payment processing
@@ -789,7 +724,8 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
               <Header 
                 onClose={onClose} 
                 paymentType={paymentType} 
-                metodePembayaran={currentTransaction?.metode_pembayaran} 
+                metodePembayaran={currentTransaction?.metode_pembayaran}
+                
               />
 
               {!isExpired && !isPaymentSuccess && paymentType !== 'tunai' && (
@@ -830,14 +766,13 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
                       hargaFinal={currentTransaction?.total_harga}
                     />
 
-                    {/* Gunakan state barangDibeli secara langsung */}
                     <PurchaseDetails barangDibeli={barangDibeli} />
 
                     {paymentType === 'va' && currentTransaction && midtrans && (
                       <VirtualAccountPayment
                         metodePembayaran={currentTransaction.metode_pembayaran}
                         totalHarga={currentTransaction.total_harga}
-                        noVa={noVa} // Gunakan state noVa
+                        noVa={noVa}
                         permataVaNumber={midtrans.permata_va_number}
                         vaNumber={midtrans.va_number}
                         status={currentTransaction.status}

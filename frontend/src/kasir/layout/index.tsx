@@ -1,3 +1,4 @@
+// layout.tsx
 import { useState, type ReactNode, useEffect, useRef } from "react";
 import {
   Home,
@@ -67,7 +68,7 @@ function Sidebar({
 
   return (
     <>
-      {/* Toggle button untuk mobile */}
+      {/* Toggle button untuk mobile - Posisi disesuaikan */}
       <button
         className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-md transition-all duration-300 hover:opacity-90 shadow-md"
         onClick={() => setOpen(!open)}
@@ -97,8 +98,8 @@ function Sidebar({
               : "w-64"
           }`}
       >
-        {/* Logo/Header Sidebar */}
-        <div className="flex items-center justify-between mb-10 pt-2">
+        {/* Logo/Header Sidebar - Padding top ditambah untuk mobile */}
+        <div className="flex items-center justify-between mb-10 pt-8 md:pt-2">
           <div className="flex items-center gap-3">
             <div className="bg-white p-2 rounded-lg shadow-md">
               <ShoppingCart className="w-6 h-6 text-orange-700" />

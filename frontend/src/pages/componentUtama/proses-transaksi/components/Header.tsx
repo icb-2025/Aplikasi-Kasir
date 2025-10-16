@@ -1,4 +1,3 @@
-import { X } from "lucide-react";
 import { CreditCard, QrCode, Smartphone, Wallet } from "lucide-react";
 
 interface HeaderProps {
@@ -37,7 +36,7 @@ const getPaymentMethodName = (paymentType: 'va' | 'qris' | 'ewallet' | 'tunai' |
   }
 };
 
-const Header: React.FC<HeaderProps> = ({ onClose, paymentType, metodePembayaran }) => {
+const Header: React.FC<HeaderProps> = ({paymentType, metodePembayaran }) => {
   return (
     <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
       <div className="flex items-center justify-between">
@@ -50,12 +49,6 @@ const Header: React.FC<HeaderProps> = ({ onClose, paymentType, metodePembayaran 
             <p className="text-blue-100 text-sm">{getPaymentMethodName(paymentType, metodePembayaran)}</p>
           </div>
         </div>
-        <button 
-          onClick={onClose}
-          className="p-2 rounded-full hover:bg-white/20 transition-colors"
-        >
-          <X className="w-6 h-6" />
-        </button>
       </div>
     </div>
   );

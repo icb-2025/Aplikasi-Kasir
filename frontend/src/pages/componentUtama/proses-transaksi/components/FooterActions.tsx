@@ -1,6 +1,4 @@
-// FooterActions.tsx
 import { Loader2 } from "lucide-react";
-import SweetAlert from "../../../../components/SweetAlert";
 
 interface FooterActionsProps {
   isCancelling: boolean;
@@ -8,7 +6,7 @@ interface FooterActionsProps {
   isExpired: boolean;
   onPaymentCancel: () => void;
   onPaymentWithMidtrans: () => void;
-  paymentType?: 'va' | 'qris' | 'ewallet' | 'tunai' | null;
+  paymentType?: 'va' | 'qris' | 'tunai' | null;
   transactionStatus?: string;
 }
 
@@ -51,27 +49,7 @@ const FooterActions: React.FC<FooterActionsProps> = ({
           
           <div className="flex gap-4">
             <button
-              onClick={async () => {
-                const result = await SweetAlert.fire({
-                  title: 'Konfirmasi Pembatalan',
-                  html: `
-                    <div class="text-left">
-                      <p>Apakah Anda yakin ingin membatalkan transaksi ini?</p>
-                      <p class="mt-2 text-sm text-gray-600">Tindakan ini tidak dapat dibatalkan.</p>
-                    </div>
-                  `,
-                  icon: 'warning',
-                  showCancelButton: true,
-                  confirmButtonColor: '#EF4444',
-                  cancelButtonColor: '#6B7280',
-                  confirmButtonText: 'Ya, Batalkan',
-                  cancelButtonText: 'Tidak'
-                });
-                
-                if (result.isConfirmed) {
-                  onPaymentCancel();
-                }
-              }}
+              onClick={onPaymentCancel}
               disabled={isCancelling || isCheckingStatus}
               className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:bg-gray-400 flex items-center justify-center"
             >
@@ -189,27 +167,7 @@ const FooterActions: React.FC<FooterActionsProps> = ({
         
         <div className="flex gap-4">
           <button
-            onClick={async () => {
-              const result = await SweetAlert.fire({
-                title: 'Konfirmasi Pembatalan',
-                html: `
-                  <div class="text-left">
-                    <p>Apakah Anda yakin ingin membatalkan transaksi ini?</p>
-                    <p class="mt-2 text-sm text-gray-600">Tindakan ini tidak dapat dibatalkan.</p>
-                  </div>
-                `,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#EF4444',
-                cancelButtonColor: '#6B7280',
-                confirmButtonText: 'Ya, Batalkan',
-                cancelButtonText: 'Tidak'
-              });
-              
-              if (result.isConfirmed) {
-                onPaymentCancel();
-              }
-            }}
+            onClick={onPaymentCancel}
             disabled={isCancelling || isCheckingStatus}
             className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:bg-gray-400 flex items-center justify-center"
           >

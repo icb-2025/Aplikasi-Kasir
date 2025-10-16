@@ -20,7 +20,7 @@ const AuthOnlyRoute: React.FC<AuthOnlyRouteProps> = ({ children }) => {
   if (auth.user) {
     let redirectPath = '/';
     if (auth.user.role === 'admin') redirectPath = '/admin/dashboard';
-    else if (auth.user.role === 'manajer') redirectPath = '/manajer/dashboard';
+    else if (auth.user.role === 'manajer') redirectPath = '/meneger/dashboard';
     else if (auth.user.role === 'kasir') redirectPath = '/kasir/dashboard';
     
     return <Navigate to={redirectPath} replace />;

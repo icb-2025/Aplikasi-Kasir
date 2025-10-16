@@ -72,7 +72,6 @@ interface MidtransData {
   }>;
 }
 
-// Define a proper type for transaction status data
 interface TransactionStatusData {
   cartItems?: CartItem[];
   total?: number;
@@ -112,7 +111,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
   const [isCartLoading, setIsCartLoading] = useState(false);
   const [barangList, setBarangList] = useState<Barang[]>(dataBarang);
   
-  // State for ProsesTransaksiModal
   const [prosesTransaksiData, setProsesTransaksiData] = useState<{
     transaksi: TransactionResponse | null;
     midtrans: MidtransData | null;
@@ -135,16 +133,13 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     { id: "Signature", name: "Signature", icon: "⭐" },
   ];
   
-  // Update barangList when props dataBarang changes
   useEffect(() => {
     setBarangList(dataBarang);
   }, [dataBarang]);
 
-  // Initialize Socket.IO
   useEffect(() => {
     socketRef.current = io(API_BASE_URL);
     
-    // Listen for stockUpdated event from server
     socketRef.current.on('stockUpdated', (data: { id: string; stok: number }) => {
       setBarangList(prevList => 
         prevList.map(item => {
@@ -165,11 +160,9 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         })
       );
       
-      // Update cart if the updated item is in cart
       setCart(prevCart => 
         prevCart.map(item => {
           if (item._id === data.id) {
-            // If stock is empty, remove from cart
             if (data.stok <= 0) {
               toast.warning(`${item.nama} has run out of stock. Removed from cart.`, {
                 position: "top-right", autoClose: 3000, hideProgressBar: false,
@@ -177,7 +170,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
               });
               return { ...item, quantity: 0 };
             }
-            // If quantity in cart exceeds new stock, adjust it
             if (item.quantity > data.stok) {
               toast.warning(`Stock of ${item.nama} has decreased. Quantity in cart adjusted.`, {
                 position: "top-right", autoClose: 3000, hideProgressBar: false,
@@ -188,11 +180,10 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
             return { ...item, stok: data.stok, status };
           }
           return item;
-        }).filter(item => item.quantity > 0) // Remove items with quantity 0
+        }).filter(item => item.quantity > 0)
       );
     });
 
-    // Cleanup when component unmounts
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -331,13 +322,11 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     }
   }, [user, fetchCart]);
 
-  // Function to save transaction status to localStorage
   const saveTransactionStatus = useCallback((status: 'pending' | 'success' | 'expired' | 'cancelled', data?: TransactionStatusData) => {
     const transactionData = {
       status,
       data: {
         ...data,
-        // Also save transaction and midtrans data if available
         transactionData: data?.transactionData || null,
         midtransData: data?.midtransData || null,
         expiryTime: data?.expiryTime || null,
@@ -350,11 +339,9 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     localStorage.setItem('transactionStatus', JSON.stringify(transactionData));
   }, []);
 
-  // Function to clear transaction status from localStorage
   const clearTransactionStatus = useCallback(() => {
     localStorage.removeItem('transactionStatus');
     
-    // Also clear any transaction-specific keys
     const keys = Object.keys(localStorage);
     keys.forEach(key => {
       if (key.startsWith('transaksi_')) {
@@ -363,7 +350,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     });
   }, []);
 
-  // Check transaction status when app loads
   useEffect(() => {
     const savedTransactionStatus = localStorage.getItem('transactionStatus');
     
@@ -375,63 +361,52 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
           timestamp: string;
         };
         
-        // Check if transaction is still valid (e.g., less than 24 hours)
         const transactionTime = new Date(timestamp);
         const now = new Date();
         const diffInHours = (now.getTime() - transactionTime.getTime()) / (1000 * 60 * 60);
         
-        if (diffInHours < 24) { // Transaction is still valid if less than 24 hours
+        if (diffInHours < 24) {
           if (status === 'pending') {
-            // Verify transaction status with server before showing modal
             const verifyTransaction = async () => {
               try {
-                if (data.transactionData?.order_id) {
-                  const response = await fetch(`${API_BASE_URL}/api/transaksi/public/status/${data.transactionData.order_id}`);
+                if (data.transactionData && data.midtransData) {
+                  setProsesTransaksiData({
+                    transaksi: data.transactionData,
+                    midtrans: data.midtransData,
+                    expiryTime: data.expiryTime || undefined,
+                    token: data.token || undefined
+                  });
+                  setIsProsesTransaksiModalOpen(true);
                   
-                  if (response.ok) {
-                    const transactionStatus = await response.json();
-                    
-                    // If transaction is cancelled or expired, don't show modal
-                    if (transactionStatus.status === 'batal' || transactionStatus.status === 'expire') {
-                      console.log('Transaction is cancelled or expired, clearing storage');
-                      clearTransactionStatus();
-                      return;
-                    }
-                    
-                    // If transaction is still pending, show modal
-                    setCart(data.cartItems || []);
-                    
-                    // Check if this transaction is a Virtual Account that requires ProsesTransaksiModal
-                    const isVirtualAccount = data.paymentMethod && 
-                      (data.paymentMethod.includes('Virtual Account') || 
-                       data.paymentMethod.toLowerCase().includes('va'));
-                    
-                    if (isVirtualAccount && data.transactionData && data.midtransData) {
-                      setProsesTransaksiData({
-                        transaksi: data.transactionData,
-                        midtrans: data.midtransData,
-                        expiryTime: data.expiryTime || undefined,
-                        token: data.token || undefined
-                      });
-                      setIsProsesTransaksiModalOpen(true);
-                    } else {
-                      setIsTransactionModalOpen(true);
-                    }
-                    
-                    toast.info('Melanjutkan transaksi tertunda', {
-                      position: "top-right",
-                      autoClose: 3000,
-                      hideProgressBar: false,
-                      closeOnClick: true,
-                      pauseOnHover: true,
-                      draggable: true,
-                      progress: undefined,
-                    });
-                  } else {
-                    // If failed to verify, clear storage
-                    clearTransactionStatus();
-                  }
+                  toast.info('Melanjutkan proses pembayaran', {
+                    position: "top-right",
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    progress: undefined,
+                  });
+                  return;
                 }
+                
+                if (data.cartItems && data.total !== undefined) {
+                  setCart(data.cartItems);
+                  setIsTransactionModalOpen(true);
+                  
+                  toast.info('Melanjutkan transaksi tertunda', {
+                    position: "top-right",
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    progress: undefined,
+                  });
+                  return;
+                }
+                
+                clearTransactionStatus();
               } catch (error) {
                 console.error('Error verifying transaction status:', error);
                 clearTransactionStatus();
@@ -441,7 +416,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
             verifyTransaction();
           }
         } else {
-          // Remove expired transaction data
           clearTransactionStatus();
         }
       } catch (error) {
@@ -450,6 +424,21 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       }
     }
   }, [clearTransactionStatus]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (localStorage.getItem('transactionStatus')) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
   
   const filteredBarang = barangList.filter(item => {
     const matchesSearch = item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -469,7 +458,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
 
   const addToCart = async (product: Barang, qty: number = 1) => {
     checkLoginAndProceed(async () => {
-      // Check latest stock from barangList state
       const currentProduct = barangList.find(item => item._id === product._id);
       const currentStock = currentProduct ? currentProduct.stok : product.stok;
       
@@ -538,7 +526,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     const product = cart.find(item => item._id === productId);
     if (!product) return;
     
-    // Check latest stock from barangList state
     const currentProduct = barangList.find(item => item._id === productId);
     const currentStock = currentProduct ? currentProduct.stok : product.stok;
     
@@ -567,7 +554,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
 
   const handleBuyNow = async (product: Barang, qty: number = 1) => {
     checkLoginAndProceed(async () => {
-      // Check latest stock from barangList state
       const currentProduct = barangList.find(item => item._id === product._id);
       const currentStock = currentProduct ? currentProduct.stok : product.stok;
       
@@ -584,7 +570,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         const updatedCart = await fetchCart();
         setCart(updatedCart);
         
-        // Save transaction status to localStorage
         saveTransactionStatus('pending', {
           cartItems: updatedCart,
           total: updatedCart.reduce((total, item) => total + (item.quantity * (item.hargaFinal || item.hargaJual)), 0)
@@ -605,7 +590,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         return;
       }
       
-      // Validate stock before checkout
       const hasInvalidItems = cart.some(item => {
         const currentProduct = barangList.find(p => p._id === item._id);
         const currentStock = currentProduct ? currentProduct.stok : item.stok;
@@ -617,7 +601,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         return;
       }
       
-      // Save transaction status to localStorage
       saveTransactionStatus('pending', {
         cartItems: cart,
         total: cart.reduce((total, item) => total + (item.quantity * (item.hargaFinal || item.hargaJual)), 0)
@@ -639,7 +622,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         setTransactionData(transactionData);
         setTransactionSuccess(true);
         
-        // Clear transaction status from localStorage
         clearTransactionStatus();
         
         const saveToHistory = async () => {
@@ -909,6 +891,16 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         transactionSuccess={transactionSuccess}
         transactionData={transactionData}
         onOpenProsesTransaksi={(data) => {
+          saveTransactionStatus('pending', {
+            cartItems: cart,
+            total: totalCartValue,
+            transactionData: data.transaksi,
+            midtransData: data.midtrans,
+            expiryTime: data.expiryTime,
+            token: data.token,
+            paymentMethod: data.transaksi?.metode_pembayaran
+          });
+          
           setProsesTransaksiData(data);
           setIsProsesTransaksiModalOpen(true);
         }}

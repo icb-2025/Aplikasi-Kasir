@@ -1,8 +1,13 @@
+// src/admin/layout/TopNav.tsx
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 
-const TopNav: React.FC = () => {
+interface TopNavProps {
+  onMenuToggle: () => void;
+}
+
+const TopNav: React.FC<TopNavProps> = ({ onMenuToggle }) => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { logout, user } = useAuth();
@@ -47,6 +52,16 @@ const TopNav: React.FC = () => {
     <header className="bg-white shadow-sm z-10 border-b border-gray-200">
       <div className="flex items-center justify-between py-3 px-4 md:px-6">
         <div className="flex items-center">
+          {/* Tombol menu untuk mobile */}
+          <button 
+            className="md:hidden mr-3 p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            onClick={onMenuToggle}
+            aria-label="Toggle menu"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
           <h1 className="text-lg font-semibold text-gray-800">Admin Dashboard</h1>
         </div>
 
@@ -79,7 +94,7 @@ const TopNav: React.FC = () => {
                   onClick={() => setProfileDropdownOpen(false)}
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                   </svg>
                   Profile
                 </Link>
@@ -99,7 +114,7 @@ const TopNav: React.FC = () => {
                   ) : (
                     <>
                       <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                       </svg>
                       Logout
                     </>

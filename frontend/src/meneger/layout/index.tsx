@@ -6,7 +6,6 @@ import {
   History,
   Menu as MenuIcon,
   X,
-  Bell,
   User,
   LogOut,
   Settings,
@@ -74,7 +73,7 @@ function Sidebar({
 
   return (
     <>
-      {/* Toggle button untuk mobile */}
+      {/* Toggle button untuk mobile - Posisi disesuaikan */}
       <button
         className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-md transition-all duration-300 hover:opacity-90 shadow-md"
         onClick={() => setOpen(!open)}
@@ -103,20 +102,32 @@ function Sidebar({
               : "w-64"
           }`}
       >
-        {/* Logo/Header Sidebar */}
-        <div className="flex items-center justify-between mb-10 pt-2">
+        {/* Logo/Header Sidebar - Padding top ditambah untuk mobile */}
+        <div className="flex items-center justify-between mb-10 pt-8 md:pt-2">
           <div className="flex items-center gap-3">
             <div className="bg-white p-2 rounded-lg shadow-md">
               <LayoutDashboard className="w-6 h-6 text-orange-700" />
             </div>
-            {!collapsed && <h2 className="text-xl font-bold tracking-wide">Manager</h2>}
+            {(!collapsed || open) && <h2 className="text-xl font-bold tracking-wide">Manager</h2>}
           </div>
+          
+          {/* Tombol collapse untuk desktop */}
           {!isMobile && (
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="p-1 rounded-full hover:bg-white/20 transition"
             >
               {collapsed ? <ChevronRight /> : <ChevronLeft />}
+            </button>
+          )}
+          
+          {/* Tombol close untuk mobile */}
+          {isMobile && open && (
+            <button
+              onClick={() => setOpen(false)}
+              className="p-1 rounded-full hover:bg-white/20 transition"
+            >
+              <X className="w-5 h-5" />
             </button>
           )}
         </div>
@@ -137,13 +148,13 @@ function Sidebar({
               onClick={() => isMobile && setOpen(false)}
             >
               {item.icon}
-              {!collapsed && <span>{item.label}</span>}
+              {(!collapsed || open) && <span>{item.label}</span>}
             </NavLink>
           ))}
         </nav>
 
         {/* Footer Sidebar */}
-        {!collapsed && (
+        {(!collapsed || open) && (
           <div className="text-center text-gray-300 text-xs">
             Versi 1.0.0
           </div>
@@ -193,12 +204,6 @@ function TopNav() {
       </h1>
 
       <div className="flex items-center gap-4">
-        <button className="p-2 rounded-full hover:bg-gray-100 transition-all duration-200 relative group">
-          <Bell className="w-5 h-5 text-gray-600" />
-          <span className="absolute top-0 right-0 bg-red-500 text-white rounded-full text-xs w-4 h-4 flex items-center justify-center">
-            5
-          </span>
-        </button>
 
         <div className="relative" ref={dropdownRef}>
           <button

@@ -4,6 +4,16 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { formatMethodName } from './utils';
+import { 
+  Landmark, 
+  Wallet, 
+  TrendingUp, 
+  CreditCard,
+  Smartphone,
+  Building2,
+  University,
+  QrCode
+} from 'lucide-react';
 
 interface TransactionTableProps {
   tableData: Array<{
@@ -14,6 +24,19 @@ interface TransactionTableProps {
     tanggal: string;
   }>;
 }
+
+// Dapatkan icon berdasarkan metode pembayaran
+const getPaymentIcon = (method: string): React.ReactNode => {
+  if (method.includes('Virtual Account')) return <Landmark className="h-5 w-5 text-blue-500" />;
+  if (method.includes('E-Wallet')) return <Wallet className="h-5 w-5 text-green-500" />;
+  if (method.includes('Tunai')) return <TrendingUp className="h-5 w-5 text-yellow-500" />;
+  if (method.includes('Kartu Kredit')) return <CreditCard className="h-5 w-5 text-purple-500" />;
+  if (method.includes('QRIS')) return <QrCode className="h-5 w-5 text-indigo-500" />;
+  if (method.includes('Gerai')) return <Building2 className="h-5 w-5 text-orange-500" />;
+  if (method.includes('Indomaret')) return <Smartphone className="h-5 w-5 text-red-500" />;
+  if (method.includes('Alfamart')) return <University className="h-5 w-5 text-blue-700" />;
+  return <CreditCard className="h-5 w-5 text-gray-500" />;
+};
 
 const TransactionTable: React.FC<TransactionTableProps> = ({ tableData }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -170,7 +193,10 @@ const TransactionTable: React.FC<TransactionTableProps> = ({ tableData }) => {
                         {item.tanggal}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatMethodName(item.metode)}
+                        <div className="flex items-center">
+                          {getPaymentIcon(item.metode)}
+                          <span className="ml-2">{formatMethodName(item.metode)}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                         Rp {item.total.toLocaleString('id-ID')}
