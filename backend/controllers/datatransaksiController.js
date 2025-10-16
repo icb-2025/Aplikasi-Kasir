@@ -437,7 +437,13 @@ export const cancelTransaksi = async (req, res) => {
     transaksi.status = "dibatalkan";
 
     for (const item of transaksi.barang_dibeli) {
-      const barang = await Barang.findById(item.kode_barang);
+      let barang = null;
+
+      if (mongoose.Types.ObjectId.isValid(item.kode_barang)) {
+    barang = await Barang.findById(item.kode_barang);
+  } else {
+    barang = await Barang.findOne({ kode_barang: item.kode_barang });
+  }
       if (barang) {
         const jumlah = Number(item.jumlah);
         if (db) {
@@ -788,4 +794,4 @@ function mapMidtransToSettings(notification) {
     default:
       return { method: notification.payment_type, channel: null };
   }
-}
+} 
