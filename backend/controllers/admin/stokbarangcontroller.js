@@ -96,7 +96,7 @@ export const createBarang = async (req, res) => {
       });
     }
 
-    io.emit("stockUpdated", { id: barangId, stok: barang.stok || 0 });
+    io.emit("barang:created", barang);
 
     res.status(201).json({
       message: "Barang berhasil ditambahkan!",
@@ -161,7 +161,7 @@ export const updateBarang = async (req, res) => {
       });
     }
 
-    io.emit("stockUpdated", { id, stok: barang.stok });
+    io.emit("barang:updated", barang); // 🟡 Event baru untuk update
 
     res.json({
       message: "Barang berhasil diperbarui!",
@@ -185,8 +185,8 @@ export const deleteBarang = async (req, res) => {
     if (!barang) return res.status(404).json({ message: "Barang tidak ditemukan" });
 
     await db.ref(`/barang/${req.params.id}`).remove();
-    io.emit("stockUpdated", { id: req.params.id, stok: 0 });
-
+    io.emit("barang:deleted", { id: req.params.id });
+    
     res.json({ message: "Barang berhasil dihapus!" });
   } catch (error) {
     res.status(500).json({ message: error.message });
