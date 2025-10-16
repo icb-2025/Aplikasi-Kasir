@@ -157,6 +157,38 @@ export const addChannelToMethod = async (req, res) => {
   }
 };
 
+
+export const getStatusPayments = async (req, res) => {
+  try {
+    const settings = await Settings.findOne();
+
+    if (!settings || !settings.payment_methods) {
+      return res.status(404).json({ message: "Data metode pembayaran tidak ditemukan" });
+    }
+
+    // Proses setiap method pembayaran
+    const results = settings.payment_methods.map((methodObj) => {
+      const { method, channels, isActive } = methodObj;
+
+      // Hitung jumlah channel aktif
+      const activeChannels = (channels || []).filter((ch) => ch.isActive).length;
+
+      return {
+        method,
+        status: isActive ? "Aktif" : "Nonaktif",
+        totalActiveChannels: activeChannels,
+      };
+    });
+
+    return res.status(200).json({
+      message: "Status pembayaran berhasil diambil",
+      data: results,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Update nama channel
 export const updateChannelName = async (req, res) => {
   try {
