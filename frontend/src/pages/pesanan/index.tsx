@@ -4,8 +4,7 @@ import { SweetAlert } from "../../components/SweetAlert";
 import MainLayout from '../../components/MainLayout';
 import Sidebar from "../componentUtama/Sidebar";
 import { customStyles } from '../CssHalamanUtama';
-import { 
-  FileText, 
+import {  
   Eye, 
   RefreshCw, 
   Calendar,
@@ -59,6 +58,11 @@ interface Kasir {
   role: string;
 }
 
+interface Settings {
+  receiptHeader: string;
+  receiptFooter: string;
+}
+
 interface LocationState {
   transaksiTerbaru?: Pesanan;
   message?: string;
@@ -70,6 +74,7 @@ interface ApiResponse {
 }
 
 const API_URL = "http://192.168.110.16:5000/api/users/history";
+const SETTINGS_URL = "http://192.168.110.16:5000/api/admin/settings";
 
 const StatusPesananPage = () => {
   const [filterStatus, setFilterStatus] = useState<string>("semua");
@@ -81,6 +86,7 @@ const StatusPesananPage = () => {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [kasir, setKasir] = useState<Kasir | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [settings, setSettings] = useState<Settings>({ receiptHeader: "", receiptFooter: "" });
   const itemsPerPage = 10;
  
   const location = useLocation();
@@ -120,6 +126,29 @@ const StatusPesananPage = () => {
     }
   };
 
+  // Fetch settings dari API
+  const fetchSettings = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(SETTINGS_URL, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSettings({
+          receiptHeader: data.receiptHeader || "",
+          receiptFooter: data.receiptFooter || ""
+        });
+      }
+    } catch (error) {
+      console.error("Gagal mengambil data settings:", error);
+    }
+  };
+
   // Fetch kasir data by ID
   const fetchKasirById = async (kasirId: string) => {
     try {
@@ -144,6 +173,7 @@ const StatusPesananPage = () => {
 
   useEffect(() => {
     fetchPesanan();
+    fetchSettings();
   }, []);
 
   // Ambil data transaksi terbaru dari state navigasi
@@ -286,12 +316,7 @@ const StatusPesananPage = () => {
     setIsReceiptModalOpen(true);
   };
 
-  const handlePrintReceipt = async () => {
-    // Fetch kasir data before printing if not already fetched
-    if (selectedPesanan && selectedPesanan.kasir_id && !kasir) {
-      const kasirData = await fetchKasirById(selectedPesanan.kasir_id);
-      setKasir(kasirData);
-    }
+  const handlePrintReceipt = () => {
     window.print();
   };
 
@@ -598,24 +623,6 @@ const StatusPesananPage = () => {
                               <Eye className="h-4 w-4 mr-1" />
                               <span>Lihat</span>
                             </button>
-                            <button 
-                              onClick={async () => {
-                                setSelectedPesanan(pesanan);
-                                // Fetch kasir data before printing
-                                if (pesanan.kasir_id) {
-                                  const kasirData = await fetchKasirById(pesanan.kasir_id);
-                                  setKasir(kasirData);
-                                } else {
-                                  setKasir(null);
-                                }
-                                handlePrintReceipt();
-                              }}
-                              className="px-3 py-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 flex items-center transition-colors"
-                              title="Cetak Struk"
-                            >
-                              <Printer className="h-4 w-4 mr-1" />
-                              <span>Cetak</span>
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -743,15 +750,10 @@ const StatusPesananPage = () => {
                 className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white">
+                <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-2 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                      <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                        <FileText className="w-6 h-6" />
-                      </div>
                       <div>
-                        <h1 className="text-2xl font-bold">Struk Pesanan</h1>
-                        <p className="text-green-100 text-sm">Detail pesanan Anda</p>
                       </div>
                     </div>
                     <button 
@@ -765,6 +767,11 @@ const StatusPesananPage = () => {
 
                 <div className="flex-1 overflow-y-auto p-6">
                   <div className="max-w-md mx-auto bg-white shadow-lg rounded-lg p-6 print:w-full print:shadow-none print:mt-0">
+                    {/* Header dari API */}
+                    <div className="text-center mb-4 whitespace-pre-line">
+                      {settings.receiptHeader}
+                    </div>
+                    
                     <h2 className="text-xl font-bold text-center mb-2">STRUK PEMBELIAN</h2>
                     <p className="text-center text-sm text-gray-600 mb-4">
                       #{selectedPesanan.order_id}
@@ -831,6 +838,11 @@ const StatusPesananPage = () => {
                       </span>
                     </div>
 
+                    {/* Footer dari API */}
+                    <div className="text-center mt-6 whitespace-pre-line text-sm">
+                      {settings.receiptFooter}
+                    </div>
+
                     <div className="flex gap-3 mt-6 print:hidden">
                       <button
                         onClick={() => setIsReceiptModalOpen(false)}
@@ -842,6 +854,7 @@ const StatusPesananPage = () => {
                         onClick={handlePrintReceipt}
                         className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
                       >
+                        <Printer className="w-4 h-4 mr-1" />
                         Cetak Struk
                       </button>
                     </div>

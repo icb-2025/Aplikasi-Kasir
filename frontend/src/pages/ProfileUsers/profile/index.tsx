@@ -248,7 +248,7 @@ export default function ProfilePage() {
           animate={{ opacity: 1 }}
           className="text-3xl font-bold text-center mb-8 text-gray-800"
         >
-          Profil Saya
+          Profile Saya
         </motion.h1>
 
         {error && (
@@ -297,7 +297,7 @@ export default function ProfilePage() {
             />
             <p className="text-gray-500 text-sm">Klik ikon kamera untuk mengganti foto</p>
             <p className="text-yellow-600 text-xs mt-1 text-center">
-              Anda dapat mengganti foto profil maksimal 3 kali per minggu
+              Anda dapat mengganti foto profil maksimal 1 kali per minggu
             </p>
           </div>
 
