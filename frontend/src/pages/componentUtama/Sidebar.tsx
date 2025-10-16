@@ -54,7 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const menuItems: MenuItem[] = [
     { id: 'dashboard', name: 'Dashboard', icon: '📊', path: '/' },
     { id: 'status-pesanan', name: 'Riwayat', icon: '📋', path: '/pesanan', authRequired: true },
-    { id: 'profile', name: 'Profil', icon: '👤', path: '/profile', authRequired: true },
+    { id: 'profile', name: 'Profile', icon: '👤', path: '/profile', authRequired: true },
   ];
 
   // Filter menu items berdasarkan status autentikasi
