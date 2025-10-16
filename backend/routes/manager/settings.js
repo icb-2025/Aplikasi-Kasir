@@ -5,7 +5,8 @@ import {
   updateGlobalDiscount,
   updateReceipt,
   updatePaymentMethods,
-  updateChannelLogo
+  updateChannelLogo,
+  getStatusPayments
 } from "../../controllers/manager/settingscontroller.js";
 import multer from "multer";
 
@@ -14,6 +15,7 @@ const upload = multer({ dest: "uploads/" });
 
 // GET -> ambil semua pengaturan
 router.get("/", getSettings);
+router.get("/status", getStatusPayments)
 
 // PUT -> update pajak, diskon, struk, pembayaran
 router.put("/tax", updateTax);
