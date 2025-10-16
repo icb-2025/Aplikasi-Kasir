@@ -590,7 +590,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
               onClick={(event) => event.stopPropagation()}
             >
               {transactionSuccess && transactionData ? (
-                // Receipt view after successful transaction
+                // Receipt view after successful transaction - PERBAIKAN DIMULAI DI SINI
                 <div className="flex-1 overflow-y-auto">
                   <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white">
                     <div className="flex items-center justify-between">
@@ -614,85 +614,96 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
                   <div className="p-6">
                     <div className="max-w-md mx-auto bg-white shadow-lg rounded-lg p-6 print:w-full print:shadow-none print:mt-0">
-                      {/* Struk */}
-                      {receiptSettings.receiptHeader && (
-                        <pre className="text-center font-bold mb-4 whitespace-pre-line">
-                          {receiptSettings.receiptHeader}
-                        </pre>
-                      )}
-
-                      <h2 className="text-xl font-bold text-center mb-2">STRUK PEMBELIAN</h2>
-                      <p className="text-center text-sm text-gray-600 mb-4">
-                        #{transactionData.order_id || transactionData._id || "-"}
-                      </p>
-
-                      <div className="border-t border-b py-2 mb-4 text-sm">
-                        <p>
-                          <span className="font-semibold">Tanggal:</span>{" "}
-                          {formatDate(transactionData.tanggal_transaksi || transactionData.createdAt)}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Metode:</span>{" "}
-                          {transactionData.metode_pembayaran || "-"}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Kasir:</span>{" "}
-                          {getKasirName()}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Status:</span>{" "}
-                          <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                            Selesai
-                          </span>
-                        </p>
-                      </div>
-
-                      <table className="w-full text-sm mb-4">
-                        <thead className="border-b">
-                          <tr>
-                            <th className="text-left py-1">Item</th>
-                            <th className="text-center py-1">Qty</th>
-                            <th className="text-right py-1">Harga</th>
-                            <th className="text-right py-1">Subtotal</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {transactionData.barang_dibeli && transactionData.barang_dibeli.length > 0 ? (
-                            transactionData.barang_dibeli.map((item: BarangDibeli, idx: number) => (
-                              <tr key={idx} className="border-b">
-                                <td className="py-1">{item.nama_barang}</td>
-                                <td className="py-1 text-center">{item.jumlah}</td>
-                                <td className="py-1 text-right">
-                                  {formatCurrency(calculateHargaSatuan(item))}
-                                </td>
-                                <td className="py-1 text-right">
-                                  {formatCurrency(item.subtotal)}
-                                </td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td colSpan={4} className="py-2 text-center text-gray-500">
-                                tidak ada data yang di beli
-                              </td>
-                            </tr>
+                      {/* Wrapper untuk struk dengan tinggi tetap dan scroll */}
+                      <div className="flex flex-col" style={{ minHeight: '500px' }}>
+                        {/* Header struk - tetap di atas */}
+                        <div className="flex-shrink-0">
+                          {receiptSettings.receiptHeader && (
+                            <pre className="text-center font-bold mb-4 whitespace-pre-line">
+                              {receiptSettings.receiptHeader}
+                            </pre>
                           )}
-                        </tbody>
-                      </table>
 
-                      <div className="flex justify-between items-center text-lg font-bold mb-6">
-                        <span>Total</span>
-                        <span className="text-green-600">
-                          {formatCurrency(transactionData.total_harga)}
-                        </span>
+                          <h2 className="text-xl font-bold text-center mb-2">STRUK PEMBELIAN</h2>
+                          <p className="text-center text-sm text-gray-600 mb-4">
+                            #{transactionData.order_id || transactionData._id || "-"}
+                          </p>
+
+                          <div className="border-t border-b py-2 mb-4 text-sm">
+                            <p>
+                              <span className="font-semibold">Tanggal:</span>{" "}
+                              {formatDate(transactionData.tanggal_transaksi || transactionData.createdAt)}
+                            </p>
+                            <p>
+                              <span className="font-semibold">Metode:</span>{" "}
+                              {transactionData.metode_pembayaran || "-"}
+                            </p>
+                            <p>
+                              <span className="font-semibold">Kasir:</span>{" "}
+                              {getKasirName()}
+                            </p>
+                            <p>
+                              <span className="font-semibold">Status:</span>{" "}
+                              <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                Selesai
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Area item struk - dapat di-scroll jika terlalu banyak */}
+                        <div className="flex-grow overflow-y-auto max-h-60 mb-4">
+                          <table className="w-full text-sm">
+                            <thead className="border-b sticky top-0 bg-white">
+                              <tr>
+                                <th className="text-left py-1">Item</th>
+                                <th className="text-center py-1">Qty</th>
+                                <th className="text-right py-1">Harga</th>
+                                <th className="text-right py-1">Subtotal</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {transactionData.barang_dibeli && transactionData.barang_dibeli.length > 0 ? (
+                                transactionData.barang_dibeli.map((item: BarangDibeli, idx: number) => (
+                                  <tr key={idx} className="border-b">
+                                    <td className="py-1">{item.nama_barang}</td>
+                                    <td className="py-1 text-center">{item.jumlah}</td>
+                                    <td className="py-1 text-right">
+                                      {formatCurrency(calculateHargaSatuan(item))}
+                                    </td>
+                                    <td className="py-1 text-right">
+                                      {formatCurrency(item.subtotal)}
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan={4} className="py-2 text-center text-gray-500">
+                                    tidak ada data yang di beli
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Total dan footer struk - tetap di bawah */}
+                        <div className="flex-shrink-0">
+                          <div className="flex justify-between items-center text-lg font-bold mb-6">
+                            <span>Total</span>
+                            <span className="text-green-600">
+                              {formatCurrency(transactionData.total_harga)}
+                            </span>
+                          </div>
+
+                          {/* RECEIPT FOOTER */}
+                          {receiptSettings.receiptFooter && (
+                            <pre className="text-center text-sm text-gray-600 mt-4 whitespace-pre-line">
+                              {receiptSettings.receiptFooter}
+                            </pre>
+                          )}
+                        </div>
                       </div>
-
-                      {/* RECEIPT FOOTER */}
-                      {receiptSettings.receiptFooter && (
-                        <pre className="text-center text-sm text-gray-600 mt-4 whitespace-pre-line">
-                          {receiptSettings.receiptFooter}
-                        </pre>
-                      )}
 
                       <div className="flex gap-3 mt-6 print:hidden">
                         <button
