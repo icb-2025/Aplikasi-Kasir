@@ -104,8 +104,12 @@ const ProductGrid: React.FC<ProductGridProps> = ({
   if (products.length === 0) {
     return (
       <div className="text-center py-16 sm:py-24">
-        <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center">
-          <span className="text-4xl"></span>
+        <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-amber-100 to-orange-100 rounded-lg flex items-center justify-center overflow-hidden">
+          <img 
+            src="/images/nostokbarang.jpg" 
+            alt="Tidak ada produk" 
+            className="w-full h-full object-cover"
+          />
         </div>
         <h3 className="text-xl font-bold text-gray-800 mb-3">Tidak ada produk</h3>
         <p className="text-gray-500 max-w-sm mx-auto">

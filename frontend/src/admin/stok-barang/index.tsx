@@ -39,6 +39,15 @@ export interface Barang {
   status?: string;
 }
 
+// Tambahkan interface untuk kategori
+interface KategoriAPI {
+  _id: string;
+  nama: string;
+  createdAt?: string;
+  updatedAt?: string;
+  __v?: number;
+}
+
 interface ListBarangProps {
   dataBarang: Barang[];
   setDataBarang: React.Dispatch<React.SetStateAction<Barang[]>>;
@@ -90,10 +99,10 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       console.log("Fetching kategori...");
       const res = await fetch(KATEGORI_API_URL);
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const data = await res.json();
+      const data: KategoriAPI[] = await res.json();
       
-      // Ekstrak hanya nama kategori dari array objek
-      const kategoriNames = data.map((item: any) => item.nama);
+      // Ekstrak hanya nama kategori dari array objek dengan tipe yang sudah didefinisikan
+      const kategoriNames = data.map((item: KategoriAPI) => item.nama);
       console.log("Kategori fetched:", kategoriNames);
       setKategoriList(kategoriNames);
       
@@ -451,7 +460,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
             <div className="text-center py-8">
               <div className="flex justify-center mb-4">
                 <img 
-                  src="../images/nostokbarang.jpg" 
+                  src="/images/nostokbarang.jpg" 
                   alt="Server Error" 
                   className="w-64 h-64 object-cover rounded-lg shadow-lg"
                 />
