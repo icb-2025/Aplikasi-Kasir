@@ -7,7 +7,7 @@ import cloudinary from "../../config/cloudinary.js";
 import BiayaOperasional from "../../models/biayaoperasional.js";
 
 
-// ✅ Ambil semua barang + stok dari RTDB
+
 export const getAllBarang = async (req, res) => {
   try {
     const barangList = await Barang.find().lean();
@@ -23,7 +23,7 @@ export const getAllBarang = async (req, res) => {
           }
         });
       } catch (e) {
-        console.warn("⚠️ Failed to read RTDB:", e.message);
+        console.warn("⚠️ Gagal ambil stok RTDB:", e.message);
       }
     }
 
@@ -36,7 +36,12 @@ export const getAllBarang = async (req, res) => {
       if (stok === 0) status = "habis";
       else if (stok <= (item.stok_minimal || 5)) status = "hampir habis";
 
-      return { ...item, stok, status, hargaFinal: Math.round(item.hargaFinal) };
+      return {
+        ...item,
+        stok,
+        status,
+        hargaFinal: Math.round(item.hargaFinal),
+      };
     });
 
     res.json(barangWithStock);
@@ -48,17 +53,28 @@ export const getAllBarang = async (req, res) => {
 // ✅ Tambah barang baru
 export const createBarang = async (req, res) => {
   try {
-    // Ambil data dari Settings
+    const {
+      kode_barang,
+      nama_barang,
+      kategori,
+      harga_beli,
+      harga_jual,
+      stok,
+      stok_minimal,
+    } = req.body;
+
+    if (!kategori) {
+      return res.status(400).json({ message: "Nama kategori wajib diisi" });
+    }
+
     const settings = await Settings.findOne();
     const taxRate = settings?.taxRate ?? 0;
     const globalDiscount = settings?.globalDiscount ?? 0;
     const serviceCharge = settings?.serviceCharge ?? 0;
 
-    // Ambil data Biaya Operasional (kalau nanti ingin digunakan untuk laporan)
     const biayaOp = await BiayaOperasional.findOne();
-    const totalBiayaOperasional = biayaOp?.total || 0; // misal dijumlah dari listrik, air, dst.
+    const totalBiayaOperasional = biayaOp?.total || 0;
 
-    // Upload gambar (jika ada)
     let gambarUrl = "";
     if (req.file) {
       const upload = await cloudinary.uploader.upload(req.file.path, {
@@ -67,32 +83,35 @@ export const createBarang = async (req, res) => {
       gambarUrl = upload.secure_url;
     }
 
-    const hargaJual = Number(req.body.harga_jual) || 0;
-
-    // 🧮 Hitung harga akhir berdasarkan settings
+    const hargaJual = Number(harga_jual) || 0;
     const hargaSetelahDiskon = hargaJual - (hargaJual * globalDiscount) / 100;
     const hargaSetelahPajak =
       hargaSetelahDiskon + (hargaSetelahDiskon * taxRate) / 100;
     const hargaFinal =
       hargaSetelahPajak + (hargaSetelahPajak * serviceCharge) / 100;
 
-    // Simpan barang baru
     const barang = new Barang({
-      ...req.body,
+      kode_barang,
+      nama_barang,
+      kategori, 
+      harga_beli,
+      harga_jual,
+      stok,
+      stok_minimal,
       hargaFinal: Math.round(hargaFinal),
       gambar_url: gambarUrl,
     });
 
     await barang.save();
 
-    // Simpan juga ke Firebase
     const barangId = barang._id.toString();
     if (db) {
       await db.ref(`/barang/${barangId}`).set({
         stok: barang.stok || 0,
-        nama: barang.nama_barang || "",
+        nama: barang.nama_barang,
         harga_jual: hargaJual,
         harga_final: Math.round(hargaFinal),
+        kategori,
       });
     }
 
@@ -103,29 +122,20 @@ export const createBarang = async (req, res) => {
       barang,
       perhitungan: {
         harga_jual: hargaJual,
-        globalDiscount: `${globalDiscount}% (-${(
-          (hargaJual * globalDiscount) /
-          100
-        ).toFixed(2)})`,
-        taxRate: `${taxRate}% (+${(
-          (hargaSetelahDiskon * taxRate) /
-          100
-        ).toFixed(2)})`,
-        serviceCharge: `${serviceCharge}% (+${(
-          (hargaSetelahPajak * serviceCharge) /
-          100
-        ).toFixed(2)})`,
+        globalDiscount: `${globalDiscount}%`,
+        taxRate: `${taxRate}%`,
+        serviceCharge: `${serviceCharge}%`,
         total_harga_final: Math.round(hargaFinal),
-        totalBiayaOperasional, 
+        totalBiayaOperasional,
       },
     });
   } catch (error) {
+    console.error("❌ Error createBarang:", error);
     res.status(400).json({ message: error.message });
   }
 };
 
 
-// ✅ Update barang (sinkron ke RTDB)
 export const updateBarang = async (req, res) => {
   try {
     const settings = await Settings.findOne();
@@ -135,48 +145,51 @@ export const updateBarang = async (req, res) => {
 
     const hargaJual = Number(req.body.harga_jual) || 0;
     const hargaSetelahDiskon = hargaJual - (hargaJual * globalDiscount) / 100;
-    const hargaSetelahPajak = hargaSetelahDiskon + (hargaSetelahDiskon * taxRate) / 100;
-    const hargaFinal = hargaSetelahPajak + (hargaSetelahPajak * serviceCharge) / 100;
+    const hargaSetelahPajak =
+      hargaSetelahDiskon + (hargaSetelahDiskon * taxRate) / 100;
+    const hargaFinal =
+      hargaSetelahPajak + (hargaSetelahPajak * serviceCharge) / 100;
 
-    let updateData = { 
-      ...req.body, 
-      hargaFinal: Math.round(hargaFinal)
+    let updateData = {
+      ...req.body,
+      hargaFinal: Math.round(hargaFinal),
     };
 
     if (req.file) {
-      const upload = await cloudinary.uploader.upload(req.file.path, { folder: "barang" });
+      const upload = await cloudinary.uploader.upload(req.file.path, {
+        folder: "barang",
+      });
       updateData.gambar_url = upload.secure_url;
     }
 
-    const barang = await Barang.findByIdAndUpdate(req.params.id, updateData, { new: true });
-    if (!barang) return res.status(404).json({ message: "Barang tidak ditemukan" });
+    const barang = await Barang.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+    });
+    if (!barang)
+      return res.status(404).json({ message: "Barang tidak ditemukan" });
 
     const id = barang._id.toString();
     if (db) {
       await db.ref(`/barang/${id}`).update({
         stok: barang.stok || 0,
-        nama: barang.nama_barang || "",
-        harga_jual: barang.harga_jual || 0,
+        nama: barang.nama_barang,
+        harga_jual: barang.harga_jual,
         harga_final: Math.round(hargaFinal),
+        kategori: barang.kategori,
       });
     }
 
-    io.emit("barang:updated", barang); // 🟡 Event baru untuk update
+    io.emit("barang:updated", barang);
 
     res.json({
       message: "Barang berhasil diperbarui!",
       barang,
-      perhitungan: {
-        harga_jual: hargaJual,
-        taxRate: `${taxRate}%`,
-        serviceCharge: `${serviceCharge}%`,
-        total_harga_final: Math.round(hargaFinal)
-      }
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
+
 
 // ✅ Hapus barang
 export const deleteBarang = async (req, res) => {
