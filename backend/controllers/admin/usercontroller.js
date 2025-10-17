@@ -43,17 +43,16 @@ export const deleteUser = async (req, res) => {
 // Perbarui user
 export const updateUser = async (req, res) => {
   try {
-    // Hash password jika ada perubahan password
-    if (req.body.password) {
+    // Kalau password kosong, jangan update password
+    if (!req.body.password) {
+      delete req.body.password;
+    } else {
+      // Kalau password ada, hash dulu
       const salt = await bcrypt.genSalt(10);
       req.body.password = await bcrypt.hash(req.body.password, salt);
     }
 
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+    const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
 
     if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
     res.json({ message: "User berhasil diperbarui!", user });
