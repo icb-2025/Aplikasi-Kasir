@@ -28,6 +28,17 @@ interface FormData {
   alamat: string;
 }
 
+// Interface untuk payload API
+interface UserPayload {
+  nama_lengkap: string;
+  username: string;
+  role: string;
+  status: string;
+  password?: string;
+  umur?: number;
+  alamat?: string;
+}
+
 const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
@@ -96,10 +107,28 @@ const UsersPage: React.FC = () => {
     try {
       SweetAlert.loading(editingUser ? 'Mengupdate user...' : 'Menambah user...');
       
-      const payload = {
-        ...formData,
-        umur: formData.umur ? parseInt(formData.umur) : undefined
+      // Buat payload dasar
+      const payload: UserPayload = {
+        nama_lengkap: formData.nama_lengkap,
+        username: formData.username,
+        role: formData.role,
+        status: formData.status
       };
+
+      // Tambahkan umur jika ada
+      if (formData.umur) {
+        payload.umur = parseInt(formData.umur);
+      }
+
+      // Tambahkan alamat jika ada
+      if (formData.alamat) {
+        payload.alamat = formData.alamat;
+      }
+
+      // Hanya tambahkan password jika tidak kosong dan bukan string mask '********'
+      if (formData.password && formData.password.trim() !== "" && formData.password !== '********') {
+        payload.password = formData.password;
+      }
 
       let response;
       if (editingUser) {
