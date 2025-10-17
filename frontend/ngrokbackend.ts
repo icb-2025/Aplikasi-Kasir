@@ -1,5 +1,5 @@
 export function ngrokBackend() {
-    return 'https://4b5e49b21f9d.ngrok-free.app' //Ngrok From Backend
+    return 'https://b0f142e4fde4.ngrok-free.app' //Ngrok From Backend
 }
 
 export default ngrokBackend

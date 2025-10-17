@@ -1,13 +1,14 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import User from "../models/user.js";
+import ngrokUrl from "../ngrokbackend.js";
 
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "https://4b5e49b21f9d.ngrok-free.app/api/auth/google/callback", //ngrok backend
+      callbackURL: `${ngrokUrl}/api/auth/google/callback`, //ngrok backend
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
