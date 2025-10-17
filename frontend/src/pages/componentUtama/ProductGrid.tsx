@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Barang } from "../../admin/stok-barang";
 import ProductCard from "./ProductCard";
 
@@ -21,18 +21,78 @@ const ProductGrid: React.FC<ProductGridProps> = ({
   setSelectedCategory,
   categories
 }) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  // Perbaikan 1: Hapus setSortBy karena tidak digunakan
+  const [sortBy] = useState<'name' | 'price' | 'stock'>('name');
+
+  // Filter dan sort products
+  const filteredAndSortedProducts = useMemo(() => {
+    // Perbaikan 2: Ubah let menjadi const karena filtered tidak diubah nilainya
+    const filtered = products.filter(product => 
+      product.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.kategori.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.nama.localeCompare(b.nama);
+        case 'price':
+          return (a.hargaFinal || a.hargaJual) - (b.hargaFinal || b.hargaJual);
+        case 'stock':
+          return b.stok - a.stok;
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [products, searchQuery, sortBy]);
+
+  // Perbaikan 3: Hapus variabel stats karena tidak digunakan
+  // Kode stats yang dihapus:
+  // const stats = useMemo(() => {
+  //   const totalProducts = products.length;
+  //   const availableProducts = products.filter(p => p.stok > 0).length;
+  //   const lowStockProducts = products.filter(p => p.stok > 0 && p.stok <= 5).length;
+  //   return { totalProducts, availableProducts, lowStockProducts };
+  // }, [products]);
+
   if (isLoading) {
     return (
-      <div>
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Menu</h2>
-        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-8 bg-gray-200 rounded-lg w-48 animate-pulse"></div>
+            <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+          </div>
+          <div className="flex gap-3">
+            <div className="h-10 bg-gray-200 rounded-lg w-32 animate-pulse"></div>
+            <div className="h-10 bg-gray-200 rounded-lg w-40 animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Categories Skeleton */}
+        <div className="flex gap-2 overflow-x-auto pb-2">
           {Array.from({ length: 8 }).map((_, index) => (
-            <div key={index} className="bg-gray-100 rounded-xl sm:rounded-2xl overflow-hidden animate-pulse">
-              <div className="h-32 sm:h-36 bg-gray-200"></div>
-              <div className="p-3 sm:p-4">
-                <div className="h-3 sm:h-4 bg-gray-300 rounded mb-2"></div>
-                <div className="h-3 bg-gray-300 rounded w-2/3 mb-2 sm:mb-3"></div>
-                <div className="h-4 sm:h-6 bg-gray-300 rounded w-1/2"></div>
+            <div key={index} className="h-12 bg-gray-200 rounded-xl w-20 animate-pulse flex-shrink-0"></div>
+          ))}
+        </div>
+
+        {/* Products Grid Skeleton */}
+        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
+          {Array.from({ length: 10 }).map((_, index) => (
+            <div key={index} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
+              <div className="h-40 sm:h-48 bg-gray-200"></div>
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                <div className="flex justify-between items-center">
+                  <div className="h-5 bg-gray-200 rounded w-20"></div>
+                  <div className="h-8 bg-gray-200 rounded w-24"></div>
+                </div>
               </div>
             </div>
           ))}
@@ -43,46 +103,114 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 
   if (products.length === 0) {
     return (
-      <div className="text-center py-8 sm:py-12">
-        <div className="text-5xl sm:text-6xl mb-3 sm:mb-4">🍔</div>
-        <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">Produk tidak ditemukan</h3>
-        <p className="text-gray-500 text-sm sm:text-base">Coba kategori lain atau ubah pencarian</p>
+      <div className="text-center py-16 sm:py-24">
+        <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center">
+          <span className="text-4xl"></span>
+        </div>
+        <h3 className="text-xl font-bold text-gray-800 mb-3">Tidak ada produk</h3>
+        <p className="text-gray-500 max-w-sm mx-auto">
+          Produk belum tersedia. Silakan hubungi administrator untuk menambahkan produk.
+        </p>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Bagian Kategori */}
-      <div className="mb-4 sm:mb-6">
-        <div className="flex space-x-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`flex-shrink-0 inline-flex items-center px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors duration-200 ${
-                selectedCategory === category.id
-                  ? 'bg-amber-100 text-amber-700 border border-amber-300'
-                  : 'text-gray-700 hover:bg-gray-100 border border-gray-200'
-              }`}
-            >
-              <span className="mr-1 sm:mr-2 text-sm">{category.icon}</span>
-              {category.name}
-            </button>
-          ))}
+    <div className="space-y-6">
+      {/* Categories Filter */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+            Kategori
+          </h3>
         </div>
-      </div>
+        
+        {/* Container dengan fixed width dan horizontal scroll */}
+        <div className="relative">
+          {/* Scroll buttons untuk desktop */}
+         
+
+          {/* Categories container dengan fixed width dan horizontal scroll */}
+          <div 
+            id="categories-container"
+            className="flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2"
+           
+          >
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`flex-col justify-content-center p-3 rounded-xl text-sm font-medium transition-all duration-200 border snap-start flex-shrink-0 ${
+                  selectedCategory === category.id
+                    ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/25 transform scale-105'
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-md'
+                }`}
+               
+              >
+                <span className="text-lg mb-1">{category.icon}</span>
+                <span className="text-xs text-center leading-tight line-clamp-2">{category.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>  
+
+      {/* Results Info */}
+      {searchQuery && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <p className="text-blue-800 text-sm">
+            Menampilkan {filteredAndSortedProducts.length} produk untuk "{searchQuery}"
+          </p>
+        </div>
+      )}
+
+      {/* Products Grid */}
+      {filteredAndSortedProducts.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
+          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center">
+          </div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Produk tidak ditemukan</h3>
+          <p className="text-gray-500 max-w-sm mx-auto">
+            Tidak ada produk yang cocok dengan pencarian Anda. Coba kata kunci lain atau kategori yang berbeda.
+          </p>
+          {(searchQuery || selectedCategory !== "Semua") && (
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedCategory("Semua");
+              }}
+              className="mt-4 px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+            >
+              Tampilkan Semua Produk
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
           
-      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-        {products.map((product) => (
-          <ProductCard
-            key={product._id}
-            product={product}
-            onAddToCart={onAddToCart}
-            onBuyNow={onBuyNow}
-          />
-        ))}
-      </div>
+
+          {/* Products Grid */}
+          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
+            {filteredAndSortedProducts.map((product) => (
+              <ProductCard
+                key={product._id}
+                product={product}
+                onAddToCart={onAddToCart}
+                onBuyNow={onBuyNow}
+              />
+            ))}
+          </div>
+
+          {/* Load More (optional) */}
+          {filteredAndSortedProducts.length >= 20 && (
+            <div className="text-center pt-8">
+              <button className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:border-amber-500 hover:text-amber-600 transition-all font-medium">
+                Muat Lebih Banyak
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

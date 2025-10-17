@@ -28,6 +28,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
   const stockStatus = product.stok > 10 ? 'Tersedia' : 
                      product.stok > 0 ? `Stok ${product.stok}` : 'Habis';
 
+  // Get category icon
+  const getCategoryIcon = (category: string) => {
+    // Ekstrak ikon dari nama kategori jika ada
+    const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
+    const match = category.match(emojiRegex);
+    return match ? match[0] : "";
+  };
+
+  // Get category name without icon
+  const getCategoryName = (category: string) => {
+    // Ekstrak nama tanpa ikon
+    const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
+    return category.replace(emojiRegex, "").trim();
+  };
+
   return (
     <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 sm:hover:-translate-y-1 flex flex-col h-full">
       <div className="relative h-28 sm:h-32 bg-gradient-to-br from-amber-50 to-orange-50 overflow-hidden flex-shrink-0">
@@ -77,9 +92,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
       </div>
       
       <div className="p-2 sm:p-3 flex flex-col flex-grow">
-        <div className="mb-1.5">
-          <span className="text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full border border-amber-200">
-            {product.kategori}
+        <div className="mb-1.5 flex items-center">
+          <span className="text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full border border-amber-200 flex items-center">
+            <span className="mr-1">{getCategoryIcon(product.kategori)}</span>
+            {getCategoryName(product.kategori)}
           </span>
         </div>
         

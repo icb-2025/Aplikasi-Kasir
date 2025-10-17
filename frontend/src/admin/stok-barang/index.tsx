@@ -1,6 +1,8 @@
+// StokBarangAdmin.tsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import BarangTable from "./BarangTable";
 import ModalBarang from "./ModalBarang";
+import ModalCategory from "./ModalCategory";
 import type { BarangFormData } from "./ModalBarang";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { SweetAlert } from "../../components/SweetAlert";
@@ -43,7 +45,7 @@ interface ListBarangProps {
 }
 
 const API_URL = "http://192.168.110.16:5000/api/admin/stok-barang";
-const KATEGORI = ["Makanan", "Minuman", "Cemilan", "Signature"];
+const KATEGORI_API_URL = "http://192.168.110.16:5000/api/admin/kategori";
 
 interface ApiError extends Error {
   message: string;
@@ -52,6 +54,7 @@ interface ApiError extends Error {
 const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang }) => {
   const socketRef = useRef<Socket | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,10 +62,11 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
   const [initialLoad, setInitialLoad] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [serverError, setServerError] = useState(false);
+  const [kategoriList, setKategoriList] = useState<string[]>([]);
   const [formData, setFormData] = useState<BarangFormData>({
     kode: "",
     nama: "",
-    kategori: KATEGORI[0],
+    kategori: "",
     hargaBeli: "",
     hargaJual: "",
     stok: "",
@@ -79,6 +83,39 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     }
     return result;
   };
+
+  // Fetch kategori dari API
+  const fetchKategori = useCallback(async () => {
+    try {
+      console.log("Fetching kategori...");
+      const res = await fetch(KATEGORI_API_URL);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const data = await res.json();
+      
+      // Ekstrak hanya nama kategori dari array objek
+      const kategoriNames = data.map((item: any) => item.nama);
+      console.log("Kategori fetched:", kategoriNames);
+      setKategoriList(kategoriNames);
+      
+      // Set kategori default jika ada
+      if (kategoriNames.length > 0 && !formData.kategori) {
+        setFormData(prev => ({
+          ...prev,
+          kategori: kategoriNames[0]
+        }));
+      }
+    } catch (err) {
+      console.error("Gagal ambil data kategori:", err);
+      // Gunakan kategori default jika gagal fetch
+      setKategoriList(["Makanan", "Minuman", "Cemilan", "Signature"]);
+      if (!formData.kategori) {
+        setFormData(prev => ({
+          ...prev,
+          kategori: "Makanan"
+        }));
+      }
+    }
+  }, [formData.kategori]);
 
   // Inisialisasi Socket.IO dengan event yang lebih lengkap
   useEffect(() => {
@@ -125,15 +162,12 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     });
 
     // Dengarkan event hapus barang
-    // Payload may include { id, nama } or only { id } depending on server implementation.
     socketRef.current.on('barang:deleted', (payload: { id: string; nama?: string }) => {
       const { id, nama } = payload;
 
-      // Derive name from current state if server didn't provide it
       setDataBarang(prevData => {
         const found = prevData.find(item => item._id === id);
         const nameToShow = nama ?? found?.nama ?? 'Tanpa Nama';
-        // Tampilkan notifikasi ringan di console atau gunakan SweetAlert jika ingin UX konsisten
         console.info(`Barang dihapus: ${nameToShow}`);
         return prevData.filter(item => item._id !== id);
       });
@@ -206,7 +240,8 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
 
   useEffect(() => {
     fetchBarang();
-  }, [fetchBarang]);
+    fetchKategori();
+  }, [fetchBarang, fetchKategori]);
 
   const filteredBarang = dataBarang.filter(
     (item) =>
@@ -219,7 +254,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     setFormData({
       kode: "",
       nama: "",
-      kategori: KATEGORI[0],
+      kategori: kategoriList.length > 0 ? kategoriList[0] : "",
       hargaBeli: "",
       hargaJual: "",
       stok: "",
@@ -243,7 +278,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       setFormData({
         kode: barang.kode || "",
         nama: barang.nama || "",
-        kategori: barang.kategori || KATEGORI[0],
+        kategori: barang.kategori || (kategoriList.length > 0 ? kategoriList[0] : ""),
         hargaBeli: barang.hargaBeli?.toString() || "",
         hargaJual: barang.hargaJual?.toString() || "",
         stok: barang.stok?.toString() || "",
@@ -356,8 +391,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       }
 
       SweetAlert.close();
-      // Tidak perlu fetchBarang di sini karena update real-time akan menangani
-      
       resetForm();
       setShowModal(false);
       await SweetAlert.success(isEditing ? "Barang berhasil diperbarui" : "Barang berhasil ditambahkan");
@@ -395,13 +428,22 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
                 onChange={(e) => setSearchTerm(e.target.value)}
                 disabled={actionLoading}
               />
-              <button
-                onClick={() => setShowModal(true)}
-                className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                disabled={actionLoading}
-              >
-                Tambah Barang
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowCategoryModal(true)}
+                  className="px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center"
+                  disabled={actionLoading}
+                >
+                  📁 Kategori
+                </button>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  disabled={actionLoading}
+                >
+                  Tambah Barang
+                </button>
+              </div>
             </div>
           </div>
 
@@ -454,8 +496,17 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
           resetForm();
         }}
         loading={actionLoading}
-        kategoriOptions={KATEGORI}
+        kategoriOptions={kategoriList}
         onGenerateCode={() => handleInputChange("kode", generateRandomCode())}
+      />
+
+      <ModalCategory
+        visible={showCategoryModal}
+        onClose={() => {
+          setShowCategoryModal(false);
+          fetchKategori(); // Refresh kategori setelah modal ditutup
+        }}
+        onKategoriChange={fetchKategori}
       />
     </div>
   );

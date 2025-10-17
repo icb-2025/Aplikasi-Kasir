@@ -1,3 +1,4 @@
+// ModalBarang.tsx
 import React, { useState, useEffect } from "react";
 
 export interface BarangFormData {
@@ -35,6 +36,11 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
   onGenerateCode
 }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // Debug log untuk kategoriOptions
+  useEffect(() => {
+    console.log("Kategori options in ModalBarang:", kategoriOptions);
+  }, [kategoriOptions]);
 
   // sync previewUrl dengan formData.gambarUrl
   useEffect(() => {
@@ -100,7 +106,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
                   disabled={loading}
                   title="Generate kode acak"
                 >
-                  🎲
+                  🔄
                 </button>
               </div>
             </div>
@@ -139,6 +145,11 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
                   </option>
                 ))}
               </select>
+              {kategoriOptions.length === 0 && (
+                <p className="text-xs text-red-500 mt-1">
+                  Tidak ada kategori tersedia. Silakan tambah kategori terlebih dahulu.
+                </p>
+              )}
             </div>
 
             {/* harga beli */}
@@ -236,7 +247,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || kategoriOptions.length === 0}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 flex items-center justify-center min-w-[100px] disabled:opacity-50"
             >
               {loading ? (

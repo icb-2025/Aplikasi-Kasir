@@ -1,4 +1,4 @@
-import { useContext, useCallback, useEffect, useState, useRef } from 'react';
+import { useContext, useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import io, { Socket } from 'socket.io-client';
 import type { Barang } from "../admin/stok-barang";
 import MainLayout from "../components/MainLayout";
@@ -83,6 +83,16 @@ interface TransactionStatusData {
   paymentMethod?: string | null;
 }
 
+// Interface untuk kategori
+interface KategoriAPI {
+  _id: string;
+  nama: string;
+  deskripsi: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
 const API_BASE_URL = 'http://192.168.110.16:5000';
 
 interface BarangInput {
@@ -151,6 +161,10 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
   const [isCartLoading, setIsCartLoading] = useState(false);
   const [barangList, setBarangList] = useState<Barang[]>(dataBarang.map(normalizeBarangData));
   
+  // State untuk kategori
+  const [kategoriList, setKategoriList] = useState<KategoriAPI[]>([]);
+  const [loadingKategori, setLoadingKategori] = useState(true);
+  
   const [prosesTransaksiData, setProsesTransaksiData] = useState<{
     transaksi: TransactionResponse | null;
     midtrans: MidtransData | null;
@@ -161,6 +175,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     midtrans: null
   });
   
+  // Pindahkan showToast ke atas agar bisa digunakan di fetchKategori
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info', id: string = 'default') => {
     const now = Date.now();
     const lastTime = lastToastTime.current[id] || 0;
@@ -194,17 +209,60 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     }, 2000);
   }, []);
   
+  // Fungsi untuk mengambil data kategori
+  const fetchKategori = useCallback(async () => {
+    try {
+      setLoadingKategori(true);
+      const response = await fetch(`${API_BASE_URL}/api/admin/kategori`);
+      if (!response.ok) throw new Error("Gagal mengambil data kategori");
+      
+      const data = await response.json();
+      setKategoriList(data);
+    } catch (error) {
+      console.error("Error fetching kategori:", error);
+      showToast("Gagal mengambil data kategori", "error", "fetch-kategori");
+    } finally {
+      setLoadingKategori(false);
+    }
+  }, [showToast]);
+
+  // Panggil fetchKategori saat komponen dimuat
+  useEffect(() => {
+    fetchKategori();
+  }, [fetchKategori]);
+  
+  // Buat kategori dinamis berdasarkan data kategori dari API
+  const categories = useMemo(() => {
+    if (kategoriList.length === 0) {
+      return [
+        { id: "Semua", name: "Semua", icon: "🍔" }
+      ];
+    }
+    
+    return [
+      { id: "Semua", name: "Semua", icon: "" },
+      ...kategoriList.map(kategori => {
+        // Ekstrak ikon dari nama kategori jika ada
+        const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
+        const match = kategori.nama.match(emojiRegex);
+        const icon = match ? match[0] : "";
+        
+        // Ekstrak nama tanpa ikon
+        const name = kategori.nama.replace(emojiRegex, "").trim();
+        
+        return {
+          id: kategori._id,
+          name: name,
+          icon: icon,
+          originalName: kategori.nama // Simpan nama asli untuk filtering
+        };
+      })
+    ];
+  }, [kategoriList]);
+  
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
-  
-  const categories = [
-    { id: "Semua", name: "Semua", icon: "🍔" },
-    { id: "Makanan", name: "Makanan", icon: "🍕" },
-    { id: "Minuman", name: "Minuman", icon: "🥤" },
-    { id: "Cemilan", name: "Cemilan", icon: "🍿" },
-    { id: "Signature", name: "Signature", icon: "⭐" },
-  ];
   
   useEffect(() => {
     setBarangList(dataBarang.map(normalizeBarangData));
@@ -521,8 +579,10 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       (item.kode && item.kode.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (item.kategori && item.kategori.toLowerCase().includes(searchTerm.toLowerCase()));
     
+    // Cari kategori yang cocok berdasarkan nama asli
+    const selectedCategoryObj = categories.find(cat => cat.id === selectedCategory);
     const matchesCategory = selectedCategory === "Semua" || 
-      (item.kategori && item.kategori === selectedCategory);
+      (selectedCategoryObj && 'originalName' in selectedCategoryObj && item.kategori === selectedCategoryObj.originalName);
     
     return matchesSearch && matchesCategory;
   });
@@ -755,7 +815,6 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         theme="light"
       />
       
-      {/* Perbarui props TopNav - hapus selectedCategory, setSelectedCategory, dan categories */}
       <TopNav 
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
@@ -767,10 +826,9 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
         
         <div className="flex-1 bg-white rounded-2xl shadow-md p-4 overflow-y-auto">
-          {/* Perbarui props ProductGrid - tambahkan selectedCategory, setSelectedCategory, dan categories */}
           <ProductGrid 
             products={filteredBarang}
-            isLoading={isLoading}
+            isLoading={isLoading || loadingKategori}
             onAddToCart={addToCart}
             onBuyNow={handleBuyNow}
             selectedCategory={selectedCategory}
