@@ -19,6 +19,7 @@ import managerSettingsRoutes from "./routes/manager/settings.js";
 import adminSettingsRoutes from "./routes/admin/settings.js";
 import adminDashboardRoutes from "./routes/admin/dashboard.js";
 import adminStatusPesanan from "./routes/admin/status.js";
+import adminKategori from "./routes/admin/kategori.js"
 import adminRiwayat from "./routes/admin/riwayat.js";
 import adminStok from "./routes/admin/stok.js";
 import adminLaporan from "./routes/admin/laporan.js";
@@ -75,6 +76,7 @@ app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/admin/status-pesanan", adminStatusPesanan);
 app.use("/api/admin/riwayat", adminRiwayat);
 app.use("/api/admin/stok-barang", adminStok);
+app.use("/api/admin/kategori", adminKategori)
 app.use("/api/admin/laporan", adminLaporan);
 app.use("/api/admin/users", adminUsers);
 app.use("/api/admin/settings", adminSettingsRoutes);
