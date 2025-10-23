@@ -1,5 +1,7 @@
+import ngrokUrl from "../backend/ngrokbackend";
+
 export function ngrokBackend() {
-    return 'https://b0f142e4fde4.ngrok-free.app' //Ngrok From Backend
+    return ngrokUrl
 }
 
-export default ngrokBackend
+export default ngrokBackend;
