@@ -2,9 +2,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import SweetAlert from '../../components/SweetAlert';
-import UserModal from './component/usermodal'; // lowercase
-import UserTable from './component/usertable'; // lowercase
-import UserFilter from './component/userfilter'; // lowercase - perbaikan di sini
+import UserModal from './component/usermodal';
+import UserTable from './component/usertable';
+import UserFilter from './component/userfilter';
+import Pagination from './component/pagination';
 
 interface User {
   _id: string;
@@ -28,7 +29,6 @@ interface FormData {
   alamat: string;
 }
 
-// Interface untuk payload API
 interface UserPayload {
   nama_lengkap: string;
   username: string;
@@ -49,6 +49,10 @@ const UsersPage: React.FC = () => {
     role: '',
     status: ''
   });
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage] = useState<number>(10);
 
   const API_URL = 'http://192.168.110.16:5000/api/admin/users';
 
@@ -61,8 +65,12 @@ const UsersPage: React.FC = () => {
         throw new Error('Gagal mengambil data user');
       }
       const data = await response.json();
-      setUsers(data);
-      applyFilters(data, filters);
+      // Filter out users with role 'user'
+      const filteredData = data.filter((user: User) => user.role !== 'user');
+      setUsers(filteredData);
+      applyFilters(filteredData, filters);
+      // Reset to first page when fetching new data
+      setCurrentPage(1);
     } catch (error) {
       SweetAlert.error('Gagal memuat data user');
       console.error(error);
@@ -84,6 +92,8 @@ const UsersPage: React.FC = () => {
     }
     
     setFilteredUsers(result);
+    // Reset to first page when applying filters
+    setCurrentPage(1);
   };
 
   // Handle filter change
@@ -96,6 +106,8 @@ const UsersPage: React.FC = () => {
   const handleResetFilter = () => {
     setFilters({ role: '', status: '' });
     setFilteredUsers(users);
+    // Reset to first page when resetting filters
+    setCurrentPage(1);
   };
 
   useEffect(() => {
@@ -212,6 +224,19 @@ const UsersPage: React.FC = () => {
     setEditingUser(null);
   };
 
+  // Pagination calculations
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of the table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -232,11 +257,24 @@ const UsersPage: React.FC = () => {
       {loading ? (
         <LoadingSpinner />
       ) : (
-        <UserTable 
-          users={filteredUsers} 
-          onEdit={handleEdit} 
-          onDelete={handleDelete} 
-        />
+        <>
+          <UserTable 
+            users={currentItems} 
+            onEdit={handleEdit} 
+            onDelete={handleDelete} 
+          />
+          
+          {/* Pagination Component */}
+          {filteredUsers.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredUsers.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+            />
+          )}
+        </>
       )}
 
       <UserModal 
