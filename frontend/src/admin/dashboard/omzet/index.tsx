@@ -28,7 +28,8 @@ const OmzetPage: React.FC = () => {
       if (showNotification) setIsRefreshing(true);
       else setLoading(true);
       
-      const response = await fetch('http://192.168.110.16:5000/api/admin/dashboard/omzet');
+      // Tambahkan parameter periode ke URL
+      const response = await fetch(`http://192.168.110.16:5000/api/admin/dashboard/omzet?period=${selectedPeriod}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -57,7 +58,7 @@ const OmzetPage: React.FC = () => {
 
   useEffect(() => {
     fetchOmzetData();
-  }, []);
+  }, [selectedPeriod]); // Tambahkan selectedPeriod sebagai dependency
 
   if (loading) {
     return (

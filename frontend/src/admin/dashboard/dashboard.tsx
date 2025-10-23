@@ -37,12 +37,6 @@ interface LaporanResponse {
   };
 }
 
-interface BreakdownResponse {
-  payment_breakdown: {
-    [key: string]: number;
-  };
-}
-
 interface BarangDibeli {
   kode_barang?: string;
   nama_barang: string;
@@ -60,6 +54,27 @@ interface Transaksi {
   total_harga: number;
   metode_pembayaran: string;
   status: 'pending' | 'selesai' | 'expire';
+}
+
+// Define Channel interface for payment methods
+interface Channel {
+  name: string;
+  logo?: string;
+  isActive?: boolean;
+  _id?: string;
+}
+
+// Add interface for settings response
+interface PaymentMethod {
+  method: string;
+  channels: Channel[];
+  _id: string;
+  isActive: boolean;
+}
+
+interface SettingsResponse {
+  payment_methods: PaymentMethod[];
+  // ... other settings properties
 }
 
 interface DashboardStats {
@@ -93,24 +108,24 @@ const AdminDashboard: React.FC = () => {
       try {
         setLoading(true);
         
-        // Fetch data from all endpoints
+        // Fetch data from all endpoints including settings
         const [
           usersResponse,
           topBarangResponse,
           laporanResponse,
-          breakdownResponse,
-          transaksiResponse
+          transaksiResponse,
+          settingsResponse
         ] = await Promise.all([
           fetch('http://192.168.110.16:5000/api/admin/users'),
           fetch('http://192.168.110.16:5000/api/admin/dashboard/top-barang?filter=bulan'),
           fetch('http://192.168.110.16:5000/api/manager/laporan'),
-          fetch('http://192.168.110.16:5000/api/admin/dashboard/breakdown-pembayaran'),
-          fetch('http://192.168.110.16:5000/api/admin/dashboard/transaksi/terakhir')
+          fetch('http://192.168.110.16:5000/api/admin/dashboard/transaksi/terakhir'),
+          fetch('http://192.168.110.16:5000/api/admin/settings')
         ]);
 
         // Check for errors
         if (!usersResponse.ok || !topBarangResponse.ok || !laporanResponse.ok || 
-            !breakdownResponse.ok || !transaksiResponse.ok) {
+            !transaksiResponse.ok || !settingsResponse.ok) {
           throw new Error('One or more requests failed');
         }
 
@@ -118,8 +133,8 @@ const AdminDashboard: React.FC = () => {
         const usersData: User[] = await usersResponse.json();
         const topBarangData: TopBarangResponse = await topBarangResponse.json();
         const laporanData: LaporanResponse[] = await laporanResponse.json();
-        const breakdownData: BreakdownResponse = await breakdownResponse.json();
         const transaksiData: Transaksi[] = await transaksiResponse.json();
+        const settingsData: SettingsResponse = await settingsResponse.json();
 
         // Calculate statistics
         const totalUsers = usersData.length;
@@ -135,8 +150,10 @@ const AdminDashboard: React.FC = () => {
           (sum: number, item) => sum + item.jumlah, 0
         );
         
-        // Count payment methods
-        const paymentMethods = Object.keys(breakdownData.payment_breakdown).length;
+        // Count active payment methods from settings
+        const activePaymentMethods = settingsData.payment_methods.filter(
+          method => method.isActive
+        ).length;
         
         // Calculate average transaction value
         const averageTransactionValue = totalTransactions > 0 
@@ -148,7 +165,7 @@ const AdminDashboard: React.FC = () => {
           totalTransactions,
           totalRevenue,
           totalProductsSold,
-          paymentMethods,
+          paymentMethods: activePaymentMethods, // Use active payment methods count
           activeUsers,
           completedTransactions,
           averageTransactionValue

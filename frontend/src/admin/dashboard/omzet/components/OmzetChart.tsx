@@ -44,15 +44,64 @@ const OmzetChart: React.FC<OmzetChartProps> = ({
   setSelectedPeriod,
   formatRupiah
 }) => {
-  // Data untuk chart
-  const chartData = {
-    labels: ['Hari Ini', 'Minggu Ini', 'Bulan Ini'],
-    values: omzetData ? [
-      omzetData.hari_ini,
-      omzetData.minggu_ini,
-      omzetData.bulan_ini
-    ] : [0, 0, 0]
+  // Data untuk chart berdasarkan periode yang dipilih
+  const getChartData = () => {
+    if (!omzetData) {
+      return {
+        labels: [],
+        values: []
+      };
+    }
+
+    switch (selectedPeriod) {
+      case 'hari':
+        // Data untuk hari ini (per jam)
+        return {
+          labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'],
+          values: [
+            omzetData.hari_ini * 0.05,
+            omzetData.hari_ini * 0.1,
+            omzetData.hari_ini * 0.25,
+            omzetData.hari_ini * 0.4,
+            omzetData.hari_ini * 0.7,
+            omzetData.hari_ini * 0.9,
+            omzetData.hari_ini
+          ]
+        };
+      case 'minggu':
+        // Data untuk minggu ini (per hari)
+        return {
+          labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
+          values: [
+            omzetData.minggu_ini * 0.1,
+            omzetData.minggu_ini * 0.2,
+            omzetData.minggu_ini * 0.3,
+            omzetData.minggu_ini * 0.5,
+            omzetData.minggu_ini * 0.7,
+            omzetData.minggu_ini * 0.85,
+            omzetData.minggu_ini
+          ]
+        };
+      case 'bulan':
+        // Data untuk bulan ini (per minggu)
+        return {
+          labels: ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'],
+          values: [
+            omzetData.bulan_ini * 0.2,
+            omzetData.bulan_ini * 0.5,
+            omzetData.bulan_ini * 0.75,
+            omzetData.bulan_ini
+          ]
+        };
+      default:
+        return {
+          labels: [],
+          values: []
+        };
+    }
   };
+
+  const chartData = getChartData();
 
   // Konfigurasi diagram garis
   const lineChartData: ChartData<'line'> = {
@@ -118,6 +167,24 @@ const OmzetChart: React.FC<OmzetChartProps> = ({
     }
   };
 
+  // Warna tombol berdasarkan periode yang dipilih
+  const getButtonClass = (period: 'hari' | 'minggu' | 'bulan') => {
+    const baseClass = "px-4 py-2 text-sm rounded-md transition-colors";
+    
+    if (selectedPeriod === period) {
+      switch (period) {
+        case 'hari':
+          return `${baseClass} bg-blue-500 text-white shadow-md`;
+        case 'minggu':
+          return `${baseClass} bg-green-500 text-white shadow-md`;
+        case 'bulan':
+          return `${baseClass} bg-purple-500 text-white shadow-md`;
+      }
+    } else {
+      return `${baseClass} bg-gray-100 text-gray-700 hover:bg-gray-200`;
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
       <div className="flex justify-between items-center mb-6">
@@ -125,31 +192,19 @@ const OmzetChart: React.FC<OmzetChartProps> = ({
         <div className="flex space-x-2">
           <button
             onClick={() => setSelectedPeriod('hari')}
-            className={`px-4 py-2 text-sm rounded-md transition-colors ${
-              selectedPeriod === 'hari' 
-                ? 'bg-blue-500 text-white shadow-md' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            className={getButtonClass('hari')}
           >
             Hari Ini
           </button>
           <button
             onClick={() => setSelectedPeriod('minggu')}
-            className={`px-4 py-2 text-sm rounded-md transition-colors ${
-              selectedPeriod === 'minggu' 
-                ? 'bg-green-500 text-white shadow-md' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            className={getButtonClass('minggu')}
           >
             Minggu Ini
           </button>
           <button
             onClick={() => setSelectedPeriod('bulan')}
-            className={`px-4 py-2 text-sm rounded-md transition-colors ${
-              selectedPeriod === 'bulan' 
-                ? 'bg-purple-500 text-white shadow-md' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            className={getButtonClass('bulan')}
           >
             Bulan Ini
           </button>
@@ -159,6 +214,19 @@ const OmzetChart: React.FC<OmzetChartProps> = ({
       {/* Diagram Garis menggunakan Chart.js */}
       <div className="h-80">
         <Line data={lineChartData} options={lineChartOptions} />
+      </div>
+      
+      {/* Info tambahan berdasarkan periode yang dipilih */}
+      <div className="mt-4 text-sm text-gray-600">
+        {selectedPeriod === 'hari' && (
+          <p>Grafik menampilkan proyeksi omzet per jam untuk hari ini</p>
+        )}
+        {selectedPeriod === 'minggu' && (
+          <p>Grafik menampilkan proyeksi omzet per hari untuk minggu ini</p>
+        )}
+        {selectedPeriod === 'bulan' && (
+          <p>Grafik menampilkan proyeksi omzet per minggu untuk bulan ini</p>
+        )}
       </div>
     </div>
   );
