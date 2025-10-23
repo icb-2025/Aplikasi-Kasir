@@ -1,7 +1,7 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import User from "../models/user.js";
-import ngrokUrl from "../ngrokbackend.js";
+import ngrokUrl from "../ngrokbackend.ts";
 
 passport.use(
   new GoogleStrategy(
