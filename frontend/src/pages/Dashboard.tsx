@@ -14,6 +14,8 @@ import ProsesTransaksiModal from "./componentUtama/proses-transaksi";
 import AuthContext from "./../auth/context/AuthContext";
 import TopNav from "./componentUtama/topnav";
 
+
+const ipbe = import.meta.env.VITE_IPBE;
 interface DashboardProps {
   dataBarang: Barang[];
 }
@@ -93,7 +95,7 @@ interface KategoriAPI {
   __v: number;
 }
 
-const API_BASE_URL = 'http://192.168.110.16:5000';
+const API_BASE_URL = `${ipbe}:5000`;
 
 interface BarangInput {
   _id?: string;

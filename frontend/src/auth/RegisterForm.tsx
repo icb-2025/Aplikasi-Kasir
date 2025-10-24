@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { FaUser, FaLock, FaUserShield } from "react-icons/fa";
+const ipbe = import.meta.env.VITE_IPBE;
+
 
 export default function RegisterForm() {
   const [form, setForm] = useState({
@@ -22,7 +24,7 @@ export default function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://192.168.110.16:5000/auth/register", {
+      const res = await fetch(`${ipbe}:5000/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

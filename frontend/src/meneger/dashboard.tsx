@@ -1,6 +1,8 @@
 import MenegerLayout from "./layout";
 import { useState, useEffect } from "react";
 import LoadingSpinner from "../components/LoadingSpinner";
+const ipbe = import.meta.env.VITE_IPBE;
+
 import {
   DollarSign,
   ShoppingCart,
@@ -32,7 +34,7 @@ const MenegerDashboard = () => {
         setLoading(true);
         setError(null);
         
-        const url = `http://192.168.110.16:5000/api/manager/dashboard`;
+        const url = `${ipbe}:5000/api/manager/dashboard`;
         
         const response = await fetch(url);
         

@@ -15,6 +15,8 @@ import VirtualAccountPayment from "./components/PaymentMethodDetails/VirtualAcco
 import QRISPayment from "./components/PaymentMethodDetails/QRISPayment";
 import CashPayment from "./components/PaymentMethodDetails/CashPayment";
 import FooterActions from "./components/FooterActions";
+const ipbe = import.meta.env.VITE_IPBE;
+
 
 interface BarangDibeli {
   kode_barang: string;
@@ -175,7 +177,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     try {
       console.log(`Mengecek status transaksi untuk order ID: ${orderId}`);
       
-      const baseUrl = "http://192.168.110.16:5000";
+      const baseUrl = `${ipbe}:5000`;
       const tokenLocal = localStorage.getItem('token');
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
@@ -536,7 +538,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     try {
       console.log(`Membatalkan transaksi dengan ID: ${transactionId}`);
       
-      const baseUrl = "http://192.168.110.16:5000";
+      const baseUrl = `${ipbe}:5000`;
       const tokenLocal = localStorage.getItem('token');
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'

@@ -3,7 +3,9 @@ import AppRouter from "./router";
 import type { Barang } from "./admin/stok-barang";
 import { initializeSocket } from './utils/socket';
 
+
 // Inisialisasi socket ketika aplikasi dimulai
+const ipbe = import.meta.env.VITE_IPBE;
 initializeSocket();
 
 interface BarangAPI {
@@ -19,7 +21,7 @@ interface BarangAPI {
   gambar_url?: string;
 }
 
-const API_URL = "http://192.168.110.16:5000/api/admin/stok-barang";
+const API_URL = `${ipbe}:5000/api/admin/stok-barang`;
 
 function App() {
   const [dataBarang, setDataBarang] = useState<Barang[]>([]);

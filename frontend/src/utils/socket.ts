@@ -1,10 +1,12 @@
 import { io, Socket } from "socket.io-client";
 
+
+const ipbe = import.meta.env.VITE_IPBE;
 let socket: Socket;
 
 export const initializeSocket = () => {
   if (!socket) {
-    socket = io("http://192.168.110.16:5000", {
+    socket = io(`${ipbe}:5000`, {
       transports: ["websocket"], // pakai websocket
       autoConnect: true,         // langsung connect
       reconnection: true,        // auto reconnect kalau disconnect

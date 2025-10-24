@@ -1,7 +1,7 @@
 // src/admin/dashboard/dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../../components/LoadingSpinner';
-
+const ipbe = import.meta.env.VITE_IPBE;
 // Define interfaces for API responses
 interface User {
   _id: string;
@@ -116,11 +116,11 @@ const AdminDashboard: React.FC = () => {
           transaksiResponse,
           settingsResponse
         ] = await Promise.all([
-          fetch('http://192.168.110.16:5000/api/admin/users'),
-          fetch('http://192.168.110.16:5000/api/admin/dashboard/top-barang?filter=bulan'),
-          fetch('http://192.168.110.16:5000/api/manager/laporan'),
-          fetch('http://192.168.110.16:5000/api/admin/dashboard/transaksi/terakhir'),
-          fetch('http://192.168.110.16:5000/api/admin/settings')
+          fetch(`${ipbe}:5000/api/admin/users`),
+          fetch(`${ipbe}:5000/api/admin/dashboard/top-barang?filter=bulan`),
+          fetch(`${ipbe}:5000/api/manager/laporan`),
+          fetch(`${ipbe}:5000/api/admin/dashboard/transaksi/terakhir`),
+          fetch(`${ipbe}:5000/api/admin/settings`)
         ]);
 
         // Check for errors

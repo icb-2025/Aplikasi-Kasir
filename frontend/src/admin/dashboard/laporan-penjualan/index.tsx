@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, type PieLabe
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { exportPdf, exportExcel } from './utils';
 import { Landmark, Wallet, TrendingUp, CreditCard } from 'lucide-react';
-
+const ipbe = import.meta.env.VITE_IPBE;
 // Interface untuk data dari API
 interface LaporanHarian {
   tanggal: string;
@@ -146,7 +146,7 @@ const LaporanPenjualan: React.FC = () => {
     const fetchDaftarBulan = async () => {
       try {
         setLoadingBulan(true);
-        const response = await fetch('http://192.168.110.16:5000/api/admin/laporan/bulan');
+        const response = await fetch(`${ipbe}:5000/api/admin/laporan/bulan`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -174,7 +174,7 @@ const LaporanPenjualan: React.FC = () => {
   useEffect(() => {
     const fetchProdukList = async () => {
       try {
-        const response = await fetch('http://192.168.110.16:5000/api/admin/stok-barang');
+        const response = await fetch(`${ipbe}:5000/api/admin/stok-barang`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -198,7 +198,7 @@ const LaporanPenjualan: React.FC = () => {
       
       try {
         setLoading(true);
-        const response = await fetch(`http://192.168.110.16:5000/api/admin/laporan/${selectedBulan}`);
+        const response = await fetch(`${ipbe}:5000/api/admin/laporan/${selectedBulan}`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

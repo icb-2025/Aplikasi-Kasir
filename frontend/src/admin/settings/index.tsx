@@ -10,6 +10,7 @@ import ReceiptSettings from './components/ReceiptSettings';
 import PaymentSettings from './components/PaymentSettings';
 import BiayaOperasionalSettings from './components/biaya-operasional';
 import AdvancedSettings from './components/AdvancedSettings';
+const ipbe = import.meta.env.VITE_IPBE;
 
 // Import interface with type-only import
 import type { BiayaOperasionalData } from './components/biaya-operasional';
@@ -76,8 +77,8 @@ const SettingsPage: React.FC = () => {
     payment_methods: [],
   });
 
-  const BASE_API_URL = 'http://192.168.110.16:5000/api/admin/settings';
-  const BIAYA_OPERASIONAL_API_URL = 'http://192.168.110.16:5000/api/admin/biaya-operasional';
+  const BASE_API_URL = `${ipbe}:5000/api/admin/settings`;
+  const BIAYA_OPERASIONAL_API_URL = `${ipbe}:5000/api/admin/biaya-operasional`;
   const API_KEY = 'GPJbke7X3vAP0IBiiP8A'; // Ganti dengan API key yang sesuai
 
   // Fungsi untuk mendapatkan token dari localStorage

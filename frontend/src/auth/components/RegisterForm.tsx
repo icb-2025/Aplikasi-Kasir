@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../hooks/useAuth';
 import type { Variants } from "framer-motion";
-import logologin from '../../../public/images/logologin.jpg';
+import logologin from '../../images/logologin.jpg';
 
 export default function RegisterForm() {
   const [form, setForm] = useState({ 

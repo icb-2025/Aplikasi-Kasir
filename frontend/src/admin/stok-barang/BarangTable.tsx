@@ -1,5 +1,7 @@
 import React from "react";
 import type { Barang } from ".";
+const ipbe = import.meta.env.VITE_IPBE;
+
 
 // Utility functions
 const safeValue = <T,>(value: T | null | undefined, fallback: T): T => {
@@ -49,7 +51,7 @@ const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => 
     }
     
     // Jika gambarUrl adalah path relatif, tambahkan base URL
-    return `http://192.168.110.16:5000${gambarUrl.startsWith('/') ? '' : '/'}${gambarUrl}`;
+    return `${ipbe}:5000${gambarUrl.startsWith('/') ? '' : '/'}${gambarUrl}`;
   };
 
   return (

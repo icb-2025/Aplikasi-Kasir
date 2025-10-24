@@ -6,6 +6,8 @@ import SummaryCards from './components/SummaryCards';
 import TransactionChart from './components/TransactionChart';
 import TransactionTable from './components/TransactionTable';
 import { formatMethodName } from './components/utils';
+const ipbe = import.meta.env.VITE_IPBE;
+
 
 // Define types for our data
 interface HarianItem {
@@ -64,7 +66,7 @@ const LaporanPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("http://192.168.110.16:5000/api/manager/laporan");
+        const response = await fetch(`${ipbe}:5000/api/manager/laporan`);
         if (!response.ok) {
           throw new Error("Failed to fetch data");
         }

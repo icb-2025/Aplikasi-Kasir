@@ -3,6 +3,7 @@ import PesananTable from "./PesananTable";
 import StatusModal from "./StatusModal";
 import LoadingSpinner from "../../../components/LoadingSpinner";
 import { SweetAlert } from "../../../components/SweetAlert";
+const ipbe = import.meta.env.VITE_IPBE;
 
 export interface BarangDibeli {
   kode_barang: string;
@@ -41,7 +42,7 @@ export interface Pesanan {
   updatedAt: string;
 }
 
-const API_URL = "http://192.168.110.16:5000/api/admin/status-pesanan";
+const API_URL = `${ipbe}:5000/api/admin/status-pesanan`;
 
 const StatusPesananAdmin: React.FC = () => {
   const [pesananData, setPesananData] = useState<Pesanan[]>([]);

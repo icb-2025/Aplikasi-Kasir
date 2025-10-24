@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
+const ipbe = import.meta.env.VITE_IPBE;
+
 import { 
   ShoppingCart, 
   Trash2, 
@@ -171,7 +173,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       try {
         const token = localStorage.getItem('token');
         
-        const res = await fetch("http://192.168.110.16:5000/api/admin/settings", {
+        const res = await fetch(`${ipbe}:5000/api/admin/settings`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -203,7 +205,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     
     const fetchReceiptSettings = async () => {
       try {
-        const res = await fetch("http://192.168.110.16:5000/api/manager/settings");
+        const res = await fetch(`${ipbe}:5000/api/manager/settings`);
         if (res.ok) {
           const data: SettingsReceipt = await res.json();
           setReceiptSettings(data);
@@ -338,7 +340,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       
       const token = localStorage.getItem('token');
       
-      const res = await fetch("http://192.168.110.16:5000/api/transaksi", {
+      const res = await fetch(`${ipbe}:5000/api/transaksi`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

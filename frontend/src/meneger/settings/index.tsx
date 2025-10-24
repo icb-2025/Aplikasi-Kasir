@@ -6,6 +6,8 @@ import SweetAlert from "../../components/SweetAlert";
 import GeneralSettings from './GeneralSettings';
 import ReceiptSettings from './ReceiptSettings';
 import PaymentSettings from './PaymentSettings';
+const ipbe = import.meta.env.VITE_IPBE;
+
 
 export interface PaymentChannel {
   name: string;
@@ -72,7 +74,7 @@ export default function ManagerSettingsPage() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await fetch('http://192.168.110.16:5000/api/manager/settings');
+        const response = await fetch(`${ipbe}:5000/api/manager/settings`);
         const data = await response.json();
         setSettings(data);
         setLoading(false);

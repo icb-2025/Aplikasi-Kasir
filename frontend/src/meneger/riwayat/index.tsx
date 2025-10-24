@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import MenegerLayout from "../layout";
 import LoadingSpinner from "../../components/LoadingSpinner";
+const ipbe = import.meta.env.VITE_IPBE;
+
 
 interface BarangDibeli {
   kode_barang: string;
@@ -72,7 +74,7 @@ const MenegerRiwayatPage = () => {
   const fetchRiwayatData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://192.168.110.16:5000/api/manager/riwayat');
+      const response = await fetch(`${ipbe}:5000/api/manager/riwayat`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

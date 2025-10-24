@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { Crown, Medal, Award, Star } from 'lucide-react'; // Hapus Trophy dari import
-
+const ipbe = import.meta.env.VITE_IPBE;
 interface BarangTerlaris {
   nama_barang: string;
   jumlah: number;
@@ -37,7 +37,7 @@ const TopBarang: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const endpoint = 'http://192.168.110.16:5000/api/admin/dashboard/top-barang';
+        const endpoint = `${ipbe}:5000/api/admin/dashboard/top-barang`;
         
         const response = await fetch(endpoint);
         
@@ -62,7 +62,7 @@ const TopBarang: React.FC = () => {
     const fetchProdukList = async () => {
       try {
         setLoadingProduk(true);
-        const response = await fetch('http://192.168.110.16:5000/api/admin/stok-barang');
+        const response = await fetch(`${ipbe}:5000/api/admin/stok-barang`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

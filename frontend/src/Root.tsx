@@ -1,11 +1,13 @@
 import React, { useEffect } from "react";
 import App from "./App";
 
+const ipbe = import.meta.env.VITE_IPBE;
+
 const Root: React.FC = () => {
   useEffect(() => {
     const getStoreSettings = async () => {
       try {
-        const res = await fetch("http://192.168.110.16:5000/api/admin/settings");
+        const res = await fetch(`${ipbe}:5000/api/admin/settings`);
         const data = await res.json();
 
         if (data.storeName) document.title = data.storeName;

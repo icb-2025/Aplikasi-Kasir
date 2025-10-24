@@ -6,7 +6,7 @@ import OmzetTable from './components/OmzetTable';
 import OmzetSummary from './components/OmzetSummary';
 import { exportOmzetToCsv, exportOmzetToExcel, exportOmzetToPdf } from '@/admin/utils/OmzetExport';
 import { formatRupiah } from '@/admin/utils/formatRupiah';
-
+const ipbe = import.meta.env.VITE_IPBE;
 interface OmzetData {
   omzet: {
     hari_ini: number;
@@ -29,7 +29,7 @@ const OmzetPage: React.FC = () => {
       else setLoading(true);
       
       // Tambahkan parameter periode ke URL
-      const response = await fetch(`http://192.168.110.16:5000/api/admin/dashboard/omzet?period=${selectedPeriod}`);
+      const response = await fetch(`${ipbe}:5000/api/admin/dashboard/omzet?period=${selectedPeriod}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

@@ -1,6 +1,9 @@
 // src/pages/transaksi/proses-transaksi/components/VirtualAccountPayment.tsx
 import { useState } from "react";
 
+const ipbe = import.meta.env.VITE_IPBE;
+
+
 interface BarangDibeli {
   kode_barang: string;
   nama_barang: string;
@@ -139,7 +142,7 @@ const VirtualAccountPayment = ({ transaksi, onPaymentSuccess, onPaymentCancel }:
       formData.append('transaction_id', transaksi?._id || "");
       
       // Upload bukti pembayaran
-      const uploadResponse = await fetch(`http://192.168.110.16:5000/api/transaksi/upload-proof`, {
+      const uploadResponse = await fetch(`${ipbe}:5000/api/transaksi/upload-proof`, {
         method: 'POST',
         body: formData,
       });
@@ -149,7 +152,7 @@ const VirtualAccountPayment = ({ transaksi, onPaymentSuccess, onPaymentCancel }:
       }
       
       // Update status transaksi di backend
-      const updateResponse = await fetch(`http://192.168.110.16:5000/api/transaksi/${transaksi?._id}`, {
+      const updateResponse = await fetch(`${ipbe}:5000/api/transaksi/${transaksi?._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

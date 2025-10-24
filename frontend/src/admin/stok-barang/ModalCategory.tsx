@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { SweetAlert } from "../../components/SweetAlert";
 import LoadingSpinner from "../../components/LoadingSpinner";
+const ipbe = import.meta.env.VITE_IPBE;
+
 
 interface KategoriAPI {
   _id: string;
@@ -23,7 +25,7 @@ interface ModalCategoryProps {
   onKategoriChange: () => void;
 }
 
-const API_URL = "http://192.168.110.16:5000/api/admin/kategori";
+const API_URL = `${ipbe}:5000/api/admin/kategori`;
 
 const ModalCategory: React.FC<ModalCategoryProps> = ({ visible, onClose, onKategoriChange }) => {
   const [categories, setCategories] = useState<KategoriAPI[]>([]);

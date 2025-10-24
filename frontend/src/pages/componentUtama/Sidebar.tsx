@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AuthContext from '../../auth/context/AuthContext'
+const ipbe = import.meta.env.VITE_IPBE;
 
 // Interface untuk menu item
 interface MenuItem {
@@ -71,7 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
       if (user) {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch('http://192.168.110.16:5000/api/update-profile', {
+          const response = await fetch(`${ipbe}:5000/api/update-profile`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -103,7 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
     const fetchStoreLogo = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://192.168.110.16:5000/api/admin/settings', {
+        const response = await fetch(`${ipbe}:5000/api/admin/settings`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -116,7 +117,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             // Jika storeLogo adalah path relatif, tambahkan base URL
             const logoUrl = settingsData.storeLogo.startsWith('http') 
               ? settingsData.storeLogo 
-              : `http://192.168.110.16:5000${settingsData.storeLogo}`;
+              : `${ipbe}:5000${settingsData.storeLogo}`;
             setStoreLogo(logoUrl);
             console.log("Store logo:", logoUrl); // Debugging
           }
@@ -163,7 +164,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
     }
     
     // Jika profilePicture adalah path relatif, tambahkan base URL
-    return `http://192.168.110.16:5000${profilePicture}`;
+    return `${ipbe}:5000${profilePicture}`;
   };
 
   return (

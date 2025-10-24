@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from '../hooks/useAuth';
 import type { Variants } from "framer-motion";
-import logologin from '../../../public/images/logologin.jpg';
-import googleLogo from '../../../public/images/google.jpg';
-import {ngrokBackend} from '../../../ngrokbackend.ts'
+import logologin from '../../images/logologin.jpg';
+import googleLogo from '../../images/google.jpg';
+import {ngrokBackend} from '../../../ngrokfrontend.ts'
 
 export default function LoginForm() {
   const [form, setForm] = useState({ username: "", password: "" });
