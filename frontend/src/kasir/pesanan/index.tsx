@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import MainLayout from "../layout";
 import { getSocket } from "../../utils/socket";
+import { Landmark, Wallet, TrendingUp, CreditCard } from "lucide-react";
 
 interface BarangDibeli {
   kode_barang?: string;
@@ -38,6 +39,21 @@ interface StatusUpdateData {
   updatedAt: string;
 }
 
+// Interface untuk produk item
+interface ProdukItem {
+  _id: string;
+  kode_barang: string;
+  nama_barang: string;
+  kategori: string;
+  harga_beli: number;
+  harga_jual: number;
+  stok: number;
+  stok_minimal: number;
+  gambar_url: string;
+  status: string;
+  hargaFinal?: number;
+}
+
 const PesananKasirPage = () => {
   const [pesananList, setPesananList] = useState<PesananItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +65,10 @@ const PesananKasirPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
+  
+  // State untuk produk list
+  const [produkList, setProdukList] = useState<ProdukItem[]>([]);
+  const [loadingProduk, setLoadingProduk] = useState(true);
 
   const location = useLocation();
   const locationState = location.state as LocationState | null;
@@ -110,6 +130,30 @@ const PesananKasirPage = () => {
     };
 
     fetchKasirId();
+  }, []);
+
+  // Fetch data produk untuk mendapatkan gambar
+  useEffect(() => {
+    const fetchProdukList = async () => {
+      try {
+        setLoadingProduk(true);
+        const response = await fetch('http://192.168.110.16:5000/api/admin/stok-barang');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result: ProdukItem[] = await response.json();
+        setProdukList(result);
+      } catch (err) {
+        console.error('Error fetching produk list:', err);
+        setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengambil data produk');
+      } finally {
+        setLoadingProduk(false);
+      }
+    };
+
+    fetchProdukList();
   }, []);
 
   // Fetch data pesanan berdasarkan kasir ID dengan pagination
@@ -298,7 +342,23 @@ const PesananKasirPage = () => {
     }
   };
 
-  if (loadingKasir) {
+  // Fungsi untuk mendapatkan ikon metode pembayaran
+  const getPaymentIcon = (method: string) => {
+    if (method.includes('Virtual Account')) return <Landmark className="h-5 w-5 text-blue-500" />;
+    if (method.includes('E-Wallet')) return <Wallet className="h-5 w-5 text-green-500" />;
+    if (method.includes('Tunai')) return <TrendingUp className="h-5 w-5 text-yellow-500" />;
+    if (method.includes('Kartu Kredit')) return <CreditCard className="h-5 w-5 text-purple-500" />;
+    return <CreditCard className="h-5 w-5 text-gray-500" />;
+  };
+
+  // Fungsi untuk mendapatkan gambar produk
+  const getProdukImage = (kodeBarang?: string) => {
+    if (!kodeBarang) return null;
+    const produk = produkList.find(p => p.kode_barang === kodeBarang);
+    return produk ? produk.gambar_url : null;
+  };
+
+  if (loadingKasir || loadingProduk) {
     return (
       <MainLayout>
         <div className="flex justify-center items-center h-64">
@@ -378,7 +438,10 @@ const PesananKasirPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-xs text-gray-500 uppercase tracking-wide">Metode Pembayaran</p>
-                        <p className="font-medium text-gray-800 mt-1">{pesanan.metode_pembayaran}</p>
+                        <div className="flex items-center mt-1">
+                          {getPaymentIcon(pesanan.metode_pembayaran)}
+                          <p className="font-medium text-gray-800 ml-2">{pesanan.metode_pembayaran}</p>
+                        </div>
                       </div>
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-xs text-gray-500 uppercase tracking-wide">Kasir ID</p>
@@ -393,18 +456,34 @@ const PesananKasirPage = () => {
                     <div className="border-t border-gray-200 pt-4">
                       <h3 className="font-medium text-gray-700 mb-3">Barang Dibeli</h3>
                       <div className="space-y-3">
-                        {pesanan.barang_dibeli.map((barang, index) => (
-                          <div key={barang._id || index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <div>
-                              <span className="font-medium text-gray-800">{barang.nama_barang}</span>
-                              <span className="text-gray-500 text-sm ml-2">({barang.kode_barang})</span>
+                        {pesanan.barang_dibeli.map((barang, index) => {
+                          const gambarUrl = getProdukImage(barang.kode_barang);
+                          return (
+                            <div key={barang._id || index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-center">
+                                {gambarUrl ? (
+                                  <img 
+                                    src={gambarUrl} 
+                                    alt={barang.nama_barang}
+                                    className="h-10 w-10 rounded-full object-cover mr-3"
+                                  />
+                                ) : (
+                                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                    <span className="text-xs text-gray-500">No Img</span>
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="font-medium text-gray-800">{barang.nama_barang}</span>
+                                  <span className="text-gray-500 text-sm ml-2">({barang.kode_barang})</span>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm text-gray-600">{barang.jumlah} x {formatCurrency(barang.harga_satuan || 0)}</div>
+                                <div className="font-medium text-gray-800">{formatCurrency(barang.subtotal || 0)}</div>
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <div className="text-sm text-gray-600">{barang.jumlah} x {formatCurrency(barang.harga_satuan || 0)}</div>
-                              <div className="font-medium text-gray-800">{formatCurrency(barang.subtotal || 0)}</div>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
 

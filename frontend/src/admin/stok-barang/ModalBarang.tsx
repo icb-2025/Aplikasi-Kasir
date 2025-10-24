@@ -106,7 +106,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
                   disabled={loading}
                   title="Generate kode acak"
                 >
-                  🔄
+                  Generate
                 </button>
               </div>
             </div>

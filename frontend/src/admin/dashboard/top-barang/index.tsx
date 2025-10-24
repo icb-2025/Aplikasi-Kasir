@@ -1,6 +1,6 @@
-// src/admin/dashboard/top-barang/index.tsx
 import React, { useState, useEffect } from 'react';
-import LoadingSpinner from '../../../components/LoadingSpinner'; // Adjust path as needed
+import LoadingSpinner from '../../../components/LoadingSpinner';
+import { Crown, Medal, Award, Star } from 'lucide-react'; // Hapus Trophy dari import
 
 interface BarangTerlaris {
   nama_barang: string;
@@ -11,28 +11,33 @@ interface ApiResponse {
   barang_terlaris: BarangTerlaris[];
 }
 
-type FilterType = 'hari ini' | 'bulan ini' | 'tahun ini';
+// Tambahkan interface untuk produk item
+interface ProdukItem {
+  _id: string;
+  kode_barang: string;
+  nama_barang: string;
+  kategori: string;
+  harga_beli: number;
+  harga_jual: number;
+  stok: number;
+  stok_minimal: number;
+  gambar_url: string;
+  status: string;
+  hargaFinal?: number;
+}
 
 const TopBarang: React.FC = () => {
   const [data, setData] = useState<BarangTerlaris[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<FilterType>('bulan ini');
+  const [produkList, setProdukList] = useState<ProdukItem[]>([]); // State untuk produk list
+  const [loadingProduk, setLoadingProduk] = useState<boolean>(true); // State untuk loading produk
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Menentukan endpoint berdasarkan filter aktif
-        let endpoint = 'http://192.168.110.16:5000/api/admin/dashboard/top-barang';
-        
-        if (activeFilter === 'hari ini') {
-          endpoint += '?filter=hari';
-        } else if (activeFilter === 'bulan ini') {
-          endpoint += '?filter=bulan';
-        } else if (activeFilter === 'tahun ini') {
-          endpoint += '?filter=tahun';
-        }
+        const endpoint = 'http://192.168.110.16:5000/api/admin/dashboard/top-barang';
         
         const response = await fetch(endpoint);
         
@@ -50,7 +55,31 @@ const TopBarang: React.FC = () => {
     };
 
     fetchData();
-  }, [activeFilter]);
+  }, []);
+
+  // Fetch data produk untuk mendapatkan gambar
+  useEffect(() => {
+    const fetchProdukList = async () => {
+      try {
+        setLoadingProduk(true);
+        const response = await fetch('http://192.168.110.16:5000/api/admin/stok-barang');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result: ProdukItem[] = await response.json();
+        setProdukList(result);
+      } catch (err) {
+        console.error('Error fetching produk list:', err);
+        setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengambil data produk');
+      } finally {
+        setLoadingProduk(false);
+      }
+    };
+
+    fetchProdukList();
+  }, []);
 
   // Hitung total penjualan
   const totalPenjualan = data.reduce((total, barang) => total + barang.jumlah, 0);
@@ -82,12 +111,27 @@ const TopBarang: React.FC = () => {
     return colors[index % colors.length];
   };
 
-  // Fungsi untuk menangani perubahan filter
-  const handleFilterChange = (filter: FilterType) => {
-    setActiveFilter(filter);
+  // Fungsi untuk mendapatkan ikon peringkat
+  const getRankingIcon = (index: number) => {
+    switch(index) {
+      case 0:
+        return <Crown className="h-6 w-6 text-yellow-500" />;
+      case 1:
+        return <Medal className="h-6 w-6 text-gray-400" />;
+      case 2:
+        return <Award className="h-6 w-6 text-amber-700" />;
+      default:
+        return <Star className="h-5 w-5 text-gray-500" />;
+    }
   };
 
-  if (loading) {
+  // Fungsi untuk mendapatkan gambar produk
+  const getProdukImage = (namaBarang: string) => {
+    const produk = produkList.find(p => p.nama_barang === namaBarang);
+    return produk ? produk.gambar_url : null;
+  };
+
+  if (loading || loadingProduk) {
     return (
       <div className="p-6">
         <div className="flex justify-center items-center h-96">
@@ -119,58 +163,24 @@ const TopBarang: React.FC = () => {
         <p className="text-gray-600">Analisis produk paling populer berdasarkan penjualan</p>
       </div>
 
-      {/* Filter Buttons */}
-      <div className="flex space-x-4 mb-6">
-        <button
-          onClick={() => handleFilterChange('hari ini')}
-          className={`px-4 py-2 rounded-lg ${
-            activeFilter === 'hari ini'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Hari Ini
-        </button>
-        <button
-          onClick={() => handleFilterChange('bulan ini')}
-          className={`px-4 py-2 rounded-lg ${
-            activeFilter === 'bulan ini'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Bulan Ini
-        </button>
-        <button
-          onClick={() => handleFilterChange('tahun ini')}
-          className={`px-4 py-2 rounded-lg ${
-            activeFilter === 'tahun ini'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Tahun Ini
-        </button>
-      </div>
-
       {/* Statistik Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Total Barang Terjual</h3>
           <p className="text-2xl font-bold text-blue-600">{formatAngka(totalPenjualan)}</p>
-          <p className="text-xs text-gray-500 mt-1">Periode: {activeFilter}</p>
+          <p className="text-xs text-gray-500 mt-1">Periode: saat ini</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Jenis Barang</h3>
           <p className="text-2xl font-bold text-green-600">{data.length}</p>
-          <p className="text-xs text-gray-500 mt-1">Periode: {activeFilter}</p>
+          <p className="text-xs text-gray-500 mt-1">Periode: saat ini</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Rata-rata per Barang</h3>
           <p className="text-2xl font-bold text-purple-600">
             {formatAngka(totalPenjualan > 0 ? Math.round(totalPenjualan / data.length) : 0)}
           </p>
-          <p className="text-xs text-gray-500 mt-1">Periode: {activeFilter}</p>
+          <p className="text-xs text-gray-500 mt-1">Periode: saat ini</p>
         </div>
       </div>
 
@@ -179,7 +189,7 @@ const TopBarang: React.FC = () => {
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-800">Ranking Barang Terlaris</h2>
-            <p className="text-sm text-gray-500">Periode: {activeFilter}</p>
+            <p className="text-sm text-gray-500">Periode: saat ini</p>
           </div>
           <div className="p-6">
             {data.length === 0 ? (
@@ -189,13 +199,28 @@ const TopBarang: React.FC = () => {
                 {data.map((barang, index) => {
                   const percentage = totalPenjualan > 0 ? (barang.jumlah / totalPenjualan) * 100 : 0;
                   const color = getProgressColor(index);
+                  const gambarUrl = getProdukImage(barang.nama_barang);
                   
                   return (
-                    <div key={barang.nama_barang} className="flex items-center justify-between">
+                    <div key={barang.nama_barang} className="flex items-center">
+                      <div className="mr-3">
+                        {getRankingIcon(index)}
+                      </div>
+                      {gambarUrl ? (
+                        <img 
+                          src={gambarUrl} 
+                          alt={barang.nama_barang}
+                          className="h-10 w-10 rounded-full object-cover mr-3"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                          <span className="text-xs text-gray-500">No Img</span>
+                        </div>
+                      )}
                       <div className="flex-1">
                         <div className="flex items-center mb-1">
                           <span className="text-sm font-medium text-gray-900 mr-2">
-                            {index + 1}. {barang.nama_barang}
+                            {barang.nama_barang}
                           </span>
                           <span className="text-xs text-gray-500">
                             ({formatAngka(barang.jumlah)} terjual)
@@ -220,7 +245,7 @@ const TopBarang: React.FC = () => {
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-800">Distribusi Penjualan</h2>
-            <p className="text-sm text-gray-500">Periode: {activeFilter}</p>
+            <p className="text-sm text-gray-500">Periode: saat ini</p>
           </div>
           <div className="p-6">
             {data.length === 0 ? (
@@ -232,7 +257,10 @@ const TopBarang: React.FC = () => {
                   const color = getProgressColor(index);
                   
                   return (
-                    <div key={barang.nama_barang} className="flex items-center justify-between">
+                    <div key={barang.nama_barang} className="flex items-center">
+                      <div className="mr-3">
+                        {getRankingIcon(index)}
+                      </div>
                       <span className="text-sm text-gray-700 w-32 truncate">
                         {barang.nama_barang}
                       </span>
@@ -264,7 +292,7 @@ const TopBarang: React.FC = () => {
       <div className="bg-white rounded-lg shadow mt-6">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-800">Detail Barang Terlaris</h2>
-          <p className="text-sm text-gray-500">Periode: {activeFilter}</p>
+          <p className="text-sm text-gray-500">Periode: saat ini</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -272,6 +300,9 @@ const TopBarang: React.FC = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Peringkat
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Gambar
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Nama Barang
@@ -291,13 +322,27 @@ const TopBarang: React.FC = () => {
               {data.map((barang, index) => {
                 const percentage = totalPenjualan > 0 ? (barang.jumlah / totalPenjualan) * 100 : 0;
                 const color = getProgressColor(index);
+                const gambarUrl = getProdukImage(barang.nama_barang);
                 
                 return (
                   <tr key={barang.nama_barang} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className={`w-8 h-8 flex items-center justify-center rounded-full ${color} text-white font-bold`}>
-                        {index + 1}
+                      <div className="flex items-center justify-center">
+                        {getRankingIcon(index)}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {gambarUrl ? (
+                        <img 
+                          src={gambarUrl} 
+                          alt={barang.nama_barang}
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                          <span className="text-xs text-gray-500">No Img</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -339,7 +384,7 @@ const TopBarang: React.FC = () => {
       <div className="mt-6 p-4 bg-blue-50 rounded-lg">
         <h3 className="font-semibold text-blue-800 mb-2">Analisis Penjualan</h3>
         <p className="text-sm text-blue-700">
-          Total {formatAngka(totalPenjualan)} barang terjual dari {data.length} jenis produk pada periode {activeFilter}. 
+          Total {formatAngka(totalPenjualan)} barang terjual dari {data.length} jenis produk pada periode saat ini. 
           Barang teratas "{data[0]?.nama_barang}" menyumbang {totalPenjualan > 0 ? ((data[0]?.jumlah / totalPenjualan) * 100).toFixed(1) : 0}% dari total penjualan.
         </p>
       </div>
