@@ -1,4 +1,6 @@
 import BiayaOperasional from "../../models/biayaoperasional.js";
+import Barang from "../../models/databarang.js";
+import Settings from "../../models/settings.js";
 
 // Tambah atau edit biaya operasional (hanya satu dokumen)
 export const addOrUpdateBiaya = async (req, res) => {
@@ -18,6 +20,8 @@ export const addOrUpdateBiaya = async (req, res) => {
 
       // total dihitung otomatis oleh middleware
       await biaya.save();
+      // Setelah update biaya operasional, update hargaFinal semua barang
+      await updateAllBarangHargaFinal();
       res.json({ message: "Biaya operasional berhasil diperbarui!", data: biaya });
     } else {
       // kalau belum ada sama sekali, buat satu kali saja
@@ -29,13 +33,35 @@ export const addOrUpdateBiaya = async (req, res) => {
         gaji_karyawan: Number(gaji_karyawan) || 0,
       });
       await newBiaya.save();
+      // Setelah buat biaya operasional, update hargaFinal semua barang
+      await updateAllBarangHargaFinal();
       res.json({ message: "Biaya operasional pertama berhasil dibuat!", data: newBiaya });
     }
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Gagal menyimpan biaya operasional", error: err.message });
   }
+}
+
+// Fungsi untuk update hargaFinal semua barang
+
+export const updateAllBarangHargaFinal = async () => {
+  const settings = await Settings.findOne();
+  const taxRate = settings?.taxRate ?? 0;
+  const globalDiscount = settings?.globalDiscount ?? 0;
+  const serviceCharge = settings?.serviceCharge ?? 0;
+  // Tidak menambahkan totalBiayaOperasional, samakan dengan createBarang
+  const allBarang = await Barang.find();
+  for (const barang of allBarang) {
+    const hargaJual = Number(barang.harga_jual) || 0;
+    const hargaSetelahDiskon = hargaJual - (hargaJual * globalDiscount) / 100;
+    const hargaSetelahPajak = hargaSetelahDiskon + (hargaSetelahDiskon * taxRate) / 100;
+    const hargaFinal = hargaSetelahPajak + (hargaSetelahPajak * serviceCharge) / 100;
+    barang.hargaFinal = Math.round(hargaFinal);
+    await barang.save();
+  }
 };
+
 
 // Ambil data biaya (selalu 1 dokumen)
 export const getBiaya = async (req, res) => {

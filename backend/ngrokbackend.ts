@@ -1,3 +1,3 @@
-const ngrokUrl = `https://e8fde3977955.ngrok-free.app`
+const ngrokUrl = `https://cfd3733e8278.ngrok-free.app`
 
 export default ngrokUrl
