@@ -1,8 +1,8 @@
-// src/admin/dashboard/laporan-penjualan/index.tsx
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, type PieLabel } from 'recharts';
-import LoadingSpinner from '../../../components/LoadingSpinner'; // Adjust path as needed
-import { exportPdf, exportExcel } from './utils'; // Import fungsi export
+import LoadingSpinner from '../../../components/LoadingSpinner';
+import { exportPdf, exportExcel } from './utils';
+import { Landmark, Wallet, TrendingUp, CreditCard } from 'lucide-react';
 
 // Interface untuk data dari API
 interface LaporanHarian {
@@ -58,7 +58,7 @@ interface ApiResponse {
   };
   rekap_metode_pembayaran: MetodePembayaran[];
   _id: string;
-  biaya_operasional_id: BiayaOperasional; // Perubahan: dari string menjadi objek
+  biaya_operasional_id: BiayaOperasional;
   pengeluaran: number;
   createdAt: string;
   updatedAt: string;
@@ -82,13 +82,14 @@ interface ProdukTerlaris {
   labaPerItem: number;
   jumlahTerjual: number;
   totalLaba: number;
+  gambar_url?: string;
 }
 
 // Interface untuk data pie chart yang sesuai dengan Recharts
 interface PieData {
   name: string;
   value: number;
-  [key: string]: unknown; // Untuk memenuhi ChartDataInput
+  [key: string]: unknown;
 }
 
 // Interface untuk props CustomTooltip
@@ -99,6 +100,21 @@ interface TooltipProps {
     value: number;
     payload: PieData;
   }>;
+}
+
+// Interface untuk produk item
+interface ProdukItem {
+  _id: string;
+  kode_barang: string;
+  nama_barang: string;
+  kategori: string;
+  harga_beli: number;
+  harga_jual: number;
+  stok: number;
+  stok_minimal: number;
+  gambar_url: string;
+  status: string;
+  hargaFinal?: number;
 }
 
 const LaporanPenjualan: React.FC = () => {
@@ -118,6 +134,9 @@ const LaporanPenjualan: React.FC = () => {
   const [daftarBulan, setDaftarBulan] = useState<DaftarBulan[]>([]);
   const [selectedBulan, setSelectedBulan] = useState<string>('');
   const [loadingBulan, setLoadingBulan] = useState<boolean>(true);
+
+  // State untuk produk list
+  const [produkList, setProdukList] = useState<ProdukItem[]>([]);
 
   // Warna untuk pie chart
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1', '#EF4444', '#14B8A6', '#F97316'];
@@ -149,6 +168,27 @@ const LaporanPenjualan: React.FC = () => {
     };
 
     fetchDaftarBulan();
+  }, []);
+
+  // Fetch data produk untuk mendapatkan gambar
+  useEffect(() => {
+    const fetchProdukList = async () => {
+      try {
+        const response = await fetch('http://192.168.110.16:5000/api/admin/stok-barang');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result: ProdukItem[] = await response.json();
+        setProdukList(result);
+      } catch (err) {
+        console.error('Error fetching produk list:', err);
+        setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengambil data produk');
+      }
+    };
+
+    fetchProdukList();
   }, []);
 
   // Fetch data laporan berdasarkan bulan yang dipilih
@@ -192,13 +232,16 @@ const LaporanPenjualan: React.FC = () => {
             produk.jumlahTerjual += 1;
             produk.totalLaba += item.laba;
           } else {
+            // Cari produk di produkList untuk mendapatkan gambar
+            const produkInfo = produkList.find(p => p.nama_barang === item.produk);
             produkMap.set(item.produk, {
               produk: item.produk,
               harga_jual: item.harga_jual,
               harga_beli: item.harga_beli,
               labaPerItem: item.laba,
               jumlahTerjual: 1,
-              totalLaba: item.laba
+              totalLaba: item.laba,
+              gambar_url: produkInfo ? produkInfo.gambar_url : '' // Tambahkan gambar
             });
           }
         });
@@ -226,7 +269,7 @@ const LaporanPenjualan: React.FC = () => {
     };
 
     fetchData();
-  }, [selectedBulan]); // Fetch data setiap kali selectedBulan berubah
+  }, [selectedBulan, produkList]); // Tambahkan produkList sebagai dependency
 
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -278,7 +321,7 @@ const LaporanPenjualan: React.FC = () => {
       totalPendapatan: totalPendapatan,
       totalBarangTerjual: totalBarangTerjual,
       pengeluaran: data.pengeluaran,
-      biaya_operasional: data.biaya_operasional_id // Tambahkan biaya operasional detail
+      biaya_operasional: data.biaya_operasional_id
     };
     
     if (type === 'pdf') {
@@ -339,6 +382,15 @@ const LaporanPenjualan: React.FC = () => {
   const handleBulanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedBulan(e.target.value);
     setCurrentPage(1); // Reset pagination ke halaman 1
+  };
+
+  // Dapatkan icon berdasarkan metode pembayaran
+  const getPaymentIcon = (method: string): React.ReactNode => {
+    if (method.includes('Virtual Account')) return <Landmark className="h-5 w-5 text-blue-500" />;
+    if (method.includes('E-Wallet')) return <Wallet className="h-5 w-5 text-green-500" />;
+    if (method.includes('Tunai')) return <TrendingUp className="h-5 w-5 text-yellow-500" />;
+    if (method.includes('Kartu Kredit')) return <CreditCard className="h-5 w-5 text-purple-500" />;
+    return <CreditCard className="h-5 w-5 text-gray-500" />;
   };
 
   if (loadingBulan) {
@@ -575,6 +627,9 @@ const LaporanPenjualan: React.FC = () => {
                       Produk
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Gambar
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Harga Jual
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -594,7 +649,7 @@ const LaporanPenjualan: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {currentItems.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                      <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                         Tidak ada data produk
                       </td>
                     </tr>
@@ -604,6 +659,21 @@ const LaporanPenjualan: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
                             {item.produk}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-10 w-10 flex-shrink-0">
+                            {item.gambar_url ? (
+                              <img 
+                                className="h-10 w-10 rounded-full object-cover" 
+                                src={item.gambar_url} 
+                                alt={item.produk}
+                              />
+                            ) : (
+                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                <span className="text-xs text-gray-500">No Img</span>
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -743,7 +813,10 @@ const LaporanPenjualan: React.FC = () => {
                   return (
                     <div key={index}>
                       <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-700">{item.metode}</span>
+                        <div className="flex items-center">
+                          {getPaymentIcon(item.metode)}
+                          <span className="text-sm font-medium text-gray-700 ml-2">{item.metode}</span>
+                        </div>
                         <span className="text-sm font-medium text-gray-900">{formatRupiah(item.total)}</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">

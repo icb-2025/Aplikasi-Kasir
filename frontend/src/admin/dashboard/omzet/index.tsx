@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import OmzetCards from './components/OmzetCards';
 import OmzetChart from './components/OmzetChart';
@@ -23,7 +23,7 @@ const OmzetPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
-  const fetchOmzetData = async (showNotification = false) => {
+  const fetchOmzetData = useCallback(async (showNotification = false) => {
     try {
       if (showNotification) setIsRefreshing(true);
       else setLoading(true);
@@ -54,11 +54,11 @@ const OmzetPage: React.FC = () => {
       setLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [selectedPeriod]); // Tambahkan selectedPeriod sebagai dependency
 
   useEffect(() => {
     fetchOmzetData();
-  }, [selectedPeriod]); // Tambahkan selectedPeriod sebagai dependency
+  }, [fetchOmzetData]); // Tambahkan fetchOmzetData sebagai dependency
 
   if (loading) {
     return (
