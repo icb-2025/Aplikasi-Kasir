@@ -226,7 +226,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({ visible, onClose, onKateg
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Deskripsi
+                  Deskripsi (Opsional)
                 </label>
                 <textarea
                   value={formData.deskripsi}

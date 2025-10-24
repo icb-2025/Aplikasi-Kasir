@@ -111,7 +111,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
     // Menu User - ditambahkan di sini
     {
       name: 'User',
-      icon: '👤',
+      icon: '👥',
       path: '/admin/users',
     },
     // Menu Profile - ditambahkan di sini
