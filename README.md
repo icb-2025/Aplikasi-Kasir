@@ -88,7 +88,11 @@ npm run dev
 2️⃣ Backend
 cd backend
 npm install
-# Buat file .env berdasarkan .env.example
+# Buat file .env berdasarkan .env.example -> isi dengan benar
+untuk google isi seperti ini:
+Authorized JavaScript origins:http://localhost:5173
+Authorized redirect URIs:URLNGROK/api/auth/google/callback
+node scripts/migrate-to-firebase.js
 npm start   # npm start dengan nodemon
 
 3️⃣ Koneksi MongoDB
@@ -122,6 +126,7 @@ MIDTRANS_IS_PRODUCTION=false
 📈 Real-Time Update
 
 Socket.io digunakan untuk update stok & transaksi secara real-time antar user di frontend.
+
 
 
 
