@@ -7,6 +7,7 @@ import type { BarangFormData } from "./ModalBarang";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { SweetAlert } from "../../components/SweetAlert";
 import io, { Socket } from "socket.io-client";
+import { portbe } from "../../../../backend/ngrokbackend";
 const ipbe = import.meta.env.VITE_IPBE;
 
 
@@ -55,8 +56,8 @@ interface ListBarangProps {
   setDataBarang: React.Dispatch<React.SetStateAction<Barang[]>>;
 }
 
-const API_URL = `${ipbe}:5000/api/admin/stok-barang`;
-const KATEGORI_API_URL = `${ipbe}:5000/api/admin/kategori`;
+const API_URL = `${ipbe}:${portbe}/api/admin/stok-barang`;
+const KATEGORI_API_URL = `${ipbe}:${portbe}/api/admin/kategori`;
 
 interface ApiError extends Error {
   message: string;
@@ -130,7 +131,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
 
   // Inisialisasi Socket.IO dengan event yang lebih lengkap
   useEffect(() => {
-    socketRef.current = io(`${ipbe}:5000`);
+    socketRef.current = io(`${ipbe}:${portbe}`);
     
     // Dengarkan event tambah barang
     socketRef.current.on('barang:created', (newBarang: BarangAPI) => {

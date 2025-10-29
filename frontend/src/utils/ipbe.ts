@@ -1,1 +1,1 @@
-export const ipbe = 'http://192.168.110.16'
+// export const ipbe = 'http://192.168.110.16'

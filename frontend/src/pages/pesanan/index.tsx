@@ -4,6 +4,7 @@ import { SweetAlert } from "../../components/SweetAlert";
 import MainLayout from '../../components/MainLayout';
 import Sidebar from "../componentUtama/Sidebar";
 import { customStyles } from '../CssHalamanUtama';
+import { portbe } from '../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
 import {  
@@ -75,8 +76,8 @@ interface ApiResponse {
   riwayat: PesananAPI[];
 }
 
-const API_URL = `${ipbe}:5000/api/users/history`;
-const SETTINGS_URL = `${ipbe}:5000/api/admin/settings`;
+const API_URL = `${ipbe}:${portbe}/api/users/history`;
+const SETTINGS_URL = `${ipbe}:${portbe}/api/admin/settings`;
 
 const StatusPesananPage = () => {
   const [filterStatus, setFilterStatus] = useState<string>("semua");
@@ -155,7 +156,7 @@ const StatusPesananPage = () => {
   const fetchKasirById = async (kasirId: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${ipbe}:5000/api/kasir/${kasirId}`, {
+      const response = await fetch(`${ipbe}:${portbe}/api/kasir/${kasirId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

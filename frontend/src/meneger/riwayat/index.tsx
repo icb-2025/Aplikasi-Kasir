@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import MenegerLayout from "../layout";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import { portbe } from "../../../../backend/ngrokbackend";
 const ipbe = import.meta.env.VITE_IPBE;
 
 
@@ -74,7 +75,7 @@ const MenegerRiwayatPage = () => {
   const fetchRiwayatData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${ipbe}:5000/api/manager/riwayat`);
+      const response = await fetch(`${ipbe}:${portbe}/api/manager/riwayat`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

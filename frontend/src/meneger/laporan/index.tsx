@@ -6,6 +6,7 @@ import SummaryCards from './components/SummaryCards';
 import TransactionChart from './components/TransactionChart';
 import TransactionTable from './components/TransactionTable';
 import { formatMethodName } from './components/utils';
+import { portbe } from '../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
 
@@ -66,7 +67,7 @@ const LaporanPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`${ipbe}:5000/api/manager/laporan`);
+        const response = await fetch(`${ipbe}:${portbe}/api/manager/laporan`);
         if (!response.ok) {
           throw new Error("Failed to fetch data");
         }

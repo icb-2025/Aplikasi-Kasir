@@ -70,19 +70,24 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({ formData, handleInp
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Biaya Layanan (%)</label>
+         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Biaya Layanan (%)</label>
+          <div className="relative">
             <input
               type="number"
               name="serviceCharge"
               value={formData.serviceCharge}
               onChange={handleInputChange}
+              readOnly
               min="0"
               max="100"
-              step="0.1"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              step="0.01"
+              className="pl-4 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
             />
+            <p className="mt-1 text-sm text-gray-500">Nilai ini dihitung otomatis dari total biaya operasional</p>  
           </div>
+        </div>
+
         </div>
       </div>
 

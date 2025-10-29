@@ -1,5 +1,6 @@
 import React from "react";
 import type { Barang } from ".";
+import { portbe } from "../../../../backend/ngrokbackend";
 const ipbe = import.meta.env.VITE_IPBE;
 
 
@@ -51,7 +52,7 @@ const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => 
     }
     
     // Jika gambarUrl adalah path relatif, tambahkan base URL
-    return `${ipbe}:5000${gambarUrl.startsWith('/') ? '' : '/'}${gambarUrl}`;
+    return `${ipbe}:${portbe}${gambarUrl.startsWith('/') ? '' : '/'}${gambarUrl}`;
   };
 
   return (

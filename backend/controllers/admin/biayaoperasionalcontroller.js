@@ -1,3 +1,5 @@
+import db from "../../config/firebaseAdmin.js";
+import { io } from "../../server.js";
 import BiayaOperasional from "../../models/biayaoperasional.js";
 import Barang from "../../models/databarang.js";
 import Settings from "../../models/settings.js";
@@ -46,23 +48,100 @@ export const addOrUpdateBiaya = async (req, res) => {
 // Fungsi untuk update hargaFinal semua barang
 
 export const updateAllBarangHargaFinal = async () => {
-  const settings = await Settings.findOne();
+  const settings = (await Settings.findOne()) || (await Settings.create({}));
   const taxRate = settings?.taxRate ?? 0;
   const globalDiscount = settings?.globalDiscount ?? 0;
-  const serviceCharge = settings?.serviceCharge ?? 0;
-  // Tidak menambahkan totalBiayaOperasional, samakan dengan createBarang
+  const previousCalculated = settings?.calculatedServiceCharge ?? 0;
+  const previousServiceCharge = settings?.serviceCharge ?? null;
+
+  // Ambil biaya operasional terbaru
+  const biayaOp = await BiayaOperasional.findOne();
+  const totalBiayaOperasional = biayaOp?.total || 0;
+
+  // Hitung total nilai barang
   const allBarang = await Barang.find();
+  const totalNilaiBarang = allBarang.reduce((sum, b) => sum + (Number(b.harga_jual) || 0), 0);
+  
+    // Hitung service charge dari biaya operasional
+    let calculatedServiceCharge = 0;
+    if (totalNilaiBarang > 0) {
+      const estimasiPenjualanBulanan = totalNilaiBarang * 30; 
+      
+      // Biaya operasional dibagi estimasi penjualan bulanan
+      calculatedServiceCharge = (totalBiayaOperasional / estimasiPenjualanBulanan) * 100;
+      
+      const MAX_SERVICE_CHARGE = 50;
+      calculatedServiceCharge = Math.min(
+        Math.round(calculatedServiceCharge * 100) / 100, 
+        MAX_SERVICE_CHARGE
+      );
+    }
+
+    // Update settings dengan service charge yang sudah dibatasi
+    settings.calculatedServiceCharge = calculatedServiceCharge;
+    settings.serviceCharge = calculatedServiceCharge;
+    await settings.save();
+
+    console.log('Perhitungan Service Charge:');
+  console.log('Total Biaya Operasional (per bulan):', totalBiayaOperasional);
+  console.log('Total Nilai Barang (per hari):', totalNilaiBarang);
+  console.log('Estimasi Penjualan Bulanan:', totalNilaiBarang * 30);
+  console.log('Service Charge (max 25%):', `${calculatedServiceCharge}%`);
+
+  // Log informasi untuk debugging
+  console.log('Updating all barang with new values:');
+  console.log('Tax Rate:', taxRate);
+  console.log('Global Discount:', globalDiscount);
+  console.log('Calculated Service Charge:', `${calculatedServiceCharge}%`);
+  console.log('Total Biaya Operasional:', totalBiayaOperasional);
+  console.log('Total Nilai Barang:', totalNilaiBarang);
+
+  // gunakan nilai serviceCharge aktif dari settings (agar konsisten dengan UI yang membaca settings.serviceCharge)
+  const activeServiceCharge = settings.serviceCharge || 0;
+
+  let totalUpdated = 0;
   for (const barang of allBarang) {
     const hargaJual = Number(barang.harga_jual) || 0;
+
+    // Terapkan semua persentase secara berurutan
+    // Urutan: Diskon -> Pajak -> Service Charge (dari biaya operasional atau manual override)
     const hargaSetelahDiskon = hargaJual - (hargaJual * globalDiscount) / 100;
     const hargaSetelahPajak = hargaSetelahDiskon + (hargaSetelahDiskon * taxRate) / 100;
-    const hargaFinal = hargaSetelahPajak + (hargaSetelahPajak * serviceCharge) / 100;
+    const hargaFinal = hargaSetelahPajak + (hargaSetelahPajak * activeServiceCharge) / 100;
+
     barang.hargaFinal = Math.round(hargaFinal);
+    
+    // Log untuk debugging
+    console.log(`Update harga untuk ${barang.nama_barang}:`, {
+      hargaJual,
+      hargaSetelahDiskon,
+      hargaSetelahPajak,
+      serviceCharge: `${calculatedServiceCharge}%`,
+      hargaFinal
+    });
+
+    // Update ke Firebase jika tersedia
+    if (db) {
+      try {
+        const id = barang._id.toString();
+        await db.ref(`/barang/${id}`).update({
+          harga_final: Math.round(hargaFinal)
+        });
+      } catch (e) {
+        console.warn(`⚠️ Gagal update harga di Firebase untuk barang ${barang._id}:`, e.message);
+      }
+    }
+
+    // Emit event untuk websocket clients
+    io.emit("barang:updated", barang);
+
     await barang.save();
+    totalUpdated++;
   }
+  console.log(`✅ Berhasil update ${totalUpdated} barang`);
 };
 
-
+ 
 // Ambil data biaya (selalu 1 dokumen)
 export const getBiaya = async (req, res) => {
   try {

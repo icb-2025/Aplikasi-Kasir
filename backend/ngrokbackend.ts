@@ -1,3 +1,4 @@
-const ngrokUrl = `https://cfd3733e8278.ngrok-free.app`
+const ngrokUrl = `https://72709675f155.ngrok-free.app`
+const portbe = 5000
 
-export default ngrokUrl
+export {ngrokUrl, portbe}

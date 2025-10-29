@@ -6,6 +6,7 @@ import UserModal from './component/usermodal';
 import UserTable from './component/usertable';
 import UserFilter from './component/userfilter';
 import Pagination from './component/pagination';
+import { portbe } from '../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
 
@@ -56,7 +57,7 @@ const UsersPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(10);
 
-  const API_URL = `${ipbe}:5000/api/admin/users`;
+  const API_URL = `${ipbe}:${portbe}/api/admin/users`;
 
   // Fetch users from API
   const fetchUsers = useCallback(async () => {

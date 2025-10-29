@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import AppRouter from "./router";
 import type { Barang } from "./admin/stok-barang";
 import { initializeSocket } from './utils/socket';
-
-
+import { portbe }from "../../backend/ngrokbackend"
 // Inisialisasi socket ketika aplikasi dimulai
 const ipbe = import.meta.env.VITE_IPBE;
 initializeSocket();
@@ -21,7 +20,7 @@ interface BarangAPI {
   gambar_url?: string;
 }
 
-const API_URL = `${ipbe}:5000/api/admin/stok-barang`;
+const API_URL = `${ipbe}:${portbe}/api/admin/stok-barang`;
 
 function App() {
   const [dataBarang, setDataBarang] = useState<Barang[]>([]);

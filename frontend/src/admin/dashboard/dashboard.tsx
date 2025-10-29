@@ -1,6 +1,7 @@
 // src/admin/dashboard/dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { portbe } from '../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 // Define interfaces for API responses
 interface User {
@@ -116,11 +117,11 @@ const AdminDashboard: React.FC = () => {
           transaksiResponse,
           settingsResponse
         ] = await Promise.all([
-          fetch(`${ipbe}:5000/api/admin/users`),
-          fetch(`${ipbe}:5000/api/admin/dashboard/top-barang?filter=bulan`),
-          fetch(`${ipbe}:5000/api/manager/laporan`),
-          fetch(`${ipbe}:5000/api/admin/dashboard/transaksi/terakhir`),
-          fetch(`${ipbe}:5000/api/admin/settings`)
+          fetch(`${ipbe}:${portbe}/api/admin/users`),
+          fetch(`${ipbe}:${portbe}/api/admin/dashboard/top-barang?filter=bulan`),
+          fetch(`${ipbe}:${portbe}/api/manager/laporan`),
+          fetch(`${ipbe}:${portbe}/api/admin/dashboard/transaksi/terakhir`),
+          fetch(`${ipbe}:${portbe}/api/admin/settings`)
         ]);
 
         // Check for errors

@@ -1,6 +1,7 @@
 // src/admin/dashboard/transaksi/index.tsx
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../../../components/LoadingSpinner'; // Adjust path as needed
+import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 interface BarangDibeli {
   kode_barang?: string;
@@ -43,7 +44,7 @@ const Transaksi: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${ipbe}:5000/api/admin/dashboard/transaksi/terakhir`);
+        const response = await fetch(`${ipbe}:${portbe}/api/admin/dashboard/transaksi/terakhir`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

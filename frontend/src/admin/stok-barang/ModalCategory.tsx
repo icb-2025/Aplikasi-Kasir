@@ -1,6 +1,7 @@
 // ModalCategory.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import { SweetAlert } from "../../components/SweetAlert";
+import { portbe } from "../../../../backend/ngrokbackend";
 import LoadingSpinner from "../../components/LoadingSpinner";
 const ipbe = import.meta.env.VITE_IPBE;
 
@@ -25,7 +26,7 @@ interface ModalCategoryProps {
   onKategoriChange: () => void;
 }
 
-const API_URL = `${ipbe}:5000/api/admin/kategori`;
+const API_URL = `${ipbe}:${portbe}/api/admin/kategori`;
 
 const ModalCategory: React.FC<ModalCategoryProps> = ({ visible, onClose, onKategoriChange }) => {
   const [categories, setCategories] = useState<KategoriAPI[]>([]);

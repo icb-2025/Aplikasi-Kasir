@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import connectDB from "./database/db.js";
+import { portbe } from "./ngrokbackend.ts"
 import barangRoutes from "./routes/BarangRoutes.js";
 import transaksiRoutes from "./routes/TransaksiRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -33,7 +34,7 @@ import googleAuthRoutes from "./routes/googleAuthRoutes.js";
 
 dotenv.config();
 const app = express();
-const port = process.env.PORT || 5000;
+const port = portbe;
 
 app.use(
   session({

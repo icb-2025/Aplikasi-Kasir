@@ -8,6 +8,7 @@ const settingsSchema = new Schema({
   taxRate: { type: Number, default: 0 },
   globalDiscount: { type: Number, default: 0 },
   serviceCharge: { type: Number, default: 0 },
+  calculatedServiceCharge: { type: Number, default: 0 }, // Service charge dari biaya operasional
   receiptHeader: { type: String, default: "Aplikasi Kasir" },
   receiptFooter: { type: String, default: "Terima kasih telah berbelanja!" },
   showBarcode: { type: Boolean, default: false },
