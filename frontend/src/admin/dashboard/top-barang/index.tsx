@@ -290,96 +290,103 @@ const TopBarang: React.FC = () => {
       </div>
 
       {/* Tabel Detail */}
-      <div className="bg-white rounded-lg shadow mt-6">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800">Detail Barang Terlaris</h2>
-          <p className="text-sm text-gray-500">Periode: saat ini</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Peringkat
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Gambar
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Nama Barang
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Jumlah Terjual
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Persentase
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trend
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {data.map((barang, index) => {
-                const percentage = totalPenjualan > 0 ? (barang.jumlah / totalPenjualan) * 100 : 0;
-                const color = getProgressColor(index);
-                const gambarUrl = getProdukImage(barang.nama_barang);
-                
-                return (
-                  <tr key={barang.nama_barang} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center justify-center">
-                        {getRankingIcon(index)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {gambarUrl ? (
-                        <img 
-                          src={gambarUrl} 
-                          alt={barang.nama_barang}
-                          className="h-10 w-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-xs text-gray-500">No Img</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {barang.nama_barang}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {formatAngka(barang.jumlah)} unit
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {percentage.toFixed(1)}%
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className={`w-16 h-2 bg-gray-200 rounded-full mr-2`}>
-                          <div 
-                            className={`h-2 rounded-full ${color}`}
-                            style={{ width: `${percentage}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {percentage.toFixed(1)}%
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden mt-6">
+  <div className="p-6 border-b border-gray-200">
+    <h2 className="text-lg font-semibold text-gray-800">Detail Barang Terlaris</h2>
+    <p className="text-sm text-gray-500">Periode: saat ini</p>
+  </div>
+  <div className="overflow-x-auto">
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Peringkat
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Gambar
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Nama Barang
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Jumlah Terjual
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Persentase
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Trend
+          </th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200">
+        {data.map((barang, index) => {
+          const percentage = totalPenjualan > 0 ? (barang.jumlah / totalPenjualan) * 100 : 0;
+          const color = getProgressColor(index);
+          const gambarUrl = getProdukImage(barang.nama_barang);
+          
+          return (
+            <tr 
+              key={barang.nama_barang} 
+              className={`transition-colors hover:bg-gray-50 ${
+                index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+              }`}
+            >
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex items-center justify-center">
+                  {getRankingIcon(index)}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex justify-center">
+                  {gambarUrl ? (
+                    <img 
+                      src={gambarUrl} 
+                      alt={barang.nama_barang}
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                      <span className="text-xs text-gray-500">No Img</span>
+                    </div>
+                  )}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm font-medium text-gray-900">
+                  {barang.nama_barang}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-900">
+                  {formatAngka(barang.jumlah)} unit
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-900">
+                  {percentage.toFixed(1)}%
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex items-center">
+                  <div className="w-16 h-2 bg-gray-200 rounded-full mr-2">
+                    <div 
+                      className={`h-2 rounded-full ${color}`}
+                      style={{ width: `${Math.min(percentage, 100)}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    {percentage.toFixed(1)}%
+                  </span>
+                </div>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+</div>
 
       {/* Info Summary */}
       <div className="mt-6 p-4 bg-blue-50 rounded-lg">

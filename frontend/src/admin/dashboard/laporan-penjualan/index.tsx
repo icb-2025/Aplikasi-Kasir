@@ -543,264 +543,270 @@ const LaporanPenjualan: React.FC = () => {
           </div>
 
           {/* Detail Biaya Operasional */}
-          <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-800">Detail Biaya Operasional</h2>
-              <p className="text-sm text-gray-600">Rincian biaya operasional periode ini</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Kategori
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Jumlah
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">Listrik</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.listrik)}</div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">Air</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.air)}</div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">Internet</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.internet)}</div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">Sewa Tempat</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.sewa_tempat)}</div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">Gaji Karyawan</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.gaji_karyawan)}</div>
-                    </td>
-                  </tr>
-                  <tr className="bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-bold text-gray-900">Total</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-bold text-gray-900">{formatRupiah(data.biaya_operasional_id.total)}</div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+  <div className="p-6 border-b border-gray-200">
+    <h2 className="text-lg font-semibold text-gray-800">Detail Biaya Operasional</h2>
+    <p className="text-sm text-gray-600">Rincian biaya operasional periode ini</p>
+  </div>
+  <div className="overflow-x-auto">
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Kategori
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Jumlah
+          </th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200">
+        <tr className="transition-colors hover:bg-gray-50 bg-white">
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm font-medium text-gray-900">Listrik</div>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.listrik)}</div>
+          </td>
+        </tr>
+        <tr className="transition-colors hover:bg-gray-50 bg-amber-50">
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm font-medium text-gray-900">Air</div>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.air)}</div>
+          </td>
+        </tr>
+        <tr className="transition-colors hover:bg-gray-50 bg-white">
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm font-medium text-gray-900">Internet</div>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.internet)}</div>
+          </td>
+        </tr>
+        <tr className="transition-colors hover:bg-gray-50 bg-amber-50">
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm font-medium text-gray-900">Sewa Tempat</div>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.sewa_tempat)}</div>
+          </td>
+        </tr>
+        <tr className="transition-colors hover:bg-gray-50 bg-white">
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm font-medium text-gray-900">Gaji Karyawan</div>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.gaji_karyawan)}</div>
+          </td>
+        </tr>
+        <tr className="bg-gray-100 border-t-2 border-gray-300">
+  <td className="px-6 py-4 whitespace-nowrap">
+    <div className="text-sm font-bold text-gray-900">Total</div>
+  </td>
+  <td className="px-6 py-4 whitespace-nowrap">
+    <div className="text-sm font-bold text-gray-900">{formatRupiah(data.biaya_operasional_id.total)}</div>
+  </td>
+</tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
           {/* Tabel Produk Terlaris */}
-          <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-800">Produk Terlaris</h2>
-              <p className="text-sm text-gray-600">Berdasarkan total laba</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Produk
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Gambar
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Harga Jual
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Harga Beli
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Laba/Item
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Jumlah Terjual
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total Laba
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {currentItems.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                        Tidak ada data produk
-                      </td>
-                    </tr>
+         {/* Tabel Produk Terlaris */}
+<div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+  <div className="p-6 border-b border-gray-200">
+    <h2 className="text-lg font-semibold text-gray-800">Produk Terlaris</h2>
+    <p className="text-sm text-gray-600">Berdasarkan total laba</p>
+  </div>
+  <div className="overflow-x-auto">
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Produk
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Gambar
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Harga Jual
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Harga Beli
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Laba/Item
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Jumlah Terjual
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Total Laba
+          </th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200">
+        {currentItems.length === 0 ? (
+          <tr>
+            <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+              Tidak ada data produk
+            </td>
+          </tr>
+        ) : (
+          currentItems.map((item, index) => (
+            <tr 
+              key={index} 
+              className={`transition-colors hover:bg-gray-50 ${
+                index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+              }`}
+            >
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm font-medium text-gray-900">
+                  {item.produk}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex justify-center">
+                  {item.gambar_url ? (
+                    <img 
+                      className="h-10 w-10 rounded-full object-cover" 
+                      src={item.gambar_url} 
+                      alt={item.produk}
+                    />
                   ) : (
-                    currentItems.map((item, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {item.produk}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="h-10 w-10 flex-shrink-0">
-                            {item.gambar_url ? (
-                              <img 
-                                className="h-10 w-10 rounded-full object-cover" 
-                                src={item.gambar_url} 
-                                alt={item.produk}
-                              />
-                            ) : (
-                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                                <span className="text-xs text-gray-500">No Img</span>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{formatRupiah(item.harga_jual)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{formatRupiah(item.harga_beli)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className={`text-sm font-medium ${item.labaPerItem >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatRupiah(item.labaPerItem)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{item.jumlahTerjual}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className={`text-sm font-medium ${item.totalLaba >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatRupiah(item.totalLaba)}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                      <span className="text-xs text-gray-500">No Img</span>
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-900">{formatRupiah(item.harga_jual)}</div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-900">{formatRupiah(item.harga_beli)}</div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className={`text-sm font-medium ${item.labaPerItem >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatRupiah(item.labaPerItem)}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-900">{item.jumlahTerjual}</div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className={`text-sm font-medium ${item.totalLaba >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatRupiah(item.totalLaba)}
+                </div>
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  </div>
+  
+  {/* Pagination */}
+  {produkTerlaris.length > itemsPerPage && (
+    <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+      <div className="flex-1 flex justify-between sm:hidden">
+        <button
+          onClick={() => paginate(currentPage - 1)}
+          disabled={currentPage === 1}
+          className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+            currentPage === 1 
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+              : 'bg-white text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          Sebelumnya
+        </button>
+        <button
+          onClick={() => paginate(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+            currentPage === totalPages 
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+              : 'bg-white text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          Selanjutnya
+        </button>
+      </div>
+      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm text-gray-700">
+            Menampilkan <span className="font-medium">{indexOfFirstItem + 1}</span> hingga{' '}
+            <span className="font-medium">
+              {Math.min(indexOfLastItem, produkTerlaris.length)}
+            </span>{' '}
+            dari <span className="font-medium">{produkTerlaris.length}</span> hasil
+          </p>
+        </div>
+        <div>
+          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
+                currentPage === 1 
+                  ? 'text-gray-300 cursor-not-allowed' 
+                  : 'text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              <span className="sr-only">Sebelumnya</span>
+              &larr;
+            </button>
             
-            {/* Pagination */}
-            {produkTerlaris.length > itemsPerPage && (
-              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                <div className="flex-1 flex justify-between sm:hidden">
-                  <button
-                    onClick={() => paginate(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                      currentPage === 1 
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    Sebelumnya
-                  </button>
-                  <button
-                    onClick={() => paginate(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                      currentPage === totalPages 
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    Selanjutnya
-                  </button>
-                </div>
-                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-gray-700">
-                      Menampilkan <span className="font-medium">{indexOfFirstItem + 1}</span> hingga{' '}
-                      <span className="font-medium">
-                        {Math.min(indexOfLastItem, produkTerlaris.length)}
-                      </span>{' '}
-                      dari <span className="font-medium">{produkTerlaris.length}</span> hasil
-                    </p>
-                  </div>
-                  <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                      <button
-                        onClick={() => paginate(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
-                          currentPage === 1 
-                            ? 'text-gray-300 cursor-not-allowed' 
-                            : 'text-gray-500 hover:bg-gray-50'
-                        }`}
-                      >
-                        <span className="sr-only">Sebelumnya</span>
-                        &larr;
-                      </button>
-                      
-                      {/* Page numbers */}
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum;
-                        if (totalPages <= 5) {
-                          pageNum = i + 1;
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1;
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i;
-                        } else {
-                          pageNum = currentPage - 2 + i;
-                        }
-                        
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => paginate(pageNum)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                              currentPage === pageNum
-                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-                      
-                      <button
-                        onClick={() => paginate(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
-                          currentPage === totalPages 
-                            ? 'text-gray-300 cursor-not-allowed' 
-                            : 'text-gray-500 hover:bg-gray-50'
-                        }`}
-                      >
-                        <span className="sr-only">Selanjutnya</span>
-                        &rarr;
-                      </button>
-                    </nav>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+            {/* Page numbers */}
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => paginate(pageNum)}
+                  className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                    currentPage === pageNum
+                      ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
+                currentPage === totalPages 
+                  ? 'text-gray-300 cursor-not-allowed' 
+                  : 'text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              <span className="sr-only">Selanjutnya</span>
+              &rarr;
+            </button>
+          </nav>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
 
           {/* Grafik Metode Pembayaran */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

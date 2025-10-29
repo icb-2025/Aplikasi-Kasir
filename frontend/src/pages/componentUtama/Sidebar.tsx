@@ -323,8 +323,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
           
           {/* Footer */}
           <div className="p-4 border-t border-gray-200 text-center">
-            <p className="text-xs text-gray-500">© 2023 KasirPlus</p>
-            <p className="text-xs text-gray-400">v1.0.0</p>
+            <p className="text-xs text-gray-500">© 2025 KasirPlus</p>
           </div>
         </div>
       </div>

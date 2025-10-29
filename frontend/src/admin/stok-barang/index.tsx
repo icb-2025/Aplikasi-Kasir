@@ -26,6 +26,7 @@ export interface BarangAPI {
   hargaFinal?: number;
   gambar_url?: string;
   status?: string;
+  use_discount?: boolean;
 }
 
 export interface Barang {
@@ -40,6 +41,7 @@ export interface Barang {
   hargaFinal?: number;
   gambarUrl?: string;
   status?: string;
+  useDiscount?: boolean;
 }
 
 // Tambahkan interface untuk kategori
@@ -84,6 +86,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     stok: "",
     gambarUrl: "",
     gambar: null,
+    useDiscount: true,
   });
 
   // Fungsi untuk generate kode barang acak 9 karakter
@@ -147,6 +150,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         hargaFinal: newBarang.hargaFinal,
         gambarUrl: newBarang.gambar_url,
         status: newBarang.status || (newBarang.stok <= 0 ? "habis" : newBarang.stok <= (newBarang.stok_minimal || 5) ? "hampir habis" : "aman"),
+        useDiscount: typeof newBarang.use_discount !== 'undefined' ? newBarang.use_discount : true,
       };
       
       setDataBarang(prevData => [...prevData, mappedBarang]);
@@ -166,6 +170,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         hargaFinal: updatedBarang.hargaFinal,
         gambarUrl: updatedBarang.gambar_url,
         status: updatedBarang.status || (updatedBarang.stok <= 0 ? "habis" : updatedBarang.stok <= (updatedBarang.stok_minimal || 5) ? "hampir habis" : "aman"),
+        useDiscount: typeof updatedBarang.use_discount !== 'undefined' ? updatedBarang.use_discount : true,
       };
       
       setDataBarang(prevData => 
@@ -238,6 +243,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         hargaFinal: item.hargaFinal,
         gambarUrl: item.gambar_url,
         status: item.status || (item.stok <= 0 ? "habis" : item.stok <= (item.stok_minimal || 5) ? "hampir habis" : "aman"),
+        useDiscount: typeof item.use_discount !== 'undefined' ? item.use_discount : true,
       }));
       setDataBarang(mapped);
     } catch (err) {
@@ -277,7 +283,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     setEditId(null);
   };
 
-  const handleInputChange = (field: keyof BarangFormData, value: string | File | null) => {
+  const handleInputChange = (field: keyof BarangFormData, value: string | File | null | boolean) => {
     setFormData((prev: BarangFormData) => ({
       ...prev,
       [field]: value
@@ -296,6 +302,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         stok: barang.stok?.toString() || "",
         gambarUrl: barang.gambarUrl || "",
         gambar: null,
+        useDiscount: typeof barang.useDiscount !== 'undefined' ? barang.useDiscount : true,
       });
       setIsEditing(true);
       setEditId(id);
@@ -377,6 +384,9 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       payload.append("harga_jual", formData.hargaJual);
       payload.append("stok", formData.stok);
       payload.append("stok_minimal", "5");
+
+  // per-item optional use of global discount
+  payload.append("use_discount", formData.useDiscount ? "true" : "false");
 
       if (formData.gambar) {
         payload.append("gambar", formData.gambar);

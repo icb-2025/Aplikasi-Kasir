@@ -308,50 +308,58 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({ visible, onClose, onKateg
                   </button>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-lg shadow">
-                  <table className="w-full text-sm text-left text-gray-700">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-                      <tr>
-                        <th className="px-6 py-3">Nama</th>
-                        <th className="px-6 py-3">Deskripsi</th>
-                        <th className="px-6 py-3 text-center">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {categories.map((category) => (
-                        <tr
-                          key={category._id}
-                          className="bg-white border-b hover:bg-gray-50"
-                        >
-                          <td className="px-6 py-4 font-medium text-gray-900">
-                            {category.nama}
-                          </td>
-                          <td className="px-6 py-4">
-                            {category.deskripsi || "-"}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex justify-center space-x-2">
-                              <button
-                                onClick={() => handleEdit(category._id)}
-                                className="font-medium text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
-                                title="Edit kategori"
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                onClick={() => handleDelete(category._id)}
-                                className="font-medium text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
-                                title="Hapus kategori"
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+  <div className="overflow-x-auto">
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200">
+        {categories.map((category, index) => (
+          <tr 
+            key={category._id}
+            className={`transition-colors hover:bg-gray-50 ${
+              index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+            }`}
+          >
+            <td className="px-6 py-4 whitespace-nowrap">
+              <div className="text-sm font-medium text-gray-900">
+                {category.nama}
+              </div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+              <div className="text-sm text-gray-500">
+                {category.deskripsi || "-"}
+              </div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => handleEdit(category._id)}
+                  className="text-blue-600 hover:text-blue-900 transition-colors"
+                  title="Edit kategori"
+                >
+                  ✏️
+                </button>
+                <button
+                  onClick={() => handleDelete(category._id)}
+                  className="text-red-600 hover:text-red-900 transition-colors"
+                  title="Hapus kategori"
+                >
+                  🗑️
+                </button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
               )}
             </>
           )}

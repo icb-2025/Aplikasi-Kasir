@@ -149,7 +149,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
             ></textarea>
           </div>
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Logo Toko</label>
+            <label className="text-lg font-medium text-gray-900 mb-4">Logo Toko</label>
             
             {isEditingLogo ? (
               <div className="space-y-4">

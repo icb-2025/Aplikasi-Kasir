@@ -47,10 +47,15 @@ const UserTable: React.FC<UserTableProps> = ({ users, onEdit, onDelete }) => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-200">
             {users.length > 0 ? (
-              users.map((user) => (
-                <tr key={user._id} className="hover:bg-gray-50 transition-colors">
+              users.map((user, index) => (
+                <tr 
+                  key={user._id} 
+                  className={`transition-colors hover:bg-gray-50 ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+                  }`}
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{user.nama_lengkap || user.nama}</div>
                   </td>
