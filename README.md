@@ -60,7 +60,7 @@ Tersedia frontend interaktif dan backend API dengan **real-time update**, serta 
 
 Kasir-Plus/
 ├─ frontend/ # React + TypeScript + Tailwind + Framer Motion + Recharts + Lucide
-├─ backend/ # Node.js + Express + MongoDB + Socket.io + Midtrans + Cloudinary
+├─ backend/ # Node.js + Express + MongoDB + Firebase + Socket.io + Midtrans + Cloudinary
 ├─ README.md
 └─ .gitignore
 
@@ -122,6 +122,7 @@ MIDTRANS_IS_PRODUCTION=false
 📈 Real-Time Update
 
 Socket.io digunakan untuk update stok & transaksi secara real-time antar user di frontend.
+
 
 
 
