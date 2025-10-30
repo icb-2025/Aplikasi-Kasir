@@ -30,7 +30,7 @@ import userAuth from "./middleware/user.js";
 import session from "express-session";
 import passport from "./config/passportGoogle.js";
 import googleAuthRoutes from "./routes/googleAuthRoutes.js";
-import { debugTokenLogger } from "./middleware/debugTokenLogger.js"; //debug all for frontend
+// import { debugTokenLogger } from "./middleware/debugTokenLogger.js"; //debug all for frontend
 
 dotenv.config();
 const app = express();
@@ -46,7 +46,7 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
-app.use(debugTokenLogger); 
+// app.use(debugTokenLogger); 
 
 
 
