@@ -81,6 +81,38 @@ export const updateAllBarangHargaFinal = async () => {
     settings.calculatedServiceCharge = calculatedServiceCharge;
     settings.serviceCharge = calculatedServiceCharge;
     await settings.save();
+    
+    // Push settings ke Firebase Realtime Database agar frontend dapat ter-update secara real-time
+    try {
+      if (db) {
+        // serialisasi document ke plain object untuk disimpan di RTDB
+        const plainSettings = {
+          calculatedServiceCharge: settings.calculatedServiceCharge,
+          serviceCharge: settings.serviceCharge,
+          taxRate: settings.taxRate || 0,
+          globalDiscount: settings.globalDiscount || 0,
+          receiptHeader: settings.receiptHeader || null,
+          receiptFooter: settings.receiptFooter || null,
+          showBarcode: settings.showBarcode || false,
+          showCashierName: settings.showCashierName || false,
+          storeName: settings.storeName || null,
+          storeLogo: settings.storeLogo || null,
+          storeAddress: settings.storeAddress || null,
+          storePhone: settings.storePhone || null,
+        };
+
+        await db.ref(`/settings`).set(plainSettings);
+
+        // Emit event via socket so connected websocket clients also get notified
+        try {
+          io.emit("settings:updated", plainSettings);
+        } catch (e) {
+          console.warn("Gagal emit settings:updated via socket:", e.message);
+        }
+      }
+    } catch (e) {
+      console.warn("⚠️ Gagal push settings ke Firebase RTDB:", e.message);
+    }
 
     console.log('Perhitungan Service Charge:');
   console.log('Total Biaya Operasional (per bulan):', totalBiayaOperasional);
