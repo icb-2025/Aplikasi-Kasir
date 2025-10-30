@@ -119,7 +119,7 @@ export const updateServiceCharge = async (req, res) => {
       calculatedServiceCharge = (totalBiayaOperasional / estimasiPenjualanBulanan) * 100;
       
       // Batasi maksimum service charge (25%)
-      const MAX_SERVICE_CHARGE = 50;
+      const MAX_SERVICE_CHARGE = 100;
       calculatedServiceCharge = Math.min(
         Math.round(calculatedServiceCharge * 100) / 100, // 2 desimal
         MAX_SERVICE_CHARGE
