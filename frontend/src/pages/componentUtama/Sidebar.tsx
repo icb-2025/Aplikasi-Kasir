@@ -82,7 +82,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
           if (response.ok) {
             const profileData: UserProfile = await response.json();
             setUserProfile(profileData);
-            console.log("Profile data:", profileData); // Debugging
+           
           } else {
             console.error('Failed to fetch user profile');
           }
@@ -119,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               ? settingsData.storeLogo 
               : `${ipbe}:5000${settingsData.storeLogo}`;
             setStoreLogo(logoUrl);
-            console.log("Store logo:", logoUrl); // Debugging
+            
           }
         } else {
           console.error('Failed to fetch store settings');

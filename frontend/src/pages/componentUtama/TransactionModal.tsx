@@ -330,7 +330,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       bodyData.kasir_id = kasirId;
     }
 
-    console.log("Sending transaction data:", JSON.stringify(bodyData, null, 2));
+
 
     setLoading(true);
     setErrorMessage("");
@@ -349,8 +349,6 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         body: JSON.stringify(bodyData),
       });
 
-      console.log("Response status:", res.status);
-      console.log("Response headers:", res.headers);
 
       let responseData: {
         message: string;
@@ -360,7 +358,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       };
       try {
         responseData = await res.json();
-        console.log("Response data:", responseData);
+       
       } catch (_err) {
         console.error("Failed to parse response JSON:", _err);
         throw new Error("Server returned invalid response");
@@ -369,7 +367,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       if (!res.ok) {
         SweetAlert.close();
         const errorMsg = responseData.message || responseData.error || "Failed to save transaction";
-        console.error("API Error:", errorMsg);
+        
         throw new Error(errorMsg);
       }
 
@@ -432,7 +430,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       }
       
       setErrorMessage(displayError);
-      console.error("Transaction error:", error);
+     
       await SweetAlert.error(displayError);
     } finally {
       setLoading(false);

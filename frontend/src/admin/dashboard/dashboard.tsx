@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 const ipbe = import.meta.env.VITE_IPBE;
+
 // Define interfaces for API responses
 interface User {
   _id: string;
@@ -290,7 +291,7 @@ const AdminDashboard: React.FC = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
                 </svg>
-                <p className="text-sm font-bold text-white mr-1">{stats.activeUsers}</p> Aktif
+                <span className="text-sm font-bold text-white mr-1">{stats.activeUsers}</span> Aktif
               </p>
             </div>
             <div className="p-3 rounded-full bg-blue-400 bg-opacity-30">
@@ -311,7 +312,7 @@ const AdminDashboard: React.FC = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
                 </svg>
-                <p className="text-sm font-bold text-white mr-1">{stats.completedTransactions}</p> Selesai
+                <span className="text-sm font-bold text-white mr-1">{stats.completedTransactions}</span> Selesai
               </p>
             </div>
             <div className="p-3 rounded-full bg-green-400 bg-opacity-30">
@@ -334,7 +335,7 @@ const AdminDashboard: React.FC = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
                 </svg>
-                Rata-rata: <p className="text-sm font-bold text-white ml-2">{formatRupiah(stats.averageTransactionValue)}</p>
+                Rata-rata: <span className="text-sm font-bold text-white ml-2">{formatRupiah(stats.averageTransactionValue)}</span>
               </p>
             </div>
             <div className="p-3 rounded-full bg-white bg-opacity-20">
@@ -355,7 +356,7 @@ const AdminDashboard: React.FC = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
                 </svg>
-                <p className="text-sm font-bold text-white mr-1">{stats.paymentMethods}</p> Metode Pembayaran
+                <span className="text-sm font-bold text-white mr-1">{stats.paymentMethods}</span> Metode Pembayaran
               </p>
             </div>
             <div className="p-3 rounded-full bg-yellow-400 bg-opacity-30">
@@ -528,7 +529,7 @@ const AdminDashboard: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-blue-800">Total Pengguna</p>
                 <p className="text-2xl font-bold text-blue-600">{stats.totalUsers}</p>
-                <p className="text-xs text-blue-700">{stats.activeUsers} aktif</p>
+                <p className="text-xs text-blue-700"><span className="font-bold">{stats.activeUsers}</span> aktif</p>
               </div>
             </div>
           </div>
@@ -544,7 +545,7 @@ const AdminDashboard: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-green-800">Total Transaksi</p>
                 <p className="text-2xl font-bold text-green-600">{stats.totalTransactions}</p>
-                <p className="text-xs text-green-700">{stats.completedTransactions} selesai</p>
+                <p className="text-xs text-green-700"><span className="font-bold">{stats.completedTransactions}</span> selesai</p>
               </div>
             </div>
           </div>
@@ -563,7 +564,7 @@ const AdminDashboard: React.FC = () => {
                   {formatRupiah(stats.totalRevenue)}
                 </p>
                 <p className={`text-xs ${stats.totalRevenue < 0 ? 'text-red-700' : 'text-purple-700'}`}>
-                  Rata-rata: {formatRupiah(stats.averageTransactionValue)}
+                  Rata-rata: <span className="font-bold">{formatRupiah(stats.averageTransactionValue)}</span>
                 </p>
               </div>
             </div>
@@ -580,7 +581,7 @@ const AdminDashboard: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-yellow-800">Produk Terjual</p>
                 <p className="text-2xl font-bold text-yellow-600">{stats.totalProductsSold}</p>
-                <p className="text-xs text-yellow-700">{stats.paymentMethods} metode pembayaran</p>
+                <p className="text-xs text-yellow-700"><span className="font-bold">{stats.paymentMethods}</span> metode pembayaran</p>
               </div>
             </div>
           </div>

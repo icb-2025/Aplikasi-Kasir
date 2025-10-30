@@ -169,13 +169,13 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
 
   const checkTransactionStatus = useCallback(async (orderId: string, isManualCheck = false) => {
     if (hasCheckedStatus && !isManualCheck) {
-      console.log("Status already checked for this transaction, skipping...");
+      
       return;
     }
     
     setIsCheckingStatus(true);
     try {
-      console.log(`Mengecek status transaksi untuk order ID: ${orderId}`);
+      
       
       const baseUrl = `${ipbe}:5000`;
       const tokenLocal = localStorage.getItem('token');
@@ -186,7 +186,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
       if (tokenLocal) headers['Authorization'] = `Bearer ${tokenLocal}`;
       
       const url = `${baseUrl}/api/transaksi/public/status/${orderId}`;
-      console.log("Menggunakan URL API:", url);
+     
       
       const response = await fetch(url, { headers });
       
@@ -195,10 +195,10 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
       }
       
       const data = await response.json();
-      console.log("Respons dari API berhasil:", data);
+      
       
       if (!data) {
-        console.error("Data transaksi tidak valid:", data);
+        
         throw new Error("Data transaksi tidak valid");
       }
       
@@ -218,7 +218,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
       setHasCheckedStatus(true);
       
       if (data.status === 'selesai') {
-        console.log("Pembayaran berhasil, langsung menuju struk pembayaran");
+        
         setIsPaymentSuccess(true);
         
         await SweetAlert.fire({
@@ -246,7 +246,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
           onClose(); 
         }, 1000);
       } else if (data.status === 'pending') {
-        console.log("Status pembayaran masih pending");
+        
         setHasTriggeredSuccess(false);
         
         await SweetAlert.fire({
@@ -264,7 +264,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
           confirmButtonColor: '#3B82F6'
         });
       } else if (data.status === 'expire') {
-        console.log("Pembayaran kadaluarsa");
+        
         setIsExpired(true);
         clearTransactionStorage();
         
@@ -281,7 +281,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
           confirmButtonColor: '#F59E0B'
         });
       } else if (data.status === 'deny' || data.status === 'cancel') {
-        console.log("Pembayaran gagal atau dibatalkan");
+        
         await SweetAlert.fire({
           title: 'Pembayaran Gagal',
           html: `
@@ -295,7 +295,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
           confirmButtonColor: '#EF4444'
         });
       } else {
-        console.log("Status tidak dikenal:", data.status);
+        
         await SweetAlert.fire({
           title: 'Status Pembayaran',
           html: `
@@ -359,14 +359,13 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
 
     const orderId = qp.get('order_id') ?? qp.get('orderId');
 
-    console.log('Order ID dari URL:', orderId);
-
+    
     if (orderId) {
       checkTransactionStatus(orderId);
     }
     
     if (currentTransaction?.status === 'selesai') {
-      console.log("Transaksi sudah selesai, langsung tampilkan struk");
+      
       setIsPaymentSuccess(true);
       if (onTransactionSuccess && !hasTriggeredSuccess) {
         setHasTriggeredSuccess(true);
@@ -490,9 +489,6 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
   }, [paymentType]);
 
   useEffect(() => {
-    console.log("Token dari URL:", token);
-    console.log("Data transaksi dari state:", currentTransaction);
-    console.log("Data midtrans dari state:", midtrans);
     
     if (currentTransaction && midtrans) {
       if (currentTransaction.metode_pembayaran?.includes('Virtual Account') || midtrans.payment_type === 'bank_transfer') {
@@ -536,7 +532,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
   const cancelTransaction = async (transactionId: string) => {
     setIsCancelling(true);
     try {
-      console.log(`Membatalkan transaksi dengan ID: ${transactionId}`);
+      
       
       const baseUrl = `${ipbe}:5000`;
       const tokenLocal = localStorage.getItem('token');
@@ -547,7 +543,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
       if (tokenLocal) headers['Authorization'] = `Bearer ${tokenLocal}`;
       
       const url = `${baseUrl}/api/transaksi/cancel/${transactionId}`;
-      console.log("Menggunakan URL API pembatalan:", url);
+      
       
       const response = await fetch(url, {
         method: 'PUT',
@@ -600,7 +596,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
   };
 
   const handlePaymentWithMidtrans = async () => {
-    console.log("Memproses pembayaran dengan Midtrans");
+    
     
     const orderId = currentTransaction?.order_id || midtrans?.order_id || token;
     console.log('Checking status for orderId:', { 
@@ -612,7 +608,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     if (orderId) {
       await checkTransactionStatus(orderId, true);
     } else {
-      console.error("Order ID tidak ditemukan");
+      
       await SweetAlert.fire({
         title: 'Error',
         html: `
@@ -629,7 +625,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
   };
 
   const handlePaymentCancel = async () => {
-    console.log("Pembayaran dibatalkan");
+    
     
     const transactionId = currentTransaction?._id;
     if (transactionId) {
@@ -655,7 +651,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
         onClose();
       }
     } else {
-      console.error("Transaction ID tidak ditemukan");
+      
       await SweetAlert.fire({
         title: 'Error',
         html: `
