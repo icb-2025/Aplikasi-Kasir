@@ -70,7 +70,7 @@ export const updateAllBarangHargaFinal = async () => {
       // Biaya operasional dibagi estimasi penjualan bulanan
       calculatedServiceCharge = (totalBiayaOperasional / estimasiPenjualanBulanan) * 100;
       
-      const MAX_SERVICE_CHARGE = 50;
+      const MAX_SERVICE_CHARGE = 100;
       calculatedServiceCharge = Math.min(
         Math.round(calculatedServiceCharge * 100) / 100, 
         MAX_SERVICE_CHARGE
