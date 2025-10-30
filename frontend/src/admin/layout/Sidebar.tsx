@@ -25,7 +25,7 @@ interface SettingsResponse {
   storeLogo: string;
 }
 const ipbe = import.meta.env.VITE_IPBE;
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [marqueeKey, setMarqueeKey] = useState(0);
   const [storeLogo, setStoreLogo] = useState<string | null>(null);
@@ -131,21 +131,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
   return (
     <>
       {/* Tombol Toggle Sidebar untuk Mobile - Fixed Position di luar sidebar */}
-      <button 
-        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-md transition-all duration-300 hover:opacity-90 shadow-md"
-        onClick={onToggle}
-        aria-label="Toggle sidebar"
-      >
-        {isOpen ? (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        ) : (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        )}
-      </button>
+      
 
       {/* Sidebar Backdrop (for mobile) */}
       {isOpen && (
@@ -189,20 +175,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
 
         {/* Tombol Toggle Sidebar untuk Mobile - di dalam sidebar */}
         <div className="md:hidden px-4 py-3 flex-shrink-0">
-          <button 
-            className="w-full flex items-center justify-center py-2 bg-orange-700/50 rounded-lg text-white hover:bg-orange-700 transition-colors"
-            onClick={onToggle}
-            aria-label="Toggle sidebar"
-          >
-            <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              {isOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-            <span>{isOpen ? 'Tutup Menu' : 'Buka Menu'}</span>
-          </button>
+         
         </div>
 
         {/* Judul Bergerak di Sidebar dengan Animasi yang Diperbaiki */}
