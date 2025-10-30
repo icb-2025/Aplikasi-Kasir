@@ -7,7 +7,7 @@ import { portbe } from '../backend/ngrokbackend.ts'
 // Dapatkan __dirname di ESM
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const ngfb = ngrokBackend()   //Ganti Ngrok Backend Disini
+const ngfb = ngrokBackend() 
 const ipbe = process.env.VITE_IPBE
 export default defineConfig({
   plugins: [react()],
