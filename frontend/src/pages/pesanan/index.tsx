@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from "react-router-dom";
-import { SweetAlert } from "../../components/SweetAlert";
 import MainLayout from '../../components/MainLayout';
 import Sidebar from "../componentUtama/Sidebar";
 import { customStyles } from '../CssHalamanUtama';
@@ -108,7 +107,9 @@ const StatusPesananPage = () => {
         }
       });
       
-      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
       
       const data: ApiResponse = await response.json();
       
@@ -118,11 +119,9 @@ const StatusPesananPage = () => {
       } else {
         console.error("Data format is invalid:", data);
         setPesananList([]);
-        SweetAlert.error("Format data tidak valid");
       }
     } catch (error) {
       console.error("Error:", error);
-      SweetAlert.error("Gagal mengambil data pesanan");
       setPesananList([]); // Set ke array kosong saat error
     } finally {
       setLoading(false);
@@ -538,13 +537,13 @@ const StatusPesananPage = () => {
               <div className="text-6xl mb-4">📝</div>
               <h3 className="text-xl font-semibold text-gray-700 mb-2">
                 {filterStatus === "semua" && searchTerm === ""
-                  ? "Belum Ada Pesanan" 
-                  : `Tidak Ada Pesanan Ditemukan`}
+                  ? "Tidak Ada Pesanan" 
+                  : `Tidak Ada Pesanan`}
               </h3>
               <p className="text-gray-500">
                 {filterStatus === "semua" && searchTerm === ""
                   ? "Riwayat pesanan Anda akan muncul di sini" 
-                  : "Coba ubah filter atau kata kunci pencarian"}
+                  : "Riwayat pesanan Anda akan muncul di sini"}
               </p>
             </div>
           ) : (
