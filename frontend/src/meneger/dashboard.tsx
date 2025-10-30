@@ -1,6 +1,7 @@
 import MenegerLayout from "./layout";
 import { useState, useEffect } from "react";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { portbe } from "../../../backend/ngrokbackend";
 const ipbe = import.meta.env.VITE_IPBE;
 
 import {
@@ -34,7 +35,7 @@ const MenegerDashboard = () => {
         setLoading(true);
         setError(null);
         
-        const url = `${ipbe}:5000/api/manager/dashboard`;
+        const url = `${ipbe}:${portbe}/api/manager/dashboard`;
         
         const response = await fetch(url);
         

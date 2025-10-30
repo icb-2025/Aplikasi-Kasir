@@ -10,13 +10,14 @@ export interface BarangFormData {
   stok: string;
   gambar?: File | null;
   gambarUrl?: string;
+  useDiscount?: boolean;
 }
 
 interface ModalBarangProps {
   visible: boolean;
   isEditing: boolean;
   formData: BarangFormData;
-  onInputChange: (field: keyof BarangFormData, value: string | File | null) => void;
+  onInputChange: (field: keyof BarangFormData, value: string | File | null | boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
   loading?: boolean;
@@ -150,6 +151,21 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
                   Tidak ada kategori tersedia. Silakan tambah kategori terlebih dahulu.
                 </p>
               )}
+            </div>
+
+            {/* use discount checkbox */}
+            <div className="flex items-center gap-3">
+              <input
+                id="use-discount"
+                type="checkbox"
+                checked={!!formData.useDiscount}
+                onChange={(e) => onInputChange("useDiscount", e.target.checked)}
+                disabled={loading}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+              />
+              <label htmlFor="use-discount" className="text-sm text-gray-700">
+                Gunakan Diskon Global untuk produk ini
+              </label>
             </div>
 
             {/* harga beli */}

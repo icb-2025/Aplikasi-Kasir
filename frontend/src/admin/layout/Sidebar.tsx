@@ -1,6 +1,7 @@
 // src/admin/layout/Sidebar.tsx
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { portbe } from "../../../../backend/ngrokbackend";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -23,7 +24,7 @@ interface SubMenuItem {
 interface SettingsResponse {
   storeLogo: string;
 }
-
+const ipbe = import.meta.env.VITE_IPBE;
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [marqueeKey, setMarqueeKey] = useState(0);
@@ -35,7 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onToggle }) => {
   useEffect(() => {
     const fetchStoreLogo = async () => {
       try {
-        const response = await fetch('http://192.168.110.16:5000/api/admin/settings');
+        const response = await fetch(`${ipbe}:${portbe}/api/admin/settings`);
         if (!response.ok) {
           throw new Error('Failed to fetch store logo');
         }

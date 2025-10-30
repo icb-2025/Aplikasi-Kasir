@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/hooks/useAuth";
-
+import { portbe } from "../../../../backend/ngrokbackend";
+const ipbe = import.meta.env.VITE_IPBE;
 export default function MainLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -49,6 +50,25 @@ function Sidebar({
 }) {
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [storeLogo, setStoreLogo] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState<boolean>(false);
+
+  // Fetch store logo from API (same as admin sidebar)
+  useEffect(() => {
+    const fetchStoreLogo = async () => {
+      try {
+        const response = await fetch(`${ipbe}:${portbe}/api/admin/settings`);
+        if (!response.ok) throw new Error('Failed to fetch store logo');
+        const data = await response.json();
+        if (data.storeLogo) setStoreLogo(data.storeLogo);
+      } catch (err) {
+        console.error('Error fetching store logo:', err);
+        setLogoError(true);
+      }
+    };
+
+    fetchStoreLogo();
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -105,10 +125,30 @@ function Sidebar({
         {/* Logo/Header Sidebar - Padding top ditambah untuk mobile */}
         <div className="flex items-center justify-between mb-10 pt-8 md:pt-2">
           <div className="flex items-center gap-3">
-            <div className="bg-white p-2 rounded-lg shadow-md">
-              <LayoutDashboard className="w-6 h-6 text-orange-700" />
-            </div>
-            {(!collapsed || open) && <h2 className="text-xl font-bold tracking-wide">Manager</h2>}
+            {(!collapsed || open) && (
+              <>
+                {storeLogo && !logoError ? (
+                  <div className="bg-white p-1 rounded-lg shadow-md">
+                    <img
+                      src={storeLogo}
+                      alt="Store Logo"
+                      className="h-8 w-8 object-contain"
+                      onError={() => setLogoError(true)}
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-white p-2 rounded-lg shadow-md">
+                    <LayoutDashboard className="w-6 h-6 text-orange-700" />
+                  </div>
+                )}
+                <h2 className="text-xl font-bold tracking-wide">Manager</h2>
+              </>
+            )}
+            {!(!collapsed || open) && (
+              <div className="bg-white p-2 rounded-lg shadow-md">
+                <LayoutDashboard className="w-6 h-6 text-orange-700" />
+              </div>
+            )}
           </div>
           
           {/* Tombol collapse untuk desktop */}

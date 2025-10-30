@@ -10,6 +10,7 @@ const barangSchema = new Schema(
     stok: { type: Number, required: true },
     stok_minimal: { type: Number, default: 0 },
     hargaFinal: { type: Number, default: 0 },
+    use_discount: { type: Boolean, default: true },
     gambar_url: { type: String, default: "" },
   },
   { timestamps: true }

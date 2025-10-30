@@ -1,6 +1,6 @@
 # 🛒 Kasir Plus
 
-![KasirPlus Dashboard Preview](https://res.cloudinary.com/dmrpx33rn/image/upload/v1760515106/barang/oxiiws3cvc8ilrcvthts.png)
+![KasirPlus Dashboard Preview](https://res.cloudinary.com/dmrpx33rn/image/upload/v1761725178/Screenshot_from_2025-10-29_15-04-26_pq5f4h.png)
 
 [![Node.js](https://img.shields.io/badge/Node.js-v18-green)](https://nodejs.org/) 
 [![React](https://img.shields.io/badge/React-v18-blue)](https://reactjs.org/) 
@@ -60,7 +60,7 @@ Tersedia frontend interaktif dan backend API dengan **real-time update**, serta 
 
 Kasir-Plus/
 ├─ frontend/ # React + TypeScript + Tailwind + Framer Motion + Recharts + Lucide
-├─ backend/ # Node.js + Express + MongoDB + Socket.io + Midtrans + Cloudinary
+├─ backend/ # Node.js + Express + MongoDB + Firebase + Socket.io + Midtrans + Cloudinary
 ├─ README.md
 └─ .gitignore
 
@@ -88,7 +88,11 @@ npm run dev
 2️⃣ Backend
 cd backend
 npm install
-# Buat file .env berdasarkan .env.example
+# Buat file .env berdasarkan .env.example -> isi dengan benar
+untuk google isi seperti ini:
+Authorized JavaScript origins:http://localhost:5173
+Authorized redirect URIs:URLNGROK/api/auth/google/callback
+node scripts/migrate-to-firebase.js
 npm start   # npm start dengan nodemon
 
 3️⃣ Koneksi MongoDB
@@ -122,6 +126,9 @@ MIDTRANS_IS_PRODUCTION=false
 📈 Real-Time Update
 
 Socket.io digunakan untuk update stok & transaksi secara real-time antar user di frontend.
+
+
+
 
 
 

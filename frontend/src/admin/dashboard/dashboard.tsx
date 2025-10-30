@@ -1,6 +1,7 @@
 // src/admin/dashboard/dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { portbe } from '../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
 // Define interfaces for API responses
@@ -117,11 +118,11 @@ const AdminDashboard: React.FC = () => {
           transaksiResponse,
           settingsResponse
         ] = await Promise.all([
-          fetch(`${ipbe}:5000/api/admin/users`),
-          fetch(`${ipbe}:5000/api/admin/dashboard/top-barang?filter=bulan`),
-          fetch(`${ipbe}:5000/api/manager/laporan`),
-          fetch(`${ipbe}:5000/api/admin/dashboard/transaksi/terakhir`),
-          fetch(`${ipbe}:5000/api/admin/settings`)
+          fetch(`${ipbe}:${portbe}/api/admin/users`),
+          fetch(`${ipbe}:${portbe}/api/admin/dashboard/top-barang?filter=bulan`),
+          fetch(`${ipbe}:${portbe}/api/manager/laporan`),
+          fetch(`${ipbe}:${portbe}/api/admin/dashboard/transaksi/terakhir`),
+          fetch(`${ipbe}:${portbe}/api/admin/settings`)
         ]);
 
         // Check for errors
@@ -380,63 +381,68 @@ const AdminDashboard: React.FC = () => {
             </h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    No. Transaksi
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tanggal
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {recentTransactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <p className="mt-2">Tidak ada data transaksi</p>
-                    </td>
-                  </tr>
-                ) : (
-                  recentTransactions.map((trans) => (
-                    <tr key={trans._id} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {trans.nomor_transaksi}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {formatTanggal(trans.tanggal_transaksi)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {formatRupiah(trans.total_harga)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 inline-flex items-center text-xs font-medium rounded-full ${getStatusColor(trans.status)}`}>
-                          {getStatusIcon(trans.status)}
-                          <span className="ml-1">{trans.status.toUpperCase()}</span>
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+  <table className="min-w-full divide-y divide-gray-200">
+    <thead className="bg-gray-50">
+      <tr>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          No. Transaksi
+        </th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Tanggal
+        </th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Total
+        </th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Status
+        </th>
+      </tr>
+    </thead>
+    <tbody className="divide-y divide-gray-200">
+      {recentTransactions.length === 0 ? (
+        <tr>
+          <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p className="mt-2">Tidak ada data transaksi</p>
+          </td>
+        </tr>
+      ) : (
+        recentTransactions.map((trans, index) => (
+          <tr 
+            key={trans._id} 
+            className={`transition-colors duration-150 hover:bg-gray-50 ${
+              index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+            }`}
+          >
+            <td className="px-6 py-4 whitespace-nowrap">
+              <div className="text-sm font-medium text-gray-900">
+                {trans.nomor_transaksi}
+              </div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+              <div className="text-sm text-gray-900">
+                {formatTanggal(trans.tanggal_transaksi)}
+              </div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+              <div className="text-sm font-medium text-gray-900">
+                {formatRupiah(trans.total_harga)}
+              </div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+              <span className={`inline-flex px-3 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusColor(trans.status)}`}>
+                {getStatusIcon(trans.status)}
+                <span className="ml-1">{trans.status.charAt(0).toUpperCase() + trans.status.slice(1)}</span>
+              </span>
+            </td>
+          </tr>
+        ))
+      )}
+    </tbody>
+  </table>
+</div>
           <div className="p-4 bg-gray-50 text-center border-t border-gray-100">
             <a href="/admin/dashboard/transaksi" className="text-sm font-medium text-blue-600 hover:text-blue-800 inline-flex items-center">
               Lihat semua transaksi

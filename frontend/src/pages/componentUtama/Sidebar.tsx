@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AuthContext from '../../auth/context/AuthContext'
+import { portbe } from '../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
 // Interface untuk menu item
@@ -72,7 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
       if (user) {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`${ipbe}:5000/api/update-profile`, {
+          const response = await fetch(`${ipbe}:${portbe}/api/update-profile`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -104,7 +105,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
     const fetchStoreLogo = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${ipbe}:5000/api/admin/settings`, {
+        const response = await fetch(`${ipbe}:${portbe}/api/admin/settings`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -117,7 +118,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             // Jika storeLogo adalah path relatif, tambahkan base URL
             const logoUrl = settingsData.storeLogo.startsWith('http') 
               ? settingsData.storeLogo 
-              : `${ipbe}:5000${settingsData.storeLogo}`;
+              : `${ipbe}:${portbe}${settingsData.storeLogo}`;
             setStoreLogo(logoUrl);
             
           }
@@ -164,7 +165,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
     }
     
     // Jika profilePicture adalah path relatif, tambahkan base URL
-    return `${ipbe}:5000${profilePicture}`;
+    return `${ipbe}:${portbe}${profilePicture}`;
   };
 
   return (
@@ -322,8 +323,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
           
           {/* Footer */}
           <div className="p-4 border-t border-gray-200 text-center">
-            <p className="text-xs text-gray-500">© 2023 KasirPlus</p>
-            <p className="text-xs text-gray-400">v1.0.0</p>
+            <p className="text-xs text-gray-500">© 2025 KasirPlus</p>
           </div>
         </div>
       </div>

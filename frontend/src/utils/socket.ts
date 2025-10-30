@@ -1,4 +1,5 @@
 import { io, Socket } from "socket.io-client";
+import { portbe } from "../../../backend/ngrokbackend";
 
 
 const ipbe = import.meta.env.VITE_IPBE;
@@ -6,7 +7,7 @@ let socket: Socket;
 
 export const initializeSocket = () => {
   if (!socket) {
-    socket = io(`${ipbe}:5000`, {
+    socket = io(`${ipbe}:${portbe}`, {
       transports: ["websocket"], // pakai websocket
       autoConnect: true,         // langsung connect
       reconnection: true,        // auto reconnect kalau disconnect

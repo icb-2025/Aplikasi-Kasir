@@ -13,6 +13,7 @@ import TransactionModal from "./componentUtama/TransactionModal";
 import ProsesTransaksiModal from "./componentUtama/proses-transaksi";
 import AuthContext from "./../auth/context/AuthContext";
 import TopNav from "./componentUtama/topnav";
+import { portbe } from '../../../backend/ngrokbackend';
 
 
 const ipbe = import.meta.env.VITE_IPBE;
@@ -95,7 +96,7 @@ interface KategoriAPI {
   __v: number;
 }
 
-const API_BASE_URL = `${ipbe}:5000`;
+const API_BASE_URL = `${ipbe}:${portbe}`;
 
 interface BarangInput {
   _id?: string;

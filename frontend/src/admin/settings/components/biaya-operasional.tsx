@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import SweetAlert from '../../../components/SweetAlert';
 import LoadingSpinner from '../../../components/LoadingSpinner';
+import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
 
@@ -36,7 +37,7 @@ const BiayaOperasionalSettings: React.FC<BiayaOperasionalSettingsProps> = ({
     total: 0,
   });
 
-  const BASE_API_URL = `${ipbe}:5000/api/admin/biaya-operasional`;
+  const BASE_API_URL = `${ipbe}:${portbe}/api/admin/biaya-operasional`;
   const API_KEY = 'GPJbke7X3vAP0IBiiP8A';
 
   // Fungsi untuk mendapatkan token dari localStorage

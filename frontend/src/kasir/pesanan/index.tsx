@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import MainLayout from "../layout";
 import { getSocket } from "../../utils/socket";
 import { Landmark, Wallet, TrendingUp, CreditCard } from "lucide-react";
+import { portbe } from "../../../../backend/ngrokbackend";
 const ipbe = import.meta.env.VITE_IPBE;
 
 interface BarangDibeli {
@@ -91,7 +92,7 @@ const PesananKasirPage = () => {
           }
           
           // Gunakan endpoint /api/admin/users sebagai alternatif
-          const usersUrl = `${ipbe}:5000/api/admin/users`;
+          const usersUrl = `${ipbe}:${portbe}/api/admin/users`;
           console.debug("Fetching kasir user info", { url: usersUrl, tokenPresent: !!token });
 
           const res = await fetch(usersUrl, {
@@ -138,7 +139,7 @@ const PesananKasirPage = () => {
     const fetchProdukList = async () => {
       try {
         setLoadingProduk(true);
-        const response = await fetch(`${ipbe}:5000/api/admin/stok-barang`);
+        const response = await fetch(`${ipbe}:${portbe}/api/admin/stok-barang`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -172,7 +173,7 @@ const PesananKasirPage = () => {
       // Hitung offset berdasarkan halaman saat ini
       const offset = (currentPage - 1) * itemsPerPage;
       // Tambahkan parameter sort untuk mengurutkan dari yang terbaru
-      const url = `${ipbe}:5000/api/transaksi?kasir_id=${kasirId}&limit=${itemsPerPage}&offset=${offset}&sort=-tanggal_transaksi`;
+      const url = `${ipbe}:${portbe}/api/transaksi?kasir_id=${kasirId}&limit=${itemsPerPage}&offset=${offset}&sort=-tanggal_transaksi`;
       const headers = {
         'Authorization': `Bearer ${token}`,
         'x-api-key': 'GPJbke7X3vAP0IBiiP8A'

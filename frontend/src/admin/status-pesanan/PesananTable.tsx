@@ -46,7 +46,7 @@ interface PesananTableProps {
 const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loading = false }) => {
   if (!data) {
     return (
-      <div className="overflow-x-auto rounded-lg shadow">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="w-full text-center py-8 text-gray-500">
           Memuat data...
         </div>
@@ -55,7 +55,7 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
   }
 
   return (
-    <div className="bg-white rounded-xl shadow overflow-hidden">
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -78,15 +78,20 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Aksi
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-200">
             {data.length > 0 ? (
-              data.map((item, idx) => (
-                <tr key={item._id || `row-${idx}-${Date.now()}`} className="hover:bg-gray-50 transition-colors">
+              data.map((item, index) => (
+                <tr 
+                  key={item._id || `row-${index}-${Date.now()}`} 
+                  className={`transition-colors hover:bg-gray-50 ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+                  }`}
+                >
                   {/* Nomor Transaksi */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
@@ -106,8 +111,8 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
                     <div className="text-sm text-gray-900 max-w-xs">
                       {item.barang_dibeli && item.barang_dibeli.length > 0 ? (
                         <div className="space-y-1">
-                          {item.barang_dibeli.map((barang, index) => (
-                            <div key={index} className="border-l-2 border-blue-200 pl-2 py-1">
+                          {item.barang_dibeli.map((barang, barangIndex) => (
+                            <div key={barangIndex} className="border-l-2 border-blue-200 pl-2 py-1">
                               <div className="font-medium">{barang.nama_barang}</div>
                               <div className="text-gray-500 text-xs">
                                 {barang.jumlah} x {formatCurrency(barang.harga_satuan)}
@@ -130,7 +135,7 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
 
                   {/* Metode Pembayaran */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                    <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                       {item.metode_pembayaran || "-"}
                     </span>
                   </td>
@@ -138,7 +143,7 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
                   {/* Status */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusClass(
+                      className={`inline-flex px-3 py-1 text-xs leading-5 font-semibold rounded-full ${getStatusClass(
                         item.status || ""
                       )}`}
                     >
@@ -148,9 +153,9 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
                     </span>
                   </td>
 
-                  {/* Aksi - Diperbaiki */}
-                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                    <div className="flex justify-center space-x-2">
+                  {/* Aksi */}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
                       <button
                         onClick={() => onUpdateStatus(item._id, "diproses")}
                         disabled={loading || item.status === "diproses"}
@@ -202,14 +207,8 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-gray-500 bg-gray-50">
-                  <div className="py-8">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada data pesanan</h3>
-                    <p className="mt-1 text-sm text-gray-500">Silakan periksa kembali filter atau refresh data.</p>
-                  </div>
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                  Tidak ada data pesanan
                 </td>
               </tr>
             )}

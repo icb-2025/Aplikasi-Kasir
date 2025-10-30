@@ -72,6 +72,14 @@ export const createBarang = async (req, res) => {
     const globalDiscount = settings?.globalDiscount ?? 0;
     const serviceCharge = settings?.serviceCharge ?? 0;
 
+    // parse per-item use_discount flag (FormData sends strings)
+    let useDiscount = true;
+    const rawUse = typeof req.body.use_discount !== "undefined" ? req.body.use_discount : req.body.useDiscount;
+    if (typeof rawUse !== "undefined") {
+      if (typeof rawUse === "string") useDiscount = rawUse === "true";
+      else if (typeof rawUse === "boolean") useDiscount = rawUse;
+      else useDiscount = Boolean(rawUse);
+    }
     const biayaOp = await BiayaOperasional.findOne();
     const totalBiayaOperasional = biayaOp?.total || 0;
 
@@ -83,8 +91,9 @@ export const createBarang = async (req, res) => {
       gambarUrl = upload.secure_url;
     }
 
-    const hargaJual = Number(harga_jual) || 0;
-    const hargaSetelahDiskon = hargaJual - (hargaJual * globalDiscount) / 100;
+  const hargaJual = Number(harga_jual) || 0;
+  const effectiveDiscount = useDiscount ? globalDiscount : 0;
+  const hargaSetelahDiskon = hargaJual - (hargaJual * effectiveDiscount) / 100;
     const hargaSetelahPajak =
       hargaSetelahDiskon + (hargaSetelahDiskon * taxRate) / 100;
     const hargaFinal =
@@ -99,6 +108,7 @@ export const createBarang = async (req, res) => {
       stok,
       stok_minimal,
       hargaFinal: Math.round(hargaFinal),
+      use_discount: useDiscount,
       gambar_url: gambarUrl,
     });
 
@@ -112,6 +122,7 @@ export const createBarang = async (req, res) => {
         harga_jual: hargaJual,
         harga_final: Math.round(hargaFinal),
         kategori,
+        use_discount: useDiscount,
       });
     }
 
@@ -143,8 +154,18 @@ export const updateBarang = async (req, res) => {
     const globalDiscount = settings?.globalDiscount ?? 0;
     const serviceCharge = settings?.serviceCharge ?? 0;
 
+    // parse per-item use_discount flag (FormData sends strings)
+    let useDiscount = true;
+    const rawUse = typeof req.body.use_discount !== "undefined" ? req.body.use_discount : req.body.useDiscount;
+    if (typeof rawUse !== "undefined") {
+      if (typeof rawUse === "string") useDiscount = rawUse === "true";
+      else if (typeof rawUse === "boolean") useDiscount = rawUse;
+      else useDiscount = Boolean(rawUse);
+    }
+
     const hargaJual = Number(req.body.harga_jual) || 0;
-    const hargaSetelahDiskon = hargaJual - (hargaJual * globalDiscount) / 100;
+    const effectiveDiscount = useDiscount ? globalDiscount : 0;
+    const hargaSetelahDiskon = hargaJual - (hargaJual * effectiveDiscount) / 100;
     const hargaSetelahPajak =
       hargaSetelahDiskon + (hargaSetelahDiskon * taxRate) / 100;
     const hargaFinal =
@@ -153,6 +174,7 @@ export const updateBarang = async (req, res) => {
     let updateData = {
       ...req.body,
       hargaFinal: Math.round(hargaFinal),
+      use_discount: useDiscount,
     };
 
     if (req.file) {
@@ -176,6 +198,7 @@ export const updateBarang = async (req, res) => {
         harga_jual: barang.harga_jual,
         harga_final: Math.round(hargaFinal),
         kategori: barang.kategori,
+        use_discount: updateData.use_discount,
       });
     }
 

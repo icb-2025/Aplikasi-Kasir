@@ -164,54 +164,67 @@ const TransactionTable: React.FC<TransactionTableProps> = ({ tableData }) => {
       
       {currentItems.length > 0 ? (
         <>
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tanggal
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Metode Pembayaran
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Penjualan
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Persentase Laba
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {currentItems.map((item, index) => {
-                  const profitPercentage = item.total > 0 ? ((item.laba / item.total) * 100).toFixed(2) : '0';
-                  const profitPercentageNum = parseFloat(profitPercentage);
-                  
-                  return (
-                    <tr key={index} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {item.tanggal}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        <div className="flex items-center">
-                          {getPaymentIcon(item.metode)}
-                          <span className="ml-2">{formatMethodName(item.metode)}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        Rp {item.total.toLocaleString('id-ID')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${profitPercentageNum >= 20 ? 'bg-green-100 text-green-800' : profitPercentageNum >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
-                          {profitPercentage}%
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+  <div className="overflow-x-auto">
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Tanggal
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Metode Pembayaran
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Total Penjualan
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Persentase Laba
+          </th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200">
+        {currentItems.map((item, index) => {
+          const profitPercentage = item.total > 0 ? ((item.laba / item.total) * 100).toFixed(2) : '0';
+          const profitPercentageNum = parseFloat(profitPercentage);
+          
+          return (
+            <tr 
+              key={index} 
+              className={`transition-colors hover:bg-gray-50 ${
+                index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+              }`}
+            >
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-900">
+                  {item.tanggal}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm font-medium text-gray-900">
+                  <div className="flex items-center">
+                    {getPaymentIcon(item.metode)}
+                    <span className="ml-2">{formatMethodName(item.metode)}</span>
+                  </div>
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-900">
+                  Rp {item.total.toLocaleString('id-ID')}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`inline-flex px-3 py-1 text-xs leading-5 font-semibold rounded-full ${profitPercentageNum >= 20 ? 'bg-green-100 text-green-800' : profitPercentageNum >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                  {profitPercentage}%
+                </span>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+</div>
 
           {/* Pagination Controls */}
           {totalPages > 1 && (

@@ -1,6 +1,7 @@
 // src/meneger/settings/PaymentSettings.tsx
 import { useState, useEffect } from 'react';
 import type { PaymentMethod, PaymentChannel } from './index';
+import { portbe } from '../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
 
@@ -165,7 +166,7 @@ export default function PaymentSettings({
     const fetchPaymentStatus = async () => {
       try {
         setLoadingStatus(true);
-        const response = await fetch(`${ipbe}:5000/api/manager/settings/status`);
+        const response = await fetch(`${ipbe}:${portbe}/api/manager/settings/status`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

@@ -3,10 +3,11 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import {ngrokBackend} from './ngrokfrontend.ts'
+import { portbe } from '../backend/ngrokbackend.ts'
 // Dapatkan __dirname di ESM
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const ngfb = ngrokBackend()   //Ganti Ngrok Backend Disini
+const ngfb = ngrokBackend() 
 const ipbe = process.env.VITE_IPBE
 export default defineConfig({
   plugins: [react()],
@@ -22,12 +23,12 @@ export default defineConfig({
     ],
     proxy: {
       '/api/admin/stok-barang': {
-        target: `${ipbe}:5000/api/admin/stok-barang`,
+        target: `${ipbe}:${portbe}/api/admin/stok-barang`,
         changeOrigin: true,
         secure: false,
       },
       '/api/transaksi': {   
-        target: `${ipbe}:5000`,
+        target: `${ipbe}:${portbe}`,
         changeOrigin: true,
         secure: false,
       },
