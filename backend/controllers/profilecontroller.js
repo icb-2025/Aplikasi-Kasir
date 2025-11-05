@@ -1,30 +1,69 @@
 import cloudinary from "../config/cloudinary.js";
 import streamifier from "streamifier";
 import User from "../models/user.js";
+import bcrypt from "bcrypt"; // Tambahkan import bcrypt
+
 export const updateUser = async (req, res) => {
   try {
     if (req.user.id.toString() !== req.params.id.toString()) {
       return res.status(403).json({ message: "Tidak bisa mengubah data user lain" });
     }
 
-    const updates = {};
-    if (req.body.nama_lengkap) updates.nama_lengkap = req.body.nama_lengkap;
-    if (req.body.username) updates.username = req.body.username;
-    if (req.body.password) updates.password = req.body.password;
+    // 🔍 DEBUG: Log data yang diterima
+    console.log('=== DATA DITERIMA DI SERVER ===');
+    console.log('User ID:', req.params.id);
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('===============================');
 
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
 
-    Object.assign(user, updates);
+    // Update data dasar
+    if (req.body.nama_lengkap) user.nama_lengkap = req.body.nama_lengkap;
+    if (req.body.username) user.username = req.body.username;
+
+    // Proses password jika ada
+    if (req.body.currentPassword && req.body.newPassword) {
+      // Verifikasi password saat ini
+      const isPasswordValid = await user.comparePassword(req.body.currentPassword);
+      if (!isPasswordValid) {
+        return res.status(400).json({ message: "Password saat ini salah" });
+      }
+      
+      // ✅ PERBAIKAN: Cukup assign password plain text
+      // Middleware `pre('save')` di model akan meng-hashnya otomatis
+      user.password = req.body.newPassword;
+      
+      console.log('Password baru akan di-hash otomatis oleh pre-save hook');
+    } else if (req.body.currentPassword || req.body.newPassword) {
+      // Jika hanya salah satu password yang dikirim
+      return res.status(400).json({ 
+        message: "Harap isi password saat ini dan password baru untuk mengubah password" 
+      });
+    }
+
     await user.save();
 
-    res.json({ message: "User berhasil diperbarui!", user });
+    // 🔍 DEBUG: Log hasil
+    console.log('=== UPDATE BERHASIL ===');
+    console.log('User updated:', { 
+      id: user._id, 
+      nama_lengkap: user.nama_lengkap, 
+      username: user.username,
+      passwordUpdated: !!(req.body.currentPassword && req.body.newPassword)
+    });
+    console.log('======================');
+
+    // Hapus password dari response untuk keamanan
+    const userResponse = { ...user.toObject() };
+    delete userResponse.password;
+
+    res.json({ message: "User berhasil diperbarui!", user: userResponse });
   } catch (error) {
+    console.error('Error updating user:', error);
     res.status(400).json({ message: error.message });
   }
 };
-
-
 
 export const updateUserProfilePicture = async (req, res) => {
   try {
@@ -83,11 +122,16 @@ export const updateUserProfilePicture = async (req, res) => {
 
     await user.save();
 
+    // Hapus password dari response untuk keamanan
+    const userResponse = { ...user.toObject() };
+    delete userResponse.password;
+
     res.json({ 
       message: "Foto Profile Berhasil Diperbarui", 
-      user 
+      user: userResponse 
     });
   } catch (error) {
+    console.error('Error updating profile picture:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -116,6 +160,7 @@ export const getUserProfilePicture = async (req, res) => {
       username: user.username
     });
   } catch (error) {
+    console.error('Error getting profile picture:', error);
     res.status(500).json({ message: error.message });
   }
 };

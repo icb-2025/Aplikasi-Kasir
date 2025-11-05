@@ -152,14 +152,14 @@ const StatusPesananAdmin: React.FC = () => {
               <input
                 type="text"
                 placeholder="Cari pesanan..."
-                className="pl-3 pr-4 py-2 border border-gray-300 rounded-lg w-full"
+                className="pl-3 pr-4 border border-gray-300 rounded-lg w-full"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 disabled={actionLoading}
               />
               <button
                 onClick={fetchPesanan}
-                className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                className="px-5 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                 disabled={actionLoading}
               >
                 Refresh Data

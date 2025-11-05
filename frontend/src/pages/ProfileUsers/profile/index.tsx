@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../auth/hooks/useAuth';
-import { FaCamera, FaSave, FaArrowLeft, FaUser, FaEnvelope, FaLock } from 'react-icons/fa';
+import { FaCamera, FaSave, FaArrowLeft, FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import SweetAlert from '../../../components/SweetAlert';
 
 interface User {
@@ -38,31 +38,77 @@ export default function ProfilePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [passwordStrength, setPasswordStrength] = useState({
+    score: 0,
+    message: ''
+  });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const auth = useAuth();
   const navigate = useNavigate();
 
   // Inisialisasi data user dari auth context
   useEffect(() => {
-    if (auth.user) {
-      setForm({
-        nama_lengkap: auth.user.nama_lengkap,
-        username: auth.user.username || '',
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-      
-      // Set preview foto profil
-      if (auth.user.profilePicture) {
-        setPreviewUrl(auth.user.profilePicture);
-      } else if (auth.defaultProfilePicture) {
-        setPreviewUrl(auth.defaultProfilePicture);
+    const initializeForm = async () => {
+      try {
+        setIsDataLoading(true);
+        
+        // Tunggu sebentar untuk memastikan auth context sudah terisi
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        if (auth.user) {
+          setForm({
+            nama_lengkap: auth.user.nama_lengkap || '',
+            username: auth.user.username || '',
+            currentPassword: '', // Password tidak pernah diisi dari server
+            newPassword: '',      // untuk alasan keamanan
+            confirmPassword: ''
+          });
+          
+          // Set preview foto profil
+          if (auth.user.profilePicture) {
+            setPreviewUrl(auth.user.profilePicture);
+          } else if (auth.defaultProfilePicture) {
+            setPreviewUrl(auth.defaultProfilePicture);
+          }
+        } else {
+          // Jika user tidak tersedia, coba refresh data user
+          await auth.refreshUser();
+          
+          if (auth.user) {
+            setForm({
+              nama_lengkap: auth.user.nama_lengkap || '',
+              username: auth.user.username || '',
+              currentPassword: '',
+              newPassword: '',
+              confirmPassword: ''
+            });
+            
+            if (auth.user.profilePicture) {
+              setPreviewUrl(auth.user.profilePicture);
+            } else if (auth.defaultProfilePicture) {
+              setPreviewUrl(auth.defaultProfilePicture);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error initializing form:', err);
+        setError('Gagal memuat data profil. Silakan refresh halaman.');
+      } finally {
+        setIsDataLoading(false);
       }
-    }
-  }, [auth.user, auth.defaultProfilePicture]);
+    };
+    
+    initializeForm();
+  }, [auth.user, auth.defaultProfilePicture, auth.refreshUser]);
 
   // Update preview URL jika foto profil berubah
   useEffect(() => {
@@ -70,6 +116,36 @@ export default function ProfilePage() {
       setPreviewUrl(auth.user.profilePicture);
     }
   }, [auth.user?.profilePicture]);
+
+  // Cek kekuatan password
+  useEffect(() => {
+    if (form.newPassword) {
+      let score = 0;
+      let message = '';
+      
+      // Cek panjang password
+      if (form.newPassword.length >= 8) score += 1;
+      if (form.newPassword.length >= 12) score += 1;
+      
+      // Cek kompleksitas
+      if (/[A-Z]/.test(form.newPassword)) score += 1;
+      if (/[0-9]/.test(form.newPassword)) score += 1;
+      if (/[^A-Za-z0-9]/.test(form.newPassword)) score += 1;
+      
+      // Tentukan pesan berdasarkan score
+      if (score <= 2) {
+        message = 'Lemah';
+      } else if (score <= 3) {
+        message = 'Sedang';
+      } else {
+        message = 'Kuat';
+      }
+      
+      setPasswordStrength({ score, message });
+    } else {
+      setPasswordStrength({ score: 0, message: '' });
+    }
+  }, [form.newPassword]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -103,6 +179,13 @@ export default function ProfilePage() {
     if (success) setSuccess('');
   };
 
+  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+    setShowPasswords({
+      ...showPasswords,
+      [field]: !showPasswords[field]
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -112,6 +195,13 @@ export default function ProfilePage() {
     try {
       if (!auth.user) {
         SweetAlert.error('Anda belum login');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Validasi nama lengkap tidak kosong
+      if (!form.nama_lengkap.trim()) {
+        SweetAlert.error('Nama lengkap tidak boleh kosong');
         setIsLoading(false);
         return;
       }
@@ -132,9 +222,15 @@ export default function ProfilePage() {
       }
       
       // Validasi password jika ingin mengubah
-      if (form.newPassword && form.newPassword.length > 0) {
+      if (isChangingPassword) {
         if (!form.currentPassword) {
           SweetAlert.error('Masukkan password saat ini untuk mengubah password');
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!form.newPassword) {
+          SweetAlert.error('Masukkan password baru');
           setIsLoading(false);
           return;
         }
@@ -147,6 +243,13 @@ export default function ProfilePage() {
         
         if (form.newPassword.length < 6) {
           SweetAlert.error('Password baru minimal 6 karakter');
+          setIsLoading(false);
+          return;
+        }
+        
+        // Validasi kekuatan password
+        if (passwordStrength.score < 2) {
+          SweetAlert.error('Password terlalu lemah. Gunakan kombinasi huruf besar, angka, dan simbol');
           setIsLoading(false);
           return;
         }
@@ -180,15 +283,20 @@ export default function ProfilePage() {
       };
       
       // Tambahkan password hanya jika ingin mengubah
-      if (form.newPassword) {
+      if (isChangingPassword && form.newPassword && form.currentPassword) {
         updateData.currentPassword = form.currentPassword;
         updateData.newPassword = form.newPassword;
       }
-      
+    
       // Kirim request update profil
       const result = await auth.updateProfile(updateData);
       
       if (!result.success) {
+        // 🔍 DEBUG: Log error dari server
+        console.error('=== GAGAL UPDATE PROFILE ===');
+        console.error('Error Message:', result.message);
+        console.error('===========================');
+        
         // Penanganan error 400 (Bad Request)
         if (result.message?.includes('400') || result.message?.includes('Bad Request')) {
           await SweetAlert.fire({
@@ -211,9 +319,18 @@ export default function ProfilePage() {
           newPassword: '',
           confirmPassword: ''
         });
+        
+        // Reset password strength
+        setPasswordStrength({ score: 0, message: '' });
+        
+        // Reset status changing password
+        setIsChangingPassword(false);
       }
-    } catch {
-      // Error handling tanpa parameter
+    } catch (error) {
+      // Error handling dengan parameter
+      console.error('=== ERROR KETIK MENJALANKAN UPDATE ===');
+      console.error(error);
+      console.error('====================================');
       SweetAlert.error("Terjadi kesalahan saat update profil. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
@@ -226,6 +343,25 @@ export default function ProfilePage() {
 
   // Fallback image as data URI
   const fallbackImage = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23e5e7eb'/%3E%3Ccircle cx='75' cy='60' r='25' fill='%239ca3af'/%3E%3Cpath d='M40 120 Q75 100 110 120 L110 150 L40 150 Z' fill='%239ca3af'/%3E%3C/svg%3E";
+
+  // Tampilkan loading indicator saat data sedang dimuat
+  if (isDataLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <p className="text-gray-600">Memuat data profil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Fungsi untuk menentukan warna indikator kekuatan password
+  const getPasswordStrengthColor = () => {
+    if (passwordStrength.score <= 2) return 'bg-red-500';
+    if (passwordStrength.score <= 3) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center p-4">
@@ -328,40 +464,116 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-blue-500 transition-colors">
-              <FaLock className="text-gray-400 text-xl mr-3" />
-              <input
-                type="password"
-                name="currentPassword"
-                placeholder="Password Saat Ini"
-                value={form.currentPassword}
-                onChange={handleChange}
-                className="w-full outline-none bg-transparent text-gray-700"
-              />
-            </div>
+            {/* Bagian untuk mengubah password - dipisah dari form utama */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => setIsChangingPassword(!isChangingPassword)}
+                className="w-full text-left text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center justify-between p-2 rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                <span className="flex items-center">
+                  <FaLock className="mr-2" />
+                  {isChangingPassword ? 'Batal Mengubah Password' : 'Ubah Password'}
+                </span>
+                {isChangingPassword ? '▲' : '▼'}
+              </button>
 
-            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-blue-500 transition-colors">
-              <FaLock className="text-gray-400 text-xl mr-3" />
-              <input
-                type="password"
-                name="newPassword"
-                placeholder="Password Baru (opsional)"
-                value={form.newPassword}
-                onChange={handleChange}
-                className="w-full outline-none bg-transparent text-gray-700"
-              />
-            </div>
+              {isChangingPassword && (
+                <div className="mt-4 space-y-4">
+                  <div className="border-2 border-gray-200 rounded-xl p-3 focus-within:border-blue-500 transition-colors">
+                    <div className="flex items-center">
+                      <FaLock className="text-gray-400 text-xl mr-3" />
+                      <input
+                        type={showPasswords.current ? "text" : "password"}
+                        name="currentPassword"
+                        placeholder="Masukkan password saat ini"
+                        value={form.currentPassword}
+                        onChange={handleChange}
+                        className="w-full outline-none bg-transparent text-gray-700"
+                        required={isChangingPassword}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility('current')}
+                        className="ml-2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPasswords.current ? <FaEyeSlash /> : <FaEye />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Diperlukan untuk verifikasi sebelum mengubah password</p>
+                  </div>
 
-            <div className="flex items-center border-2 border-gray-200 rounded-xl p-3 focus-within:border-blue-500 transition-colors">
-              <FaLock className="text-gray-400 text-xl mr-3" />
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Komfirmasi Password Baru"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                className="w-full outline-none bg-transparent text-gray-700"
-              />
+                  <div className="border-2 border-gray-200 rounded-xl p-3 focus-within:border-blue-500 transition-colors">
+                    <div className="flex items-center">
+                      <FaLock className="text-gray-400 text-xl mr-3" />
+                      <input
+                        type={showPasswords.new ? "text" : "password"}
+                        name="newPassword"
+                        placeholder="Password Baru"
+                        value={form.newPassword}
+                        onChange={handleChange}
+                        className="w-full outline-none bg-transparent text-gray-700"
+                        required={isChangingPassword}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility('new')}
+                        className="ml-2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPasswords.new ? <FaEyeSlash /> : <FaEye />}
+                      </button>
+                    </div>
+                    {form.newPassword && (
+                      <div className="mt-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-500">Kekuatan Password:</span>
+                          <span className={`text-xs font-medium ${
+                            passwordStrength.score <= 2 ? 'text-red-500' : 
+                            passwordStrength.score <= 3 ? 'text-yellow-500' : 
+                            'text-green-500'
+                          }`}>
+                            {passwordStrength.message}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                          <div 
+                            className={`h-1.5 rounded-full transition-all ${getPasswordStrengthColor()}`}
+                            style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Minimal 6 karakter, gunakan kombinasi huruf besar, angka, dan simbol untuk keamanan lebih baik
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-2 border-gray-200 rounded-xl p-3 focus-within:border-blue-500 transition-colors">
+                    <div className="flex items-center">
+                      <FaLock className="text-gray-400 text-xl mr-3" />
+                      <input
+                        type={showPasswords.confirm ? "text" : "password"}
+                        name="confirmPassword"
+                        placeholder="Konfirmasi Password Baru"
+                        value={form.confirmPassword}
+                        onChange={handleChange}
+                        className="w-full outline-none bg-transparent text-gray-700"
+                        required={isChangingPassword}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility('confirm')}
+                        className="ml-2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPasswords.confirm ? <FaEyeSlash /> : <FaEye />}
+                      </button>
+                    </div>
+                    {form.confirmPassword && form.newPassword && form.newPassword !== form.confirmPassword && (
+                      <p className="text-red-500 text-xs mt-1">Password tidak cocok</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

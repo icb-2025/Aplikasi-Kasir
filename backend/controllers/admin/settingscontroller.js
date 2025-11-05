@@ -608,12 +608,27 @@ export const updateGeneralSettings = async (req, res) => {
       await settings.save();
     }
 
+    if (lowStockAlert !== undefined) {
+      try {
+        console.log(`Memperbarui stok_minimal untuk semua barang menjadi: ${lowStockAlert}`);
+        
+        const result = await Barang.updateMany(
+          {}, 
+          { $set: { stok_minimal: lowStockAlert } } 
+        );
+        
+        console.log(`Berhasil memperbarui stok_minimal untuk ${result.modifiedCount} barang.`);
+      } catch (barangUpdateError) {
+        console.error("Gagal memperbarui stok_minimal untuk semua barang:", barangUpdateError);
+      }
+    }
+
     res.json({ message: "Pengaturan umum berhasil diperbarui!", settings });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
-
 };
+
 export const updateDefaultProfilePicture = async (req, res) => {
   try {
     if (req.user.role !== "admin") {

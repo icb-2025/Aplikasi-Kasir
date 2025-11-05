@@ -14,7 +14,6 @@ import BiayaOperasional from "../models/biayaoperasional.js";
 import { v4 as uuidv4 } from "uuid";
 
 async function pilihKasirRoundRobin() {
-  // ambil semua kasir yang aktif
   const kasirAktif = await User.find({ role: "kasir", status: "aktif" });
   if (!kasirAktif || kasirAktif.length === 0) {
     throw new Error("Tidak ada kasir aktif saat ini");
@@ -44,17 +43,14 @@ export const addTransaksiToLaporan = async (transaksi) => {
     const startBulan = new Date(tanggal.getFullYear(), tanggal.getMonth(), 1, 0, 0, 0, 0);
     const endBulan = new Date(tanggal.getFullYear(), tanggal.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    // 🔹 Cari laporan bulan ini (cari berdasarkan rentang supaya tidak bergantung pada presisi Date)
     let laporan = await Laporan.findOne({
       "periode.start": { $lte: tanggal },
       "periode.end": { $gte: tanggal }
     });
 
-    // 🔹 Kalau belum ada, buat baru
     if (!laporan) {
       const biayaTerbaru = await BiayaOperasional.findOne().sort({ createdAt: -1 });
 
-      // Hitung pengeluaran total dari seluruh barang (harga_beli * stok)
       const semuaBarang = await Barang.find();
       const totalPengeluaran = semuaBarang.reduce((acc, b) => acc + (b.harga_beli * b.stok), 0);
 
@@ -68,7 +64,6 @@ export const addTransaksiToLaporan = async (transaksi) => {
 });
     }
 
-    // 🔹 Ambil laporan harian (toleran terhadap tanggal yang disimpan sebagai Date atau String)
     const tanggalHarian = tanggal.toISOString().split("T")[0];
     let laporanHarian = laporan.laporan_penjualan.harian.find((h) => {
       if (!h) return false;
@@ -85,7 +80,6 @@ export const addTransaksiToLaporan = async (transaksi) => {
       laporan.laporan_penjualan.harian.push(laporanHarian);
     }
 
-    // 🔹 Hitung ulang harga jual, laba, dll
     let totalHargaFix = 0;
 
     transaksi.barang_dibeli = await Promise.all(
@@ -132,7 +126,6 @@ export const addTransaksiToLaporan = async (transaksi) => {
 
     transaksi.total_harga = totalHargaFix;
 
-    // 🔹 Tambahkan transaksi ke laporan harian
     laporanHarian.transaksi.push({
       nomor_transaksi: transaksi.nomor_transaksi,
       total_harga: transaksi.total_harga,
@@ -142,7 +135,6 @@ export const addTransaksiToLaporan = async (transaksi) => {
 
     laporanHarian.total_harian += transaksi.total_harga;
 
-    // 🔹 Update rekap metode pembayaran
     const existingRekap = laporan.rekap_metode_pembayaran.find(
       (r) => r.metode === transaksi.metode_pembayaran
     );
@@ -156,13 +148,11 @@ export const addTransaksiToLaporan = async (transaksi) => {
       });
     }
 
-    // 🔹 Rehitung laba bersih (penjualan - modal - biaya operasional)
     const totalLabaKotor = laporan.laba.detail.reduce((acc, item) => acc + (item.laba || 0), 0);
 
     const biayaOperasional = await BiayaOperasional.findById(laporan.biaya_operasional_id);
     const totalBiayaOperasional = biayaOperasional?.total || 0;
 
-    // ✅ Laba bersih = laba kotor - biaya operasional - pengeluaran
     laporan.laba.total_laba =
       totalLabaKotor - totalBiayaOperasional - (laporan.pengeluaran || 0);
 
@@ -185,7 +175,6 @@ export const getAllTransaksi = async (req, res) => {
     let filter = {};
 
     if (req.user.role === "kasir") {
-      // kasir_id stores username (lightweight), filter by username so kasir only sees their own transaksi
       filter.kasir_id = req.user.username || req.user.id;
     }
 
@@ -233,7 +222,6 @@ export const createTransaksi = async (req, res) => {
     const { barang_dibeli, metode_pembayaran, total_harga } = req.body;
     const grossAmount = Math.round(Number(total_harga));
 
-    // Ambil metode pembayaran dari Settings
     const settings = await Settings.findOne();
     const allowedMethods = settings ? settings.payment_methods.map(pm => pm.method) : ["Tunai"];
     let baseMethod = metode_pembayaran;
@@ -261,7 +249,6 @@ export const createTransaksi = async (req, res) => {
       }
     }
 
-    // 🔹 Update stok barang secara atomik di Firebase + Mongo
     for (const item of barang_dibeli) {
       const barang = await Barang.findOne({
         $or: [{ kode_barang: item.kode_barang }, { nama_barang: item.nama_barang }],
@@ -277,7 +264,7 @@ export const createTransaksi = async (req, res) => {
         const ref = db.ref(`/barang/${barang._id.toString()}/stok`);
         const trx = await ref.transaction(current => {
           if (current === null || typeof current === "undefined") return 0;
-          if (current < jumlah) return; // batalkan jika stok kurang
+          if (current < jumlah) return;
           return current - jumlah;
         });
 
@@ -287,13 +274,10 @@ export const createTransaksi = async (req, res) => {
 
         const newStock = trx.snapshot.val();
 
-        // Sync ke MongoDB
         await Barang.findByIdAndUpdate(barang._id, { stok: newStock });
 
-        // Emit ke semua frontend yang terkoneksi
         io.emit("stockUpdated", { id: barang._id.toString(), stok: newStock });
       } else {
-        // fallback MongoDB jika RTDB error
         if (barang.stok < jumlah) {
           return res.status(400).json({ message: `Stok ${item.nama_barang} tidak mencukupi!` });
         }
@@ -303,16 +287,13 @@ export const createTransaksi = async (req, res) => {
       }
     }
 
-    // 🔹 Buat transaksi
     const nomorTransaksi = uuidv4();
-    // 🔹 Ambil kasir
 let kasirUsername = req.body.kasir_username;
 
 if (!kasirUsername) {
   const kasirTerpilih = await pilihKasirRoundRobin();
   kasirUsername = kasirTerpilih?.username || "kasir_default";
 } else {
-  // validasi bahwa username itu memang kasir
   const kasirData = await User.findOne({ username: kasirUsername, role: "kasir" });
   if (!kasirData) {
     return res.status(400).json({ message: `Kasir '${kasirUsername}' tidak ditemukan atau bukan kasir.` });
@@ -356,7 +337,6 @@ if (!kasirUsername) {
       await addTransaksiToLaporan(transaksi)
     }
 
-    // 🔹 Midtrans handling
     let midtransResponse = {};
     if (baseMethod === "Virtual Account") {
       const bankMapping = {
@@ -450,8 +430,8 @@ export const cancelTransaksi = async (req, res) => {
           try {
             const ref = db.ref(`/barang/${barang._id.toString()}/stok`);
       const trx = await ref.transaction(c => {
-  if (c === null || typeof c === "undefined") return jumlah; // kalau stok belum ada, isi jumlah awal
-  return c + jumlah; // tambahkan stok kembali
+  if (c === null || typeof c === "undefined") return jumlah; 
+  return c + jumlah; 
 });
 
             if (trx.committed) {
@@ -467,7 +447,7 @@ export const cancelTransaksi = async (req, res) => {
           }
         }
 console.log(`(Cancel) Stok ${barang.nama_barang} dikembalikan sebanyak ${item.jumlah}, total sekarang: ${newStock}`);
-        // fallback to Mongo
+      
         barang.stok = Number(barang.stok) + Number(item.jumlah);
         await barang.save();
         console.log(
@@ -569,7 +549,7 @@ if (status === "expire" || status === "dibatalkan") {
           const ref = db.ref(`/barang/${barang._id.toString()}/stok`);
     const trx = await ref.transaction(c => {
   if (c === null || typeof c === "undefined") return jumlah;
-  return c + jumlah; // ✅ tambahkan stok
+  return c + jumlah; 
 });
 
 
@@ -696,7 +676,6 @@ export const getStatusTransaksi = async (req, res) => {
 };
 
 
-// Cek status transaksi publik (untuk pembeli, tidak login)
 export const getStatusTransaksiPublic = async (req, res) => {
   try {
     const { order_id } = req.params;
@@ -731,9 +710,8 @@ export const getUserHistory = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized, silakan login dulu" });
     }
 
-    // Ambil transaksi berdasarkan user yang login
     const transaksi = await Transaksi.find({ user_id: req.user.id })
-      .sort({ createdAt: -1 }); // urutkan dari terbaru
+      .sort({ createdAt: -1 }); 
 
     if (!transaksi || transaksi.length === 0) {
       return res.status(404).json({ message: "Belum ada riwayat transaksi" });
@@ -758,7 +736,6 @@ export const getUserHistory = async (req, res) => {
 };
 
 function mapMidtransToSettings(notification) {
-  // Case: VA
   if (notification.va_numbers && notification.va_numbers.length > 0) {
     const bank = notification.va_numbers[0].bank.toUpperCase();
     return { method: "Virtual Account", channel: bank };

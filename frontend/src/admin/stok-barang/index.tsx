@@ -1,4 +1,3 @@
-// StokBarangAdmin.tsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import BarangTable from "./BarangTable";
 import ModalBarang from "./ModalBarang";
@@ -6,10 +5,9 @@ import ModalCategory from "./ModalCategory";
 import type { BarangFormData } from "./ModalBarang";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { SweetAlert } from "../../components/SweetAlert";
-import io, { Socket } from "socket.io-client";
+import io, { Socket } from 'socket.io-client';
 import { portbe } from "../../../../backend/ngrokbackend";
 const ipbe = import.meta.env.VITE_IPBE;
-
 
 export interface BarangAPI {
   _id: string;
@@ -58,8 +56,13 @@ interface ListBarangProps {
   setDataBarang: React.Dispatch<React.SetStateAction<Barang[]>>;
 }
 
+interface SettingsUpdate {
+  lowStockAlert?: number
+}
+
 const API_URL = `${ipbe}:${portbe}/api/admin/stok-barang`;
 const KATEGORI_API_URL = `${ipbe}:${portbe}/api/admin/kategori`;
+const SETTINGS_API_URL = `${ipbe}:${portbe}/api/admin/settings`;
 
 interface ApiError extends Error {
   message: string;
@@ -77,6 +80,8 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
   const [actionLoading, setActionLoading] = useState(false);
   const [serverError, setServerError] = useState(false);
   const [kategoriList, setKategoriList] = useState<string[]>([]);
+  const [lowStockAlert, setLowStockAlert] = useState(5); // Default value
+  const [settingsLoaded, setSettingsLoaded] = useState(false); // Tambahkan flag untuk menandai pengaturan sudah dimuat
   const [formData, setFormData] = useState<BarangFormData>({
     kode: "",
     nama: "",
@@ -98,6 +103,52 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     }
     return result;
   };
+
+  // Fetch pengaturan dari API
+const fetchSettings = useCallback(async () => {
+  try {
+    console.log("Fetching settings...");
+    const token = localStorage.getItem('token');
+    const res = await fetch(SETTINGS_API_URL, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const settings = await res.json();
+    console.log("Settings fetched:", settings);
+    
+    // Update lowStockAlert dari pengaturan
+    if (settings.lowStockAlert !== undefined) {
+      setLowStockAlert(settings.lowStockAlert);
+      console.log("Low stock alert set to:", settings.lowStockAlert);
+      setSettingsLoaded(true); // Tandai bahwa pengaturan sudah dimuat
+      
+      // Update status barang yang ada dengan lowStockAlert baru
+      setDataBarang(prevData => 
+        prevData.map(item => {
+          const status = item.stok <= 0 
+            ? "habis" 
+            : item.stok <= settings.lowStockAlert
+              ? "hampir habis" 
+              : "aman";
+          return { 
+            ...item, 
+            status,
+            stokMinimal: item.stokMinimal || settings.lowStockAlert
+          };
+        })
+      );
+    }
+  } catch (err) {
+    console.error("Gagal mengambil pengaturan:", err);
+    // Gunakan nilai default jika gagal
+    setLowStockAlert(10); // Sesuai dengan nilai di MongoDB
+    setSettingsLoaded(true); // Tetap tandai bahwa pengaturan sudah dimuat
+  }
+}, []);
 
   // Fetch kategori dari API
   const fetchKategori = useCallback(async () => {
@@ -134,6 +185,9 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
 
   // Inisialisasi Socket.IO dengan event yang lebih lengkap
   useEffect(() => {
+    // Hanya inisialisasi socket jika pengaturan sudah dimuat
+    if (!settingsLoaded) return;
+    
     socketRef.current = io(`${ipbe}:${portbe}`);
     
     // Dengarkan event tambah barang
@@ -146,10 +200,10 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         hargaBeli: newBarang.harga_beli,
         hargaJual: newBarang.harga_jual,
         stok: newBarang.stok,
-        stokMinimal: newBarang.stok_minimal || 5,
+        stokMinimal: newBarang.stok_minimal || lowStockAlert,
         hargaFinal: newBarang.hargaFinal,
         gambarUrl: newBarang.gambar_url,
-        status: newBarang.status || (newBarang.stok <= 0 ? "habis" : newBarang.stok <= (newBarang.stok_minimal || 5) ? "hampir habis" : "aman"),
+        status: newBarang.status || (newBarang.stok <= 0 ? "habis" : newBarang.stok <= lowStockAlert ? "hampir habis" : "aman"),
         useDiscount: typeof newBarang.use_discount !== 'undefined' ? newBarang.use_discount : true,
       };
       
@@ -166,10 +220,10 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         hargaBeli: updatedBarang.harga_beli,
         hargaJual: updatedBarang.harga_jual,
         stok: updatedBarang.stok,
-        stokMinimal: updatedBarang.stok_minimal || 5,
+        stokMinimal: updatedBarang.stok_minimal || lowStockAlert,
         hargaFinal: updatedBarang.hargaFinal,
         gambarUrl: updatedBarang.gambar_url,
-        status: updatedBarang.status || (updatedBarang.stok <= 0 ? "habis" : updatedBarang.stok <= (updatedBarang.stok_minimal || 5) ? "hampir habis" : "aman"),
+        status: updatedBarang.status || (updatedBarang.stok <= 0 ? "habis" : updatedBarang.stok <= lowStockAlert ? "hampir habis" : "aman"),
         useDiscount: typeof updatedBarang.use_discount !== 'undefined' ? updatedBarang.use_discount : true,
       };
       
@@ -198,7 +252,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
             const newStok = data.stok;
             const status = newStok <= 0 
               ? "habis" 
-              : newStok <= (item.stokMinimal || 5) 
+              : newStok <= lowStockAlert 
                 ? "hampir habis" 
                 : "aman";
             return { 
@@ -212,6 +266,32 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       );
     });
 
+    socketRef.current.on('settings:updated', (updatedSettings: SettingsUpdate) => {
+  console.log('Received settings:updated event:', updatedSettings);
+      
+  if (updatedSettings.lowStockAlert !== undefined) {
+    const newLowStockAlert = updatedSettings.lowStockAlert;
+    setLowStockAlert(newLowStockAlert);
+    console.log("Low stock alert updated to:", newLowStockAlert);
+        
+    setDataBarang(prevData => 
+      prevData.map(item => {
+        const status = item.stok <= 0 
+          ? "habis" 
+          : item.stok <= newLowStockAlert
+            ? "hampir habis" 
+            : "aman";
+        return { 
+          ...item, 
+          status,
+          stokMinimal: item.stokMinimal || newLowStockAlert
+        };
+      })
+    );
+  }
+});
+
+
     // Cleanup saat komponen unmount
     return () => {
       if (socketRef.current) {
@@ -219,10 +299,11 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         socketRef.current.off('barang:updated');
         socketRef.current.off('barang:deleted');
         socketRef.current.off('stockUpdated');
+        socketRef.current.off('settings:updated');
         socketRef.current.disconnect();
       }
     };
-  }, [setDataBarang]);
+  }, [setDataBarang, lowStockAlert, settingsLoaded]); // Tambahkan settingsLoaded ke dependency array
 
   const fetchBarang = useCallback(async () => {
     setLoading(true);
@@ -239,10 +320,10 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         hargaBeli: item.harga_beli,
         hargaJual: item.harga_jual,
         stok: item.stok,
-        stokMinimal: item.stok_minimal || 5,
+        stokMinimal: item.stok_minimal || lowStockAlert,
         hargaFinal: item.hargaFinal,
         gambarUrl: item.gambar_url,
-        status: item.status || (item.stok <= 0 ? "habis" : item.stok <= (item.stok_minimal || 5) ? "hampir habis" : "aman"),
+        status: item.status || (item.stok <= 0 ? "habis" : item.stok <= lowStockAlert ? "hampir habis" : "aman"),
         useDiscount: typeof item.use_discount !== 'undefined' ? item.use_discount : true,
       }));
       setDataBarang(mapped);
@@ -254,12 +335,19 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       setLoading(false);
       setInitialLoad(false);
     }
-  }, [setDataBarang]);
+  }, [setDataBarang, lowStockAlert]);
 
   useEffect(() => {
-    fetchBarang();
-    fetchKategori();
-  }, [fetchBarang, fetchKategori]);
+    fetchSettings(); // Panggil fetchSettings terlebih dahulu
+  }, [fetchSettings]);
+
+  useEffect(() => {
+    // Hanya panggil fetchBarang dan fetchKategori jika pengaturan sudah dimuat
+    if (settingsLoaded) {
+      fetchBarang();
+      fetchKategori();
+    }
+  }, [fetchBarang, fetchKategori, settingsLoaded]);
 
   const filteredBarang = dataBarang.filter(
     (item) =>
@@ -383,10 +471,11 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       payload.append("harga_beli", formData.hargaBeli);
       payload.append("harga_jual", formData.hargaJual);
       payload.append("stok", formData.stok);
-      payload.append("stok_minimal", "5");
+      // Gunakan lowStockAlert alih-alih nilai hardcoded "5"
+      payload.append("stok_minimal", lowStockAlert.toString());
 
-  // per-item optional use of global discount
-  payload.append("use_discount", formData.useDiscount ? "true" : "false");
+      // per-item optional use of global discount
+      payload.append("use_discount", formData.useDiscount ? "true" : "false");
 
       if (formData.gambar) {
         payload.append("gambar", formData.gambar);
@@ -456,7 +545,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
                   className="px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center"
                   disabled={actionLoading}
                 >
-                  📁 Kategori
+                  Kategori
                 </button>
                 <button
                   onClick={() => setShowModal(true)}

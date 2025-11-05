@@ -7,12 +7,14 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({ username });
     if (!user) {
-      return res.status(404).json({ message: "User tidak ditemukan" });
+      res.status(404).json({ message: "User tidak ditemukan" });
+      return;
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Password salah" });
+      res.status(400).json({ message: "Password salah" });
+      return;
     }
 
     // update status jadi aktif untuk semua role
@@ -34,8 +36,8 @@ export const login = async (req, res) => {
         username: user.username,
         role: user.role,
         profilePicture: user.profilePicture,
-        status: user.status
-      }
+        status: user.status,
+      },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -45,12 +47,14 @@ export const login = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized, silakan login dulu" });
+      res.status(401).json({ message: "Unauthorized, silakan login dulu" });
+      return;
     }
 
     const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ message: "User tidak ditemukan" });
+      res.status(404).json({ message: "User tidak ditemukan" });
+      return;
     }
 
     // update status jadi nonaktif untuk semua role

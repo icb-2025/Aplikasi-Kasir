@@ -141,69 +141,71 @@ const SettingsPage: React.FC = () => {
   }, [fetchSettings]);
 
   // Real-time: dengarkan update settings dari server via Socket.IO
-  useEffect(() => {
-    try {
-      const socket = getSocket();
+ useEffect(() => {
+  try {
+    const socket = getSocket();
 
-      const handleSettingsUpdated = (plainSettings: Record<string, unknown>) => {
-        // helper safe accessors
-        const getNum = (k: string, fallback: number) => {
-          const v = plainSettings[k];
-          return typeof v === 'number' ? v : fallback;
-        };
-        const getBool = (k: string, fallback: boolean) => {
-          const v = plainSettings[k];
-          return typeof v === 'boolean' ? v : fallback;
-        };
-        const getStr = (k: string, fallback: string) => {
-          const v = plainSettings[k];
-          return typeof v === 'string' ? v : fallback;
-        };
-        const getArray = (k: string) => {
-          const v = plainSettings[k];
-          return Array.isArray(v) ? v : null;
-        };
-
-        // Hanya update fields yang relevan agar tidak menimpa input pengguna yang sedang diedit
-        setFormData(prev => {
-          const incomingPM = getArray('payment_methods');
-          const pmFinal: PaymentMethod[] = Array.isArray(incomingPM)
-            ? (incomingPM as unknown as PaymentMethod[])
-            : prev.payment_methods;
-
-          return {
-            ...prev,
-            taxRate: getNum('taxRate', prev.taxRate),
-            globalDiscount: getNum('globalDiscount', prev.globalDiscount),
-            serviceCharge: getNum('serviceCharge', prev.serviceCharge),
-            receiptHeader: getStr('receiptHeader', prev.receiptHeader),
-            receiptFooter: getStr('receiptFooter', prev.receiptFooter),
-            showBarcode: getBool('showBarcode', prev.showBarcode),
-            showCashierName: getBool('showCashierName', prev.showCashierName),
-            storeName: getStr('storeName', prev.storeName),
-            storeAddress: getStr('storeAddress', prev.storeAddress),
-            storePhone: getStr('storePhone', prev.storePhone),
-            storeLogo: getStr('storeLogo', prev.storeLogo),
-            payment_methods: pmFinal,
-          };
-        });
-
-        const dp = plainSettings['defaultProfilePicture'];
-        if (typeof dp === 'string' && dp.length) {
-          setDefaultProfilePictureUrl(dp);
-        }
+    const handleSettingsUpdated = (plainSettings: Record<string, unknown>) => {
+      // helper safe accessors
+      const getNum = (k: string, fallback: number) => {
+        const v = plainSettings[k];
+        return typeof v === 'number' ? v : fallback;
+      };
+      const getBool = (k: string, fallback: boolean) => {
+        const v = plainSettings[k];
+        return typeof v === 'boolean' ? v : fallback;
+      };
+      const getStr = (k: string, fallback: string) => {
+        const v = plainSettings[k];
+        return typeof v === 'string' ? v : fallback;
+      };
+      const getArray = (k: string) => {
+        const v = plainSettings[k];
+        return Array.isArray(v) ? v : null;
       };
 
-      socket.on('settings:updated', handleSettingsUpdated);
+      // Hanya update fields yang relevan agar tidak menimpa input pengguna yang sedang diedit
+      setFormData(prev => {
+        const incomingPM = getArray('payment_methods');
+        const pmFinal: PaymentMethod[] = Array.isArray(incomingPM)
+          ? (incomingPM as unknown as PaymentMethod[])
+          : prev.payment_methods;
 
-      return () => {
-        socket.off('settings:updated', handleSettingsUpdated);
-      };
-    } catch (e) {
-      // jika socket belum tersedia atau running pada SSR, abaikan
-      console.warn('Socket init failed in SettingsPage:', (e as Error).message);
-    }
-  }, []);
+        return {
+          ...prev,
+          taxRate: getNum('taxRate', prev.taxRate),
+          globalDiscount: getNum('globalDiscount', prev.globalDiscount),
+          serviceCharge: getNum('serviceCharge', prev.serviceCharge),
+          receiptHeader: getStr('receiptHeader', prev.receiptHeader),
+          receiptFooter: getStr('receiptFooter', prev.receiptFooter),
+          showBarcode: getBool('showBarcode', prev.showBarcode),
+          showCashierName: getBool('showCashierName', prev.showCashierName),
+          storeName: getStr('storeName', prev.storeName),
+          storeAddress: getStr('storeAddress', prev.storeAddress),
+          storePhone: getStr('storePhone', prev.storePhone),
+          storeLogo: getStr('storeLogo', prev.storeLogo),
+          payment_methods: pmFinal,
+          // Tambahkan lowStockAlert ke dalam update
+          lowStockAlert: getNum('lowStockAlert', prev.lowStockAlert),
+        };
+      });
+
+      const dp = plainSettings['defaultProfilePicture'];
+      if (typeof dp === 'string' && dp.length) {
+        setDefaultProfilePictureUrl(dp);
+      }
+    };
+
+    socket.on('settings:updated', handleSettingsUpdated);
+
+    return () => {
+      socket.off('settings:updated', handleSettingsUpdated);
+    };
+  } catch (e) {
+    // jika socket belum tersedia atau running pada SSR, abaikan
+    console.warn('Socket init failed in SettingsPage:', (e as Error).message);
+  }
+}, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -929,5 +931,4 @@ const SettingsPage: React.FC = () => {
     </div>
   );
 };
-
 export default SettingsPage;

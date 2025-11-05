@@ -1,16 +1,191 @@
-// src/kasir/dashboard.tsx
 import type { Barang } from "../admin/stok-barang";
 import MainLayout from "./layout";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import io, { Socket } from 'socket.io-client';
+import { portbe } from '../../../backend/ngrokbackend';
+
+const ipbe = import.meta.env.VITE_IPBE;
+const API_BASE_URL = `${ipbe}:${portbe}`;
 
 interface DashboardProps {
   dataBarang: Barang[];
 }
 
-const KasirDashboard = ({ dataBarang }: DashboardProps) => {
+const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
+  console.log('Initial data barang:', initialDataBarang);
+  
+  const [dataBarang, setDataBarang] = useState<Barang[]>(initialDataBarang || []);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItem, setSelectedItem] = useState<Barang | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(!initialDataBarang || initialDataBarang.length === 0);
+  const [error, setError] = useState<string | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+
+  // Fungsi untuk normalisasi data
+  const normalizeBarangData = (barang: any): Barang => {
+    return {
+      _id: barang._id || '',
+      kode: barang.kode || barang.kode_barang || '',
+      nama: barang.nama || barang.nama_barang || 'Tanpa Nama',
+      kategori: barang.kategori || 'Lainnya',
+      hargaBeli: barang.hargaBeli || barang.harga_beli || 0,
+      hargaJual: barang.hargaJual || barang.harga_jual || 0,
+      stok: barang.stok || 0,
+      stokMinimal: barang.stokMinimal || barang.stok_minimal || 5,
+      hargaFinal: barang.hargaFinal || 0,
+      gambarUrl: barang.gambarUrl || barang.gambar_url || '',
+      status: barang.status || 'aman',
+      useDiscount: barang.useDiscount || barang.use_discount || true
+    };
+  };
+
+  const initializeSocket = () => {
+    try {
+      const token = localStorage.getItem('token');
+      console.log('Initializing socket with token:', token ? 'Present' : 'Missing');
+      
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+      
+      socketRef.current = io(API_BASE_URL, {
+        auth: {
+          token: token
+        }
+      });
+      
+      socketRef.current.on('connect', () => {
+        console.log('Socket connected with ID:', socketRef.current?.id);
+        // Bergabung dengan room 'barang' jika diperlukan
+        socketRef.current?.emit('joinRoom', 'barang');
+      });
+      
+      socketRef.current.on('disconnect', (reason) => {
+        console.log('Socket disconnected. Reason:', reason);
+      });
+      
+      socketRef.current.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+      });
+      
+      // Listener untuk perubahan barang
+      socketRef.current.on('barang:updated', (updatedBarang: any) => {
+        console.log('Received barang:updated event:', updatedBarang);
+        const normalizedBarang = normalizeBarangData(updatedBarang);
+        setDataBarang(prevList => 
+          prevList.map(item => item._id === normalizedBarang._id ? normalizedBarang : item)
+        );
+      });
+      
+      // Listener untuk perubahan stok
+      socketRef.current.on('stockUpdated', (data: { id: string; stok: number }) => {
+        console.log('Received stockUpdated event:', data);
+        setDataBarang(prevList => 
+          prevList.map(item => {
+            if (item._id === data.id) {
+              const newStok = data.stok;
+              const status = newStok <= 0 
+                ? "habis" 
+                : newStok <= (item.stokMinimal || 5) 
+                  ? "hampir habis" 
+                  : "aman";
+              return { 
+                ...item, 
+                stok: newStok,
+                status
+              };
+            }
+            return item;
+          })
+        );
+      });
+      
+      // Listener untuk barang baru
+      socketRef.current.on('barang:created', (newBarang: any) => {
+        console.log('Received barang:created event:', newBarang);
+        const normalizedBarang = normalizeBarangData(newBarang);
+        setDataBarang(prevList => [...prevList, normalizedBarang]);
+      });
+      
+      // Listener untuk barang yang dihapus
+      socketRef.current.on('barang:deleted', (payload: { id: string; nama?: string }) => {
+        console.log('Received barang:deleted event:', payload);
+        setDataBarang(prevList => prevList.filter(item => item._id !== payload.id));
+      });
+      
+    } catch (socketError) {
+      console.error('Error initializing socket:', socketError);
+    }
+  };
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem('token');
+      console.log('Fetching data from:', `${API_BASE_URL}/api/admin/stok-barang`);
+      
+      const response = await fetch(`${API_BASE_URL}/api/admin/stok-barang`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Data received:', data);
+      
+      // Normalisasi data
+      const normalizedData = Array.isArray(data) ? data.map(normalizeBarangData) : [];
+      setDataBarang(normalizedData);
+      setIsLoading(false);
+      
+      // Inisialisasi socket setelah data berhasil dimuat
+      initializeSocket();
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setError('Gagal memuat data barang. Silakan coba lagi.');
+      setIsLoading(false);
+      
+      // Gunakan data awal jika ada
+      if (initialDataBarang && initialDataBarang.length > 0) {
+        setDataBarang(initialDataBarang);
+      }
+    }
+  };
+
+  useEffect(() => {
+    // Jika sudah ada data awal, tidak perlu loading
+    if (initialDataBarang && initialDataBarang.length > 0) {
+      setIsLoading(false);
+      initializeSocket();
+      return;
+    }
+    
+    // Fetch data dari server
+    fetchData();
+    
+    // Fetch data setiap 30 detik sebagai fallback
+    const interval = setInterval(fetchData, 30000);
+    
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.off('barang:created');
+        socketRef.current.off('barang:updated');
+        socketRef.current.off('barang:deleted');
+        socketRef.current.off('stockUpdated');
+        socketRef.current.disconnect();
+      }
+      clearInterval(interval);
+    };
+  }, [initialDataBarang]);
 
   const filteredBarang = dataBarang.filter(item =>
     item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -27,6 +202,43 @@ const KasirDashboard = ({ dataBarang }: DashboardProps) => {
     setIsDetailOpen(false);
     setSelectedItem(null);
   };
+
+  // Tampilkan loading state
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <p className="mt-4 text-gray-600">Memuat data barang...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // Tampilkan error state
+  if (error) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 className="text-lg font-medium text-gray-700 mb-2">Terjadi Kesalahan</h3>
+            <p className="text-gray-500 mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Muat Ulang
+            </button>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -151,7 +363,7 @@ const KasirDashboard = ({ dataBarang }: DashboardProps) => {
       </div>
 
       {/* Empty State */}
-      {filteredBarang.length === 0 && (
+      {filteredBarang.length === 0 && !isLoading && (
         <div className="text-center py-12">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
