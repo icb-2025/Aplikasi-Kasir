@@ -1,20 +1,9 @@
-#!/usr/bin/env node
-/*
-  scripts/recalc-prices.js
-  Rekalkulasi semua hargaFinal untuk koleksi Data-Barang berdasarkan Settings.
-
-  Usage:
-    node backend/scripts/recalc-prices.js [--uri mongodb://...] 
-
-  If --uri is not provided, script uses process.env.MONGODB_URI.
-*/
-
 import mongoose from "mongoose";
 import Settings from "../models/settings.js";
 import Barang from "../models/databarang.js";
 
 const argv = process.argv.slice(2);
-let MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://Aplikasi-Kasir:583MfRNgmRj20lCY@cluster0.cg0gf.mongodb.net/Aplikasi-Kasir?retryWrites=true&w=majority&appName=Cluster0";
+let MONGODB_URI = process.env.MONGODB_URI 
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === "--uri" && argv[i + 1]) {
     MONGODB_URI = argv[i + 1];
