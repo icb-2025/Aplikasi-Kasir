@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import MenegerLayout from "../layout";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { portbe } from "../../../../backend/ngrokbackend";
-const ipbe = import.meta.env.VITE_IPBE;
 
+const ipbe = import.meta.env.VITE_IPBE;
 
 interface BarangDibeli {
   kode_barang: string;
@@ -12,6 +12,7 @@ interface BarangDibeli {
   harga_satuan: number;
   subtotal: number;
   _id: string;
+  gambar_url?: string;
 }
 
 interface Kasir {
@@ -27,7 +28,7 @@ interface RiwayatTransaksiAPI {
   barang_dibeli: BarangDibeli[];
   total_harga: number;
   metode_pembayaran: string;
-  kasir_id: string; // Perbaikan: Ubah tipe data menjadi string
+  kasir_id: string;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -48,6 +49,13 @@ interface RiwayatTransaksi {
   bulan: string;
   tahun: string;
   hari: string;
+}
+
+interface StokBarang {
+  _id: string;
+  kode_barang: string;
+  nama_barang: string;
+  gambar_url?: string;
 }
 
 const MenegerRiwayatPage = () => {
@@ -75,6 +83,26 @@ const MenegerRiwayatPage = () => {
   const fetchRiwayatData = async () => {
     try {
       setLoading(true);
+      
+      // Fetch stok barang data
+      const stokUrl = `${ipbe}:${portbe}/api/admin/stok-barang`;
+      const stokResponse = await fetch(stokUrl);
+      
+      // Perbaikan: Menggunakan const karena stokMap tidak pernah diubah
+      const stokMap: Record<string, string> = {};
+      
+      if (stokResponse.ok) {
+        const stokData: StokBarang[] = await stokResponse.json();
+        
+        // Create mapping from kode_barang to gambar_url
+        stokData.forEach((item: StokBarang) => {
+          if (item.kode_barang && item.gambar_url) {
+            stokMap[item.kode_barang] = item.gambar_url;
+          }
+        });
+      }
+      
+      // Fetch riwayat data
       const response = await fetch(`${ipbe}:${portbe}/api/manager/riwayat`);
       
       if (!response.ok) {
@@ -96,6 +124,12 @@ const MenegerRiwayatPage = () => {
           username: item.kasir_id
         };
 
+        // Add gambar_url to barang_dibeli
+        const barangDibeliWithImages = item.barang_dibeli.map(barang => ({
+          ...barang,
+          gambar_url: stokMap[barang.kode_barang] || undefined
+        }));
+
         return {
           id: item._id,
           nomor_transaksi: item.nomor_transaksi,
@@ -108,8 +142,8 @@ const MenegerRiwayatPage = () => {
           total: item.total_harga,
           status: item.status,
           metode_pembayaran: item.metode_pembayaran,
-          kasir: kasirObj, // Gunakan objek kasir yang baru dibuat
-          detail: item.barang_dibeli,
+          kasir: kasirObj,
+          detail: barangDibeliWithImages,
           originalDate,
           bulan,
           tahun,
@@ -170,6 +204,30 @@ const MenegerRiwayatPage = () => {
 
   const toggleDetail = (id: string) => {
     setDetailVisible(prev => prev === id ? null : id);
+  };
+
+  // Komponen untuk menampilkan gambar dengan fallback
+  const BarangImage: React.FC<{ url?: string; name: string }> = ({ url, name }) => {
+    const [imgError, setImgError] = useState(false);
+    
+    if (imgError || !url) {
+      return (
+        <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
+          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+      );
+    }
+    
+    return (
+      <img 
+        src={url} 
+        alt={name}
+        className="w-10 h-10 object-cover rounded-lg"
+        onError={() => setImgError(true)}
+      />
+    );
   };
 
   // Filter data
@@ -564,7 +622,7 @@ const MenegerRiwayatPage = () => {
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <h4 className="font-medium text-gray-700 mb-3 flex items-center">
                           <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                           </svg>
                           Detail Barang
                         </h4>
@@ -590,7 +648,10 @@ const MenegerRiwayatPage = () => {
                               {trx.detail.map((barang, index) => (
                                 <tr key={index} className="hover:bg-gray-50">
                                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                                    {barang.nama_barang}
+                                    <div className="flex items-center">
+                                      <BarangImage url={barang.gambar_url} name={barang.nama_barang} />
+                                      <span className="ml-3">{barang.nama_barang}</span>
+                                    </div>
                                   </td>
                                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                                     {barang.jumlah}
