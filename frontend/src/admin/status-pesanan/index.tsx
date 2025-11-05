@@ -6,7 +6,6 @@ import { SweetAlert } from "../../components/SweetAlert";
 import { portbe } from "../../../../backend/ngrokbackend";
 const ipbe = import.meta.env.VITE_IPBE;
 
-
 export interface BarangDibeli {
   kode_barang: string;
   nama_barang: string;
@@ -15,6 +14,7 @@ export interface BarangDibeli {
   subtotal: number;
   _id: string;
   harga_beli?: number;
+  gambar_url?: string; // Tambahkan properti gambar
 }
 
 export interface PesananAPI {
@@ -44,7 +44,17 @@ export interface Pesanan {
   updatedAt: string;
 }
 
+// Interface untuk data stok barang
+interface StokBarang {
+  _id: string;
+  kode_barang: string;
+  nama_barang: string;
+  gambar_url?: string;
+  // tambahkan properti lain sesuai kebutuhan
+}
+
 const API_URL = `${ipbe}:${portbe}/api/admin/status-pesanan`;
+const STOK_BARANG_URL = `${ipbe}:${portbe}/api/admin/stok-barang`;
 
 const StatusPesananAdmin: React.FC = () => {
   const [pesananData, setPesananData] = useState<Pesanan[]>([]);
@@ -54,21 +64,63 @@ const StatusPesananAdmin: React.FC = () => {
   const [selectedPesanan, setSelectedPesanan] = useState<{ id: string; status: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Fungsi untuk mengambil data stok barang
+  const fetchStokBarang = useCallback(async () => {
+    try {
+      const response = await fetch(STOK_BARANG_URL);
+      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+      
+      const data: StokBarang[] = await response.json();
+      return data;
+    } catch (err) {
+      console.error("Error fetching stok barang:", err);
+      SweetAlert.error("Gagal mengambil data stok barang");
+      return [];
+    }
+  }, []);
+
+  // Fungsi untuk mengambil data pesanan dan menggabungkan dengan data stok barang
   const fetchPesanan = useCallback(async () => {
     setLoading(true);
     try {
+      // Ambil data stok barang terlebih dahulu
+      const stokBarang = await fetchStokBarang();
+      
+      // Buat mapping dari kode_barang ke gambar_url
+      const stokMap: Record<string, string> = {};
+      stokBarang.forEach(item => {
+        if (item.kode_barang && item.gambar_url) {
+          stokMap[item.kode_barang] = item.gambar_url;
+        }
+      });
+
+      // Ambil data pesanan
       const response = await fetch(`${API_URL}/all`);
       if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
       
       const data: PesananAPI[] = await response.json();
-      setPesananData(data);
+      
+      // Gabungkan data pesanan dengan gambar dari stok barang
+      const pesananWithImages = data.map(pesanan => {
+        const barangDibeliWithImages = pesanan.barang_dibeli.map(barang => ({
+          ...barang,
+          gambar_url: stokMap[barang.kode_barang] // Ambil gambar dari mapping
+        }));
+        
+        return {
+          ...pesanan,
+          barang_dibeli: barangDibeliWithImages
+        };
+      });
+      
+      setPesananData(pesananWithImages);
     } catch (err) {
       console.error("Error fetching pesanan:", err);
       SweetAlert.error("Gagal mengambil data pesanan");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchStokBarang]);
 
   useEffect(() => {
     fetchPesanan();

@@ -70,7 +70,40 @@ interface BarangItem {
   subtotal: number;
   kode_barang?: string;
   _id?: string;
+  gambar_url?: string; // Tambahkan properti gambar
 }
+
+// Komponen untuk menampilkan gambar dengan fallback
+const BarangImage: React.FC<{ url?: string; name: string; size?: "small" | "medium" }> = ({ 
+  url, 
+  name, 
+  size = "small" 
+}) => {
+  const [imgError, setImgError] = useState(false);
+  
+  const sizeClasses = size === "small" 
+    ? "w-10 h-10 object-cover rounded" 
+    : "w-16 h-16 object-cover rounded-lg";
+  
+  if (imgError || !url) {
+    return (
+      <div className={`${sizeClasses} bg-gray-200 flex items-center justify-center`}>
+        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+    );
+  }
+  
+  return (
+    <img 
+      src={url} 
+      alt={name}
+      className={sizeClasses}
+      onError={() => setImgError(true)}
+    />
+  );
+};
 
 // Component untuk dropdown barang
 interface BarangDropdownProps {
@@ -102,17 +135,22 @@ const BarangDropdown: React.FC<BarangDropdownProps> = ({ barang }) => {
         <div className="space-y-2">
           {firstTwoItems.map((item, index) => (
             <div key={getBarangIdentifier(item, index)} className="border-l-3 border-blue-400 pl-3 py-2 bg-blue-50 rounded-r-lg">
-              <div className="font-semibold text-gray-800 flex justify-between items-center">
-                <span className="truncate max-w-[140px] text-sm">{item.nama_barang}</span>
-                <span className="text-blue-600 text-xs bg-white px-2 py-1 rounded-full border border-blue-200">
-                  {item.jumlah}x
-                </span>
-              </div>
-              <div className="text-xs text-gray-600 flex justify-between items-center mt-1">
-                <span className="bg-white px-2 py-1 rounded border">@{formatCurrency(item.harga_satuan)}</span>
-                <span className="font-semibold text-green-600 bg-white px-2 py-1 rounded border">
-                  {formatCurrency(item.subtotal)}
-                </span>
+              <div className="flex items-start space-x-3">
+                <BarangImage url={item.gambar_url} name={item.nama_barang} size="small" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-800 flex justify-between items-center">
+                    <span className="truncate max-w-[140px] text-sm">{item.nama_barang}</span>
+                    <span className="text-blue-600 text-xs bg-white px-2 py-1 rounded-full border border-blue-200">
+                      {item.jumlah}x
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-600 flex justify-between items-center mt-1">
+                    <span className="bg-white px-2 py-1 rounded border">@{formatCurrency(item.harga_satuan)}</span>
+                    <span className="font-semibold text-green-600 bg-white px-2 py-1 rounded border">
+                      {formatCurrency(item.subtotal)}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           ))}
@@ -166,22 +204,20 @@ const BarangDropdown: React.FC<BarangDropdownProps> = ({ barang }) => {
                     key={getBarangIdentifier(item, index)} 
                     className="flex justify-between items-start p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-white hover:shadow-sm transition-all duration-200"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start space-x-3">
-                        <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-800 text-base mb-1">
-                            {item.nama_barang}
-                          </p>
-                          {/* Kode Barang - selalu tampilkan dengan fallback */}
-                          <div className="flex items-center space-x-2 mt-2">
-                            <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded border font-mono">
-                              #{getBarangIdentifier(item, index).substring(0, 8)}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              Qty: {item.jumlah}
-                            </span>
-                          </div>
+                    <div className="flex items-start space-x-4">
+                      <BarangImage url={item.gambar_url} name={item.nama_barang} size="medium" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-800 text-base mb-1">
+                          {item.nama_barang}
+                        </p>
+                        {/* Kode Barang - selalu tampilkan dengan fallback */}
+                        <div className="flex items-center space-x-2 mt-2">
+                          <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded border font-mono">
+                            #{getBarangIdentifier(item, index).substring(0, 8)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Qty: {item.jumlah}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -246,28 +282,28 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200 border-collapse">
           <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
             <tr>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">
                 📋 Nomor Transaksi
               </th>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">
                 📅 Tanggal
               </th>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">
                 🛒 Barang Dibeli
               </th>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">
                 💰 Total Harga
               </th>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">
                 💳 Metode Pembayaran
               </th>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">
                 📊 Status
               </th>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">
                 ⚡ Aksi
               </th>
             </tr>
@@ -277,10 +313,10 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
               data.map((item, index) => (
                 <tr 
                   key={item._id || `row-${index}-${Date.now()}`} 
-                  className="transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 hover:shadow-md"
+                  className="transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 hover:shadow-md border-b border-gray-100"
                 >
                   {/* Nomor Transaksi */}
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap border-r border-gray-100">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
                       <div>
@@ -295,7 +331,7 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
                   </td>
 
                   {/* Tanggal */}
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap border-r border-gray-100">
                     <div className="text-sm text-gray-900 font-medium">
                       {item.tanggal_transaksi ? formatDate(item.tanggal_transaksi) : "-"}
                     </div>
@@ -305,14 +341,14 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
                   </td>
 
                   {/* Barang Dibeli dengan Dropdown */}
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 border-r border-gray-100">
                     <div className="text-sm text-gray-900 max-w-xs">
                       <BarangDropdown barang={item.barang_dibeli || []} />
                     </div>
                   </td>
 
                   {/* Total Harga */}
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap border-r border-gray-100">
                     <div className="text-right">
                       <div className="text-lg font-bold text-green-600">
                         {formatCurrency(item.total_harga || 0)}
@@ -324,7 +360,7 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
                   </td>
 
                   {/* Metode Pembayaran */}
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap border-r border-gray-100">
                     <div className="flex items-center space-x-2">
                       <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold ${getPaymentMethodClass(item.metode_pembayaran || "")}`}>
                         {getPaymentIcon(item.metode_pembayaran || "")}
@@ -334,7 +370,7 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
                   </td>
 
                   {/* Status */}
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap border-r border-gray-100">
                     <div className="flex flex-col items-start space-y-2">
                       <span
                         className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full ${getStatusClass(
@@ -373,7 +409,7 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                      Update Pesanan
+                        Update Pesanan
                       </button>
                       <button
                         onClick={() => onUpdateStatus(item._id, "selesai")}
@@ -396,7 +432,7 @@ const PesananTable: React.FC<PesananTableProps> = ({ data, onUpdateStatus, loadi
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center">
+                <td colSpan={7} className="px-6 py-8 text-center border-b border-gray-100">
                   <div className="flex flex-col items-center justify-center text-gray-500">
                     <svg className="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
