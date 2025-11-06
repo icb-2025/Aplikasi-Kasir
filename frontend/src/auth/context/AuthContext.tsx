@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useMemo, useCallback, type R
 import axios from 'axios';
 import { portbe } from '../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
+const ApiKey = import.meta.env.API_KEY;
 
 
 interface User {
@@ -54,7 +55,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const _meta = import.meta as { env?: { VITE_API_BASE_URL?: string; VITE_API_KEY?: string } };
 const API_BASE_URL = _meta.env?.VITE_API_BASE_URL ?? `${ipbe}:${portbe}`;
-const API_KEY = _meta.env?.VITE_API_KEY ?? 'GPJbke7X3vAP0IBiiP8A';
+const API_KEY = _meta.env?.VITE_API_KEY ?? `${ApiKey}`;
 
 function isAxiosError(error: unknown): error is { isAxiosError: true; response?: { data?: ErrorResponse }; message?: string } {
   return typeof error === 'object' && error !== null && 'isAxiosError' in (error as Record<string, unknown>) && (error as Record<string, unknown>)['isAxiosError'] === true;

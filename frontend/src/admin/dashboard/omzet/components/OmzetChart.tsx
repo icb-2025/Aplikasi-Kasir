@@ -12,6 +12,7 @@ import {
   Filler
 } from 'chart.js';
 import type { ChartData, ChartOptions, TooltipItem } from 'chart.js';
+import { number } from 'framer-motion';
 
 // Registrasi komponen Chart.js
 ChartJS.register(
