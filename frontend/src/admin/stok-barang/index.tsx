@@ -105,50 +105,50 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
   };
 
   // Fetch pengaturan dari API
-const fetchSettings = useCallback(async () => {
-  try {
-    console.log("Fetching settings...");
-    const token = localStorage.getItem('token');
-    const res = await fetch(SETTINGS_API_URL, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    const settings = await res.json();
-    console.log("Settings fetched:", settings);
-    
-    // Update lowStockAlert dari pengaturan
-    if (settings.lowStockAlert !== undefined) {
-      setLowStockAlert(settings.lowStockAlert);
-      console.log("Low stock alert set to:", settings.lowStockAlert);
-      setSettingsLoaded(true); // Tandai bahwa pengaturan sudah dimuat
+  const fetchSettings = useCallback(async () => {
+    try {
+      console.log("Fetching settings...");
+      const token = localStorage.getItem('token');
+      const res = await fetch(SETTINGS_API_URL, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
-      // Update status barang yang ada dengan lowStockAlert baru
-      setDataBarang(prevData => 
-        prevData.map(item => {
-          const status = item.stok <= 0 
-            ? "habis" 
-            : item.stok <= settings.lowStockAlert
-              ? "hampir habis" 
-              : "aman";
-          return { 
-            ...item, 
-            status,
-            stokMinimal: item.stokMinimal || settings.lowStockAlert
-          };
-        })
-      );
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const settings = await res.json();
+      console.log("Settings fetched:", settings);
+      
+      // Update lowStockAlert dari pengaturan
+      if (settings.lowStockAlert !== undefined) {
+        setLowStockAlert(settings.lowStockAlert);
+        console.log("Low stock alert set to:", settings.lowStockAlert);
+        setSettingsLoaded(true); // Tandai bahwa pengaturan sudah dimuat
+        
+        // Update status barang yang ada dengan lowStockAlert baru
+        setDataBarang(prevData => 
+          prevData.map(item => {
+            const status = item.stok <= 0 
+              ? "habis" 
+              : item.stok <= settings.lowStockAlert
+                ? "hampir habis" 
+                : "aman";
+            return { 
+              ...item, 
+              status,
+              stokMinimal: item.stokMinimal || settings.lowStockAlert
+            };
+          })
+        );
+      }
+    } catch (err) {
+      console.error("Gagal mengambil pengaturan:", err);
+      // Gunakan nilai default jika gagal
+      setLowStockAlert(10); // Sesuai dengan nilai di MongoDB
+      setSettingsLoaded(true); // Tetap tandai bahwa pengaturan sudah dimuat
     }
-  } catch (err) {
-    console.error("Gagal mengambil pengaturan:", err);
-    // Gunakan nilai default jika gagal
-    setLowStockAlert(10); // Sesuai dengan nilai di MongoDB
-    setSettingsLoaded(true); // Tetap tandai bahwa pengaturan sudah dimuat
-  }
-}, []);
+  }, [setDataBarang]); // Add setDataBarang to the dependency array
 
   // Fetch kategori dari API
   const fetchKategori = useCallback(async () => {
@@ -267,30 +267,29 @@ const fetchSettings = useCallback(async () => {
     });
 
     socketRef.current.on('settings:updated', (updatedSettings: SettingsUpdate) => {
-  console.log('Received settings:updated event:', updatedSettings);
+      console.log('Received settings:updated event:', updatedSettings);
       
-  if (updatedSettings.lowStockAlert !== undefined) {
-    const newLowStockAlert = updatedSettings.lowStockAlert;
-    setLowStockAlert(newLowStockAlert);
-    console.log("Low stock alert updated to:", newLowStockAlert);
+      if (updatedSettings.lowStockAlert !== undefined) {
+        const newLowStockAlert = updatedSettings.lowStockAlert;
+        setLowStockAlert(newLowStockAlert);
+        console.log("Low stock alert updated to:", newLowStockAlert);
         
-    setDataBarang(prevData => 
-      prevData.map(item => {
-        const status = item.stok <= 0 
-          ? "habis" 
-          : item.stok <= newLowStockAlert
-            ? "hampir habis" 
-            : "aman";
-        return { 
-          ...item, 
-          status,
-          stokMinimal: item.stokMinimal || newLowStockAlert
-        };
-      })
-    );
-  }
-});
-
+        setDataBarang(prevData => 
+          prevData.map(item => {
+            const status = item.stok <= 0 
+              ? "habis" 
+              : item.stok <= newLowStockAlert
+                ? "hampir habis" 
+                : "aman";
+            return { 
+              ...item, 
+              status,
+              stokMinimal: item.stokMinimal || newLowStockAlert
+            };
+          })
+        );
+      }
+    });
 
     // Cleanup saat komponen unmount
     return () => {
@@ -366,6 +365,7 @@ const fetchSettings = useCallback(async () => {
       stok: "",
       gambarUrl: "",
       gambar: null,
+      useDiscount: true,
     });
     setIsEditing(false);
     setEditId(null);

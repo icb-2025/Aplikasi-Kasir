@@ -12,7 +12,6 @@ import {
   Filler
 } from 'chart.js';
 import type { ChartData, ChartOptions, TooltipItem } from 'chart.js';
-import { number } from 'framer-motion';
 
 // Registrasi komponen Chart.js
 ChartJS.register(
@@ -136,7 +135,9 @@ const OmzetChart: React.FC<OmzetChartProps> = ({
       tooltip: {
         callbacks: {
           label: function(context: TooltipItem<'line'>) {
-            return `Omzet: ${formatRupiah(context.parsed.y)}`;
+            const value = context.parsed.y;
+            if (value === null) return 'Omzet: Rp 0';
+            return `Omzet: ${formatRupiah(value)}`;
           }
         }
       }
