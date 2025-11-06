@@ -1,6 +1,6 @@
 // src/auth/components/LoginForm.tsx
 import React, { useState, useEffect } from "react";
-import { FaUser, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaUser, FaLock, FaEye, FaEyeSlash, FaHome } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from '../hooks/useAuth';
@@ -115,7 +115,7 @@ export default function LoginForm() {
       x: 0, 
       opacity: 1,
       transition: { 
-        type: "spring" as const, 
+        type: "spring", 
         damping: 15, 
         stiffness: 100 
       }
@@ -128,7 +128,7 @@ export default function LoginForm() {
       x: 0, 
       opacity: 1,
       transition: { 
-        type: "spring" as const, 
+        type: "spring", 
         damping: 15, 
         stiffness: 100,
         delay: 0.2
@@ -142,9 +142,18 @@ export default function LoginForm() {
       scale: 1, 
       opacity: 1,
       transition: { 
-        type: "spring" as const, 
+        type: "spring", 
         damping: 20,
         stiffness: 100
+      }
+    },
+    float: {
+      y: [0, -10, 0],
+      transition: {
+        duration: 4,
+        repeat: Infinity,
+        repeatType: "reverse",
+        ease: "easeInOut"
       }
     }
   };
@@ -153,7 +162,7 @@ export default function LoginForm() {
     rest: { scale: 1 },
     focus: { 
       scale: 1.02,
-      transition: { type: "spring" as const, stiffness: 300, damping: 10 }
+      transition: { type: "spring", stiffness: 300, damping: 10 }
     }
   };
 
@@ -161,11 +170,11 @@ export default function LoginForm() {
     rest: { scale: 1 },
     hover: { 
       scale: 1.03,
-      transition: { type: "spring" as const, stiffness: 400, damping: 10 }
+      transition: { type: "spring", stiffness: 400, damping: 10 }
     },
     tap: { 
       scale: 0.97,
-      transition: { type: "spring" as const, stiffness: 400, damping: 10 }
+      transition: { type: "spring", stiffness: 400, damping: 10 }
     }
   };
 
@@ -174,12 +183,37 @@ export default function LoginForm() {
     visible: { 
       opacity: 1, 
       y: 0,
-      transition: { type: "spring" as const, stiffness: 300, damping: 15 }
+      transition: { type: "spring", stiffness: 300, damping: 15 }
     },
     exit: { 
       opacity: 0, 
       y: -10,
       transition: { duration: 0.2 }
+    }
+  };
+
+  // Perbaikan: Gunakan tipe yang benar untuk animasi
+  const floatingIconVariants: Variants = {
+    animate: {
+      y: [0, -15, 0],
+      transition: {
+        duration: 3,
+        repeat: Infinity,
+        repeatType: "reverse",
+        ease: "easeInOut"
+      }
+    }
+  };
+
+  // Perbaikan: Gunakan tipe yang benar untuk animasi
+  const pulseVariants: Variants = {
+    animate: {
+      scale: [1, 1.05, 1],
+      transition: {
+        duration: 2,
+        repeat: Infinity,
+        repeatType: "reverse"
+      }
     }
   };
 
@@ -252,20 +286,46 @@ export default function LoginForm() {
         variants={rightVariants}
         className="flex w-full md:w-1/2 justify-center items-center bg-gradient-to-br from-amber-50 to-yellow-50 p-6"
       >
+        {/* Elemen dekoratif animasi */}
+        <motion.div 
+          className="absolute top-10 right-10 w-16 h-16 rounded-full bg-orange-200 opacity-30"
+          variants={floatingIconVariants}
+          animate="animate"
+        />
+        <motion.div 
+          className="absolute bottom-20 right-20 w-12 h-12 rounded-full bg-yellow-200 opacity-30"
+          variants={floatingIconVariants}
+          animate="animate"
+        />
+        <motion.div 
+          className="absolute top-1/3 left-10 w-8 h-8 rounded-full bg-amber-200 opacity-30"
+          variants={floatingIconVariants}
+          animate="animate"
+        />
+        
         <motion.form
           onSubmit={handleSubmit}
           variants={formVariants}
-          className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md backdrop-blur-sm bg-opacity-90"
+          initial="hidden"
+          animate={["visible", "float"]}
+          className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md backdrop-blur-sm bg-opacity-90 relative z-10"
         >
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
+            className="text-center mb-8"
           >
-            <h2 className="text-3xl font-bold text-center mb-2 text-gray-800">
+            <motion.div
+              variants={pulseVariants}
+              animate="animate"
+              className="inline-block mb-4"
+            >
+            </motion.div>
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">
               Selamat Datang 
             </h2>
-            <p className="text-gray-500 text-center mb-8">
+            <p className="text-gray-500">
               Silakan login untuk melanjutkan
             </p>
           </motion.div>
@@ -421,6 +481,27 @@ export default function LoginForm() {
                 Daftar di sini
               </motion.button>
             </p>
+          </motion.div>
+
+          {/* Tombol Kembali ke Halaman Utama */}
+          <motion.div 
+            className="mt-6 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.9 }}
+          >
+            <motion.button
+              variants={buttonVariants}
+              initial="rest"
+              whileHover="hover"
+              whileTap="tap"
+              type="button"
+              onClick={() => navigate('/')}
+              className="flex items-center justify-center w-full py-2 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <FaHome className="mr-2" />
+              Kembali ke Halaman Utama
+            </motion.button>
           </motion.div>
 
           <motion.p 
