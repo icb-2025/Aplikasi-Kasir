@@ -16,6 +16,7 @@ import {
   togglePaymentMethod,
   updateChannelLogo,
   deleteChannelFromMethod,
+  deletePaymentMethod,
   toggleChannelStatus,
   updateUserProfilePicture,
   updateDefaultProfilePicture
@@ -35,6 +36,7 @@ router.put("/receipt", updateReceipt);// update struk,
 router.put("/payment-methods", updatePaymentMethods);// update metode pembayaran
 router.put("/payment-methods/toggle", togglePaymentMethod);// update metode pembayaran
 router.post("/payment-methods/add", addPaymentMethod); // ⬅️ untuk method pembayaran baru
+router.delete("/payment-delete/method", deletePaymentMethod ); // untuk hapus method 
 router.post("/payment-methods/add-channel", addChannelToMethod); // ⬅️ untuk channel baru
 router.put("/payment-methods/channel-logo", upload.single("logo"), updateChannelLogo); // ⬅️ untuk upload logo channel
 router.patch("/payment-methods/channel-toggle", toggleChannelStatus); // ⬅️ untuk toggle status aktif/nonaktif channel
