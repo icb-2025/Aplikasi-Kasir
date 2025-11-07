@@ -44,6 +44,7 @@ interface PaymentSettingsProps {
   onAddChannelToMethod: (methodName: string, channelName: string, logoFile?: File) => void;
   onDeleteChannel: (methodName: string, channelName: string) => void;
   onToggleChannelStatus: (methodName: string, channelName: string, isActive: boolean) => void;
+  onDeletePaymentMethod: (methodName: string) => void;
 }
 
 const PaymentSettings: React.FC<PaymentSettingsProps> = ({ 
@@ -55,7 +56,8 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
   onAddPaymentMethod,
   onAddChannelToMethod,
   onDeleteChannel,
-  onToggleChannelStatus
+  onToggleChannelStatus,
+  onDeletePaymentMethod
 }) => {
   const [editingChannel, setEditingChannel] = useState<{methodId: string, channelId: string} | null>(null);
   const [editingChannelName, setEditingChannelName] = useState<{methodId: string, channelId: string, newName: string} | null>(null);
@@ -251,9 +253,7 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
 
   // Fungsi untuk menghapus channel
   const handleDeleteChannel = (methodName: string, channelName: string) => {
-    if (window.confirm(`Apakah Anda yakin ingin menghapus channel "${channelName}" dari metode pembayaran "${methodName}"?`)) {
-      onDeleteChannel(methodName, channelName);
-    }
+    onDeleteChannel(methodName, channelName);
   };
 
   return (
@@ -463,19 +463,34 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
             <div key={pm._id} className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition duration-200">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
                 <h3 className="font-medium text-gray-900 text-lg">{pm.method}</h3>
-                <div className="flex items-center">
-                  <span className={`mr-2 text-sm font-medium ${pm.isActive ? 'text-green-600' : 'text-red-600'}`}>
-                    {pm.isActive ? 'Aktif' : 'Nonaktif'}
-                  </span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pm.isActive}
-                      onChange={(e) => onTogglePaymentMethod(pm.method, e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
+                <div className="flex items-center space-x-3">
+                  {/* Toggle untuk status metode pembayaran */}
+                  <div className="flex items-center">
+                    <span className={`mr-2 text-sm font-medium ${pm.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                      {pm.isActive ? 'Aktif' : 'Nonaktif'}
+                    </span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={pm.isActive}
+                        onChange={(e) => onTogglePaymentMethod(pm.method, e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                  
+                  {/* Tombol hapus metode pembayaran */}
+                  <button
+                    type="button"
+                    onClick={() => onDeletePaymentMethod(pm.method)}
+                    className="p-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition duration-200"
+                    title="Hapus Metode Pembayaran"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                 </div>
               </div>
               <div className="space-y-4">

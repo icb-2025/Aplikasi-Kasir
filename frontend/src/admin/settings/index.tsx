@@ -1,4 +1,3 @@
-// src/admin/settings/SettingsPage.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { getSocket } from '../../utils/socket';
 import SweetAlert from '../../components/SweetAlert';
@@ -569,6 +568,57 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleDeletePaymentMethod = async (methodName: string) => {
+    try {
+      const result = await SweetAlert.fire({
+        title: 'Apakah Anda yakin?',
+        text: `Metode pembayaran "${methodName}" akan dihapus beserta semua channel-nya`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Ya, hapus!',
+        cancelButtonText: 'Batal'
+      });
+
+      if (result.isConfirmed) {
+        SweetAlert.loading('Menghapus metode pembayaran...');
+        
+        const token = getToken();
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+          headers['x-api-key'] = API_KEY;
+        }
+        
+        const response = await fetch(`${BASE_API_URL}/payment-delete/method`, {
+          method: 'DELETE',
+          headers,
+          body: JSON.stringify({ 
+            methodName 
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Server error:', errorData);
+          throw new Error(errorData.message || 'Gagal menghapus metode pembayaran');
+        }
+        
+        SweetAlert.close();
+        SweetAlert.success('Metode pembayaran berhasil dihapus');
+        fetchSettings();
+      }
+    } catch (error) {
+      SweetAlert.close();
+      SweetAlert.error(error instanceof Error ? error.message : 'Gagal menghapus metode pembayaran');
+      console.error(error);
+    }
+  };
+
   const handleDefaultProfilePictureChange = (file: File) => {
     setDefaultProfilePictureFile(file);
     const reader = new FileReader();
@@ -897,6 +947,7 @@ const SettingsPage: React.FC = () => {
                 onAddChannelToMethod={handleAddChannelToMethod}
                 onDeleteChannel={handleDeleteChannel}
                 onToggleChannelStatus={handleToggleChannelStatus}
+                onDeletePaymentMethod={handleDeletePaymentMethod}
               />
             )}
             
@@ -932,4 +983,5 @@ const SettingsPage: React.FC = () => {
     </div>
   );
 };
+
 export default SettingsPage;
