@@ -31,9 +31,7 @@ const OmzetCards: React.FC<OmzetCardsProps> = ({ omzetData, formatRupiah }) => {
           </div>
         </div>
         <div className="mt-4 flex items-center">
-          <span className="text-xs px-2 py-1 bg-white bg-opacity-20 rounded-full">
-            +12.5% dari kemarin
-          </span>
+         
         </div>
       </div>
 
@@ -53,9 +51,7 @@ const OmzetCards: React.FC<OmzetCardsProps> = ({ omzetData, formatRupiah }) => {
           </div>
         </div>
         <div className="mt-4 flex items-center">
-          <span className="text-xs px-2 py-1 bg-white bg-opacity-20 rounded-full">
-            +8.3% dari minggu lalu
-          </span>
+        
         </div>
       </div>
 
@@ -75,9 +71,7 @@ const OmzetCards: React.FC<OmzetCardsProps> = ({ omzetData, formatRupiah }) => {
           </div>
         </div>
         <div className="mt-4 flex items-center">
-          <span className="text-xs px-2 py-1 bg-white bg-opacity-20 rounded-full">
-            +15.2% dari bulan lalu
-          </span>
+         
         </div>
       </div>
     </div>
