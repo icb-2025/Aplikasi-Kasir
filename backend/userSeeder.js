@@ -54,7 +54,7 @@ async function generateUsers(count = 500) {
 
 async function seed() {
   try {
-    const users = await generateUsers(500);
+    const users = await generateUsers(100);
     await User.insertMany(users);
     console.log("500 users berhasil ditambahkan!");
   } catch (err) {

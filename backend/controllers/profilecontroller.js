@@ -9,12 +9,6 @@ export const updateUser = async (req, res) => {
       return res.status(403).json({ message: "Tidak bisa mengubah data user lain" });
     }
 
-    // 🔍 DEBUG: Log data yang diterima
-    console.log('=== DATA DITERIMA DI SERVER ===');
-    console.log('User ID:', req.params.id);
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    console.log('===============================');
-
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
 
@@ -30,8 +24,6 @@ export const updateUser = async (req, res) => {
         return res.status(400).json({ message: "Password saat ini salah" });
       }
       
-      // ✅ PERBAIKAN: Cukup assign password plain text
-      // Middleware `pre('save')` di model akan meng-hashnya otomatis
       user.password = req.body.newPassword;
       
       console.log('Password baru akan di-hash otomatis oleh pre-save hook');
@@ -43,16 +35,6 @@ export const updateUser = async (req, res) => {
     }
 
     await user.save();
-
-    // 🔍 DEBUG: Log hasil
-    console.log('=== UPDATE BERHASIL ===');
-    console.log('User updated:', { 
-      id: user._id, 
-      nama_lengkap: user.nama_lengkap, 
-      username: user.username,
-      passwordUpdated: !!(req.body.currentPassword && req.body.newPassword)
-    });
-    console.log('======================');
 
     // Hapus password dari response untuk keamanan
     const userResponse = { ...user.toObject() };
