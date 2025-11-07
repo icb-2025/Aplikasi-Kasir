@@ -22,8 +22,6 @@ const StatusModal: React.FC<StatusModalProps> = ({
   const [selectedStatus, setSelectedStatus] = useState(currentStatus);
 
   const statusOptions = [
-    { value: "pending", label: "Pending", color: "bg-yellow-100 text-yellow-800" },
-    { value: "diproses", label: "Diproses", color: "bg-blue-100 text-blue-800" },
     { value: "selesai", label: "Selesai", color: "bg-green-100 text-green-800" },
     { value: "dibatalkan", label: "Dibatalkan", color: "bg-red-100 text-red-800" },
   ];

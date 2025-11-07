@@ -21,7 +21,7 @@ import {
 import SweetAlert from "../../components/SweetAlert";
 import ProsesTransaksiModal from "./proses-transaksi";
 
-// Interface definitions
+// Interface definitions (tetap sama)
 interface PaymentChannel {
   method: string;
   channels: { name: string; logo?: string; _id: string; isActive: boolean }[];
@@ -105,7 +105,7 @@ interface TransactionModalProps {
   }) => void;
 }
 
-// Animation variants
+// Animation variants (tetap sama)
 const backdropVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
@@ -153,6 +153,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const [removingItem, setRemovingItem] = useState<string | null>(null);
   const [kasirAktif, setKasirAktif] = useState<boolean>(true);
   const [receiptSettings, setReceiptSettings] = useState<SettingsReceipt>({});
+  const [isFirstMount, setIsFirstMount] = useState(true); // Tambahkan state ini
   
   // State for process transaction modal
   const [isProsesTransaksiOpen, setIsProsesTransaksiOpen] = useState(false);
@@ -220,7 +221,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       fetchPaymentMethods();
       fetchReceiptSettings();
     }
-  }, [isOpen, transactionSuccess]);
+    
+    // Set isFirstMount ke false setelah mount pertama
+    if (isFirstMount) {
+      setIsFirstMount(false);
+    }
+  }, [isOpen, transactionSuccess, isFirstMount]);
 
   // Handle remove item from cart
   const handleRemoveItem = async (itemId: string) => {
@@ -331,8 +337,6 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       bodyData.kasir_id = kasirId;
     }
 
-
-
     setLoading(true);
     setErrorMessage("");
     
@@ -350,7 +354,6 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         body: JSON.stringify(bodyData),
       });
 
-
       let responseData: {
         message: string;
         transaksi: TransactionResponse;
@@ -359,7 +362,6 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       };
       try {
         responseData = await res.json();
-       
       } catch (_err) {
         console.error("Failed to parse response JSON:", _err);
         throw new Error("Server returned invalid response");
@@ -438,7 +440,14 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     }
   };
 
-  // Helper functions
+  // Handle close modal - tambahkan fungsi ini
+  const handleCloseModal = () => {
+    // Hapus status transaksi dari localStorage saat modal ditutup
+    localStorage.removeItem('transactionStatus');
+    onClose();
+  };
+
+  // Helper functions (tetap sama)
   const getChannelKey = (channel: { name: string; logo?: string; _id: string }): string => {
     return channel._id || channel.name;
   };
@@ -558,6 +567,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             isOpen={isProsesTransaksiOpen}
             onClose={() => {
               setIsProsesTransaksiOpen(false);
+              // Hapus status transaksi dari localStorage saat modal ditutup
+              localStorage.removeItem('transactionStatus');
             }}
             transaksi={prosesTransaksiData.transaksi}
             midtrans={prosesTransaksiData.midtrans}
@@ -576,7 +587,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             initial="hidden"
             animate="visible"
             exit="hidden"
-            onClick={onClose}
+            onClick={handleCloseModal} // Ganti onClose dengan handleCloseModal
           />
               
           <motion.div
@@ -591,7 +602,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
               onClick={(event) => event.stopPropagation()}
             >
               {transactionSuccess && transactionData ? (
-                // Receipt view after successful transaction - PERBAIKAN DIMULAI DI SINI
+                // Receipt view after successful transaction
                 <div className="flex-1 overflow-y-auto">
                   <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white">
                     <div className="flex items-center justify-between">
@@ -605,7 +616,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         </div>
                       </div>
                       <button 
-                        onClick={onClose}
+                        onClick={handleCloseModal} // Ganti onClose dengan handleCloseModal
                         className="p-2 rounded-full hover:bg-white/20 transition-colors"
                       >
                         <X className="w-6 h-6" />
@@ -708,7 +719,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
                       <div className="flex gap-3 mt-6 print:hidden">
                         <button
-                          onClick={onClose}
+                          onClick={handleCloseModal} // Ganti onClose dengan handleCloseModal
                           className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2"
                         >
                           <Home className="w-4 h-4" />
@@ -740,7 +751,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         </div>
                       </div>
                       <button 
-                        onClick={onClose}
+                        onClick={handleCloseModal} // Ganti onClose dengan handleCloseModal
                         className="p-2 rounded-full hover:bg-white/20 transition-colors"
                       >
                         <X className="w-6 h-6" />
@@ -755,7 +766,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         <h3 className="text-xl font-bold text-gray-700 mb-2">Empty Cart</h3>
                         <p className="text-gray-500 mb-6">Add products to start a transaction</p>
                         <button
-                          onClick={onClose}
+                          onClick={handleCloseModal} // Ganti onClose dengan handleCloseModal
                           className="px-6 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors"
                         >
                           Back to Home
@@ -978,7 +989,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                   <div className="border-t border-gray-200 p-4 bg-gray-50">
                     <div className="flex justify-end space-x-3">
                       <button
-                        onClick={onClose}
+                        onClick={handleCloseModal} // Ganti onClose dengan handleCloseModal
                         className="px-5 py-2.5 bg-white text-gray-700 rounded-lg font-medium border border-gray-300 hover:bg-gray-100 transition-colors"
                       >
                         Cancel
