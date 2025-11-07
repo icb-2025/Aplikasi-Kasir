@@ -4,7 +4,7 @@ import SweetAlert from '../../../components/SweetAlert';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
-const ApiKey = import.meta.env.API_KEY;
+const ApiKey = import.meta.env.VITE_API_KEY;
 
 
 export interface BiayaOperasionalData {

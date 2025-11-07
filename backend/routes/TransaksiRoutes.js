@@ -11,13 +11,13 @@ import {
   getStatusTransaksiPublic,
   getAllTransaksiPublic,
 } from "../controllers/datatransaksiController.js";
-import apiMiddleware from "../middleware/api.js";
+// import apiMiddleware from "../middleware/api.js";
 
 const router = express.Router();
 
 // ===================== 🔒 Protected (harus login: kasir/admin) =====================
-router.get("/", apiMiddleware(), getAllTransaksi); // lihat transaksi (admin: semua, kasir: hanya miliknya)
-router.get("/status/:order_id", apiMiddleware(), getStatusTransaksi); // cek status transaksi (kasir/admin)
+router.get("/", getAllTransaksi); // lihat transaksi (admin: semua, kasir: hanya miliknya)
+router.get("/status/:order_id",  getStatusTransaksi); // cek status transaksi (kasir/admin)
 router.post("/", createTransaksi);                   // tambah transaksi
 router.delete("/:id", deleteTransaksiById);          // hapus pakai _id
 router.delete("/nomor/:nomor_transaksi", deleteTransaksiByNomor); // hapus pakai nomor_transaksi

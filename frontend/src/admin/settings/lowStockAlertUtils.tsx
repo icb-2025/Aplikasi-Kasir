@@ -1,9 +1,11 @@
 // src/admin/settings/utils/lowStockAlertUtils.ts
 import { getSocket } from '../../utils/socket';
 import SweetAlert from '../../components/SweetAlert';
+import { portbe } from '../../../../backend/ngrokbackend';
+const ApiKey = import.meta.env.API_URL
 
-const BASE_API_URL = `${import.meta.env.VITE_IPBE}:5000/api/admin/settings`;
-const API_KEY = 'GPJbke7X3vAP0IBiiP8A';
+const BASE_API_URL = `${import.meta.env.VITE_IPBE}:${portbe}/api/admin/settings`;
+const API_KEY = `${ApiKey}`;
 
 // Fungsi untuk mendapatkan token dari localStorage
 const getToken = () => {

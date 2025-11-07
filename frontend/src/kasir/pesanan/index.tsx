@@ -5,6 +5,7 @@ import { getSocket } from "../../utils/socket";
 import { Landmark, Wallet, TrendingUp, CreditCard } from "lucide-react";
 import { portbe } from "../../../../backend/ngrokbackend";
 const ipbe = import.meta.env.VITE_IPBE;
+const ApiKey = import.meta.env.VITE_API_KEY;
 
 interface BarangDibeli {
   kode_barang?: string;
@@ -98,7 +99,7 @@ const PesananKasirPage = () => {
           const res = await fetch(usersUrl, {
             headers: {
               'Authorization': `Bearer ${token}`,
-              'x-api-key': 'yq7JHtwJ1J!FLJovMv9P/RPShQVzgHgd8y7'
+              'x-api-key': `${ApiKey}`
             }
           });
           
@@ -176,7 +177,7 @@ const PesananKasirPage = () => {
       const url = `${ipbe}:${portbe}/api/transaksi?kasir_id=${kasirId}&limit=${itemsPerPage}&offset=${offset}&sort=-tanggal_transaksi`;
       const headers = {
         'Authorization': `Bearer ${token}`,
-        'x-api-key': 'yq7JHtwJ1J!FLJovMv9P/RPShQVzgHgd8y7'
+        'x-api-key': ApiKey || ''
       };
 
       console.debug('Fetching transaksi', { url, headers: { Authorization: !!token, 'x-api-key': !!headers['x-api-key'] } });

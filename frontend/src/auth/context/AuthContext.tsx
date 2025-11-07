@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useMemo, useCallback, type R
 import axios from 'axios';
 import { portbe } from '../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
-const ApiKey = import.meta.env.API_KEY;
+const ApiKey = import.meta.env.VITE_API_KEY;
 
 
 interface User {

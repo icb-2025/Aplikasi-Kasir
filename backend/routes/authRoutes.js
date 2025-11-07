@@ -1,7 +1,7 @@
 import express from "express";
 import { login, logout } from "../auth/Login.js";
 import { register } from "../auth/Register.js";
-import apiMiddleware from "../middleware/api.js";
+// import apiMiddleware from "../middleware/api.js";
 import verifyToken from "../middleware/verifyToken.js";
 import User from "../models/user.js";
 
@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.post("/login", login);
 router.post("/register", register);
-router.post("/logout", apiMiddleware(), logout);
+router.post("/logout", logout);
 
 // ✅ Tambahkan ini:
 router.get("/me", verifyToken, async (req, res) => {
