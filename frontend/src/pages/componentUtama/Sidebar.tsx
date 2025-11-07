@@ -310,15 +310,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                 </button>
               )}
             </div>
-            
-            <div className="mt-8">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Information</h3>
-              <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
-                <p className="text-xs text-amber-800">
-                  <span className="font-semibold">Tips:</span> Gunakan kategori di atas untuk memfilter produk.
-                </p>
-              </div>
-            </div>
           </div>
           
           {/* Footer */}

@@ -387,15 +387,6 @@ const TopBarang: React.FC = () => {
     </table>
   </div>
 </div>
-
-      {/* Info Summary */}
-      <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-        <h3 className="font-semibold text-blue-800 mb-2">Analisis Penjualan</h3>
-        <p className="text-sm text-blue-700">
-          Total {formatAngka(totalPenjualan)} barang terjual dari {data.length} jenis produk pada periode saat ini. 
-          Barang teratas "{data[0]?.nama_barang}" menyumbang {totalPenjualan > 0 ? ((data[0]?.jumlah / totalPenjualan) * 100).toFixed(1) : 0}% dari total penjualan.
-        </p>
-      </div>
     </div>
   );
 };

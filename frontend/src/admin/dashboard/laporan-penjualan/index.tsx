@@ -864,17 +864,6 @@ const LaporanPenjualan: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* Summary */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h3 className="font-semibold text-blue-800 mb-2">Analisis Performa</h3>
-            <p className="text-sm text-blue-700">
-              Total {data.laba.detail.length} transaksi dengan pendapatan {formatRupiah(totalPendapatan)} 
-              dan laba {formatRupiah(data.laba.total_laba)} dalam periode {formatTanggal(data.periode.start)} 
-              hingga {formatTanggal(data.periode.end)}. Biaya operasional sebesar {formatRupiah(data.biaya_operasional_id.total)} 
-              telah diperhitungkan dalam perhitungan laba bersih.
-            </p>
-          </div>
         </>
       )}
     </div>
