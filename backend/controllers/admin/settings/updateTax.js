@@ -1,5 +1,6 @@
 import Settings from "../../../models/settings.js";
 import Barang from "../../../models/databarang.js";
+import { calculateHargaFinal, updateAllBarangHargaFinal } from "../settings/utils/calculateHarga.js";
 
 export const updateTax = async (req, res) => {
   try {
@@ -13,16 +14,8 @@ export const updateTax = async (req, res) => {
 
     await settings.save();
 
-    // 🔹 Update semua barang
-    const barang = await Barang.find();
-    for (let b of barang) {
-      const discountRate = settings.globalDiscount || 0;
-      const hargaSetelahDiskon = b.harga_jual - (b.harga_jual * discountRate) / 100;
-      b.hargaFinal = Number(
-        (hargaSetelahDiskon + (hargaSetelahDiskon * taxRate) / 100).toFixed(2)
-      );
-      await b.save();
-    }
+    // 🔹 Update semua barang menggunakan fungsi utilitas
+    await updateAllBarangHargaFinal(Barang, settings);
 
     res.json({ message: "Pajak berhasil diperbarui!", settings });
   } catch (error) {

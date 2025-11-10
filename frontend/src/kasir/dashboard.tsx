@@ -106,7 +106,7 @@ const StokCard = ({ item, onSelect }: StokCardProps) => {
             <p className="text-lg font-bold">{item.stok} unit</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-500">Harga Jual</p>
+            <p className="text-xs text-gray-500">Harga Final</p>
             <p className="text-lg font-bold text-blue-600">
               Rp {item.hargaFinal?.toLocaleString("id-ID")}
             </p>
@@ -211,12 +211,6 @@ const DetailModal = ({ item, onClose }: DetailModalProps) => {
               <p className="text-sm text-gray-600">Informasi lengkap tentang produk</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition-colors"
-          >
-            <span className="text-xl">❌</span>
-          </button>
         </div>
         
         {/* Konten Modal - Scrollable */}

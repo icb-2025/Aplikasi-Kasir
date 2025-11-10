@@ -114,7 +114,7 @@ export const updateAllBarangHargaFinal = async () => {
       console.warn("⚠️ Gagal push settings ke Firebase RTDB:", e.message);
     }
 
-    console.log('Perhitungan Service Charge:');
+  console.log('Perhitungan Service Charge:');
   console.log('Total Biaya Operasional (per bulan):', totalBiayaOperasional);
   console.log('Total Nilai Barang (per hari):', totalNilaiBarang);
   console.log('Estimasi Penjualan Bulanan:', totalNilaiBarang * 30);

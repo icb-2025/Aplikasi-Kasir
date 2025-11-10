@@ -1,5 +1,6 @@
 import Settings from "../../../models/settings.js";
 import Barang from "../../../models/databarang.js";
+import { calculateHargaFinal, updateAllBarangHargaFinal } from "../settings/utils/calculateHarga.js";
 
 export const updateGlobalDiscount = async (req, res) => {
   try {
@@ -13,14 +14,8 @@ export const updateGlobalDiscount = async (req, res) => {
 
     await settings.save();
 
-    // 🔹 Update semua barang
-    const barang = await Barang.find();
-    for (let b of barang) {
-      const taxRate = settings.taxRate || 0;
-      const hargaSetelahDiskon = b.harga_jual - (b.harga_jual * globalDiscount) / 100;
-      b.hargaFinal = hargaSetelahDiskon + (hargaSetelahDiskon * taxRate) / 100;
-      await b.save();
-    }
+    // 🔹 Update semua barang menggunakan fungsi utilitas
+    await updateAllBarangHargaFinal(Barang, settings);
 
     res.json({ message: "Diskon global berhasil diperbarui!", settings });
   } catch (error) {
