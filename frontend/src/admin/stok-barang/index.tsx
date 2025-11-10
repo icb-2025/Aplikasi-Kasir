@@ -71,19 +71,24 @@ interface ApiError extends Error {
 }
 
 const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang }) => {
+  // Perbaikan: Deklarasi socketRef yang benar
   const socketRef = useRef<Socket | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [kategoriFilter, setKategoriFilter] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [serverError, setServerError] = useState(false);
   const [kategoriList, setKategoriList] = useState<string[]>([]);
-  const [lowStockAlert, setLowStockAlert] = useState(5); // Default value
-  const [settingsLoaded, setSettingsLoaded] = useState(false); // Tambahkan flag untuk menandai pengaturan sudah dimuat
+  const [lowStockAlert, setLowStockAlert] = useState(5);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  
   const [formData, setFormData] = useState<BarangFormData>({
     kode: "",
     nama: "",
@@ -122,13 +127,11 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       const settings = await res.json();
       console.log("Settings fetched:", settings);
       
-      // Update lowStockAlert dari pengaturan
       if (settings.lowStockAlert !== undefined) {
         setLowStockAlert(settings.lowStockAlert);
         console.log("Low stock alert set to:", settings.lowStockAlert);
-        setSettingsLoaded(true); // Tandai bahwa pengaturan sudah dimuat
+        setSettingsLoaded(true);
         
-        // Update status barang yang ada dengan lowStockAlert baru
         setDataBarang(prevData => 
           prevData.map(item => {
             const status = item.stok <= 0 
@@ -146,11 +149,10 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       }
     } catch (err) {
       console.error("Gagal mengambil pengaturan:", err);
-      // Gunakan nilai default jika gagal
-      setLowStockAlert(10); // Sesuai dengan nilai di MongoDB
-      setSettingsLoaded(true); // Tetap tandai bahwa pengaturan sudah dimuat
+      setLowStockAlert(10);
+      setSettingsLoaded(true);
     }
-  }, [setDataBarang]); // Add setDataBarang to the dependency array
+  }, [setDataBarang]);
 
   // Fetch kategori dari API
   const fetchKategori = useCallback(async () => {
@@ -160,12 +162,10 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data: KategoriAPI[] = await res.json();
       
-      // Ekstrak hanya nama kategori dari array objek dengan tipe yang sudah didefinisikan
       const kategoriNames = data.map((item: KategoriAPI) => item.nama);
       console.log("Kategori fetched:", kategoriNames);
       setKategoriList(kategoriNames);
       
-      // Set kategori default jika ada
       if (kategoriNames.length > 0 && !formData.kategori) {
         setFormData(prev => ({
           ...prev,
@@ -174,7 +174,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       }
     } catch (err) {
       console.error("Gagal ambil data kategori:", err);
-      // Gunakan kategori default jika gagal fetch
       setKategoriList(["Makanan", "Minuman", "Cemilan", "Signature"]);
       if (!formData.kategori) {
         setFormData(prev => ({
@@ -185,14 +184,12 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     }
   }, [formData.kategori]);
 
-  // Inisialisasi Socket.IO dengan event yang lebih lengkap
+  // Inisialisasi Socket.IO
   useEffect(() => {
-    // Hanya inisialisasi socket jika pengaturan sudah dimuat
     if (!settingsLoaded) return;
     
     socketRef.current = io(`${ipbe}:${portbe}`);
     
-    // Dengarkan event tambah barang
     socketRef.current.on('barang:created', (newBarang: BarangAPI) => {
       const mappedBarang: Barang = {
         _id: newBarang._id,
@@ -213,7 +210,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       setDataBarang(prevData => [...prevData, mappedBarang]);
     });
 
-    // Dengarkan event update barang
     socketRef.current.on('barang:updated', (updatedBarang: BarangAPI) => {
       const mappedBarang: Barang = {
         _id: updatedBarang._id,
@@ -236,7 +232,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       );
     });
 
-    // Dengarkan event hapus barang
     socketRef.current.on('barang:deleted', (payload: { id: string; nama?: string }) => {
       const { id, nama } = payload;
 
@@ -248,7 +243,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       });
     });
 
-    // Dengarkan event stockUpdated dari server (untuk update stok real-time)
     socketRef.current.on('stockUpdated', (data: { id: string; stok: number }) => {
       setDataBarang(prevData => 
         prevData.map(item => {
@@ -295,7 +289,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       }
     });
 
-    // Cleanup saat komponen unmount
     return () => {
       if (socketRef.current) {
         socketRef.current.off('barang:created');
@@ -306,7 +299,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         socketRef.current.disconnect();
       }
     };
-  }, [setDataBarang, lowStockAlert, settingsLoaded]); // Tambahkan settingsLoaded ke dependency array
+  }, [setDataBarang, lowStockAlert, settingsLoaded]);
 
   const fetchBarang = useCallback(async () => {
     setLoading(true);
@@ -342,23 +335,37 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
   }, [setDataBarang, lowStockAlert]);
 
   useEffect(() => {
-    fetchSettings(); // Panggil fetchSettings terlebih dahulu
+    fetchSettings();
   }, [fetchSettings]);
 
   useEffect(() => {
-    // Hanya panggil fetchBarang dan fetchKategori jika pengaturan sudah dimuat
     if (settingsLoaded) {
       fetchBarang();
       fetchKategori();
     }
   }, [fetchBarang, fetchKategori, settingsLoaded]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, kategoriFilter]);
+
   const filteredBarang = dataBarang.filter(
     (item) =>
       (item.nama ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.kode ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.kategori ?? "").toLowerCase().includes(searchTerm.toLowerCase())
+  ).filter(
+    (item) => kategoriFilter === "" || item.kategori === kategoriFilter
   );
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredBarang.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredBarang.length / itemsPerPage);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
 
   const resetForm = () => {
     setFormData({
@@ -476,10 +483,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       payload.append("harga_beli", formData.hargaBeli);
       payload.append("harga_jual", formData.hargaJual);
       payload.append("stok", formData.stok);
-      // Gunakan lowStockAlert alih-alih nilai hardcoded "5"
       payload.append("stok_minimal", lowStockAlert.toString());
-
-      // per-item optional use of global discount
       payload.append("use_discount", formData.useDiscount ? "true" : "false");
 
       if (formData.gambar) {
@@ -536,14 +540,29 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
               <p className="text-gray-500 mt-1">Kelola inventaris barang Anda</p>
             </div>
             <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-3">
-              <input
-                type="text"
-                placeholder="Cari barang..."
-                className="pl-3 pr-4 py-2 border border-gray-300 rounded-lg w-full"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                disabled={actionLoading}
-              />
+              <div className="flex gap-2">
+                <select
+                  className="pl-3 pr-4 py-2 border border-gray-300 rounded-lg w-full"
+                  value={kategoriFilter}
+                  onChange={(e) => setKategoriFilter(e.target.value)}
+                  disabled={actionLoading}
+                >
+                  <option value="">Semua Kategori</option>
+                  {kategoriList.map((kategori) => (
+                    <option key={kategori} value={kategori}>
+                      {kategori}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Cari barang..."
+                  className="pl-3 pr-4 py-2 border border-gray-300 rounded-lg w-full"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  disabled={actionLoading}
+                />
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowCategoryModal(true)}
@@ -592,11 +611,61 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
               <p className="mt-4">Mengupdate data...</p>
             </div>
           ) : (
-            <BarangTable
-              data={filteredBarang}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
+            <>
+              <BarangTable
+                data={currentItems}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+              
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-gray-700">
+                    Menampilkan {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, filteredBarang.length)} dari {filteredBarang.length} barang
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={prevPage}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-1 rounded-md ${currentPage === 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    >
+                      Sebelumnya
+                    </button>
+                    
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => paginate(pageNum)}
+                          className={`px-3 py-1 rounded-md ${currentPage === pageNum ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    
+                    <button
+                      onClick={nextPage}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-1 rounded-md ${currentPage === totalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    >
+                      Selanjutnya
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -620,7 +689,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         visible={showCategoryModal}
         onClose={() => {
           setShowCategoryModal(false);
-          fetchKategori(); // Refresh kategori setelah modal ditutup
+          fetchKategori();
         }}
         onKategoriChange={fetchKategori}
       />

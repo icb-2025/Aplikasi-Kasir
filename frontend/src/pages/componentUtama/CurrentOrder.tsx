@@ -24,7 +24,6 @@ const CurrentOrder: React.FC<CurrentOrderProps> = ({
   const [isCheckoutProcessing, setIsCheckoutProcessing] = useState(false);
   const [debounceTimers, setDebounceTimers] = useState<Record<string, NodeJS.Timeout>>({});
 
-  // Hapus item (proteksi 200ms)
   const handleRemoveItem = useCallback((productId: string) => {
     if (processingItems[productId]) return;
 
@@ -40,7 +39,6 @@ const CurrentOrder: React.FC<CurrentOrderProps> = ({
     }, 200);
   }, [onRemoveItem, processingItems]);
 
-  // Update quantity (debounce 150ms)
   const handleUpdateQuantity = useCallback((productId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
 
@@ -60,7 +58,6 @@ const CurrentOrder: React.FC<CurrentOrderProps> = ({
     setDebounceTimers(prev => ({ ...prev, [productId]: timer }));
   }, [onUpdateQuantity, debounceTimers]);
 
-  // Checkout (proteksi 400ms)
   const handleCheckout = useCallback(() => {
     if (isCheckoutProcessing || cartItems.length === 0 || isLoading) return;
 

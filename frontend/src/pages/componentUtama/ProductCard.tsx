@@ -24,21 +24,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
     ? Math.round((1 - product.hargaFinal / product.hargaJual) * 100)
     : 0;
 
-  // Determine stock status
   const stockStatus = product.stok > 10 ? 'Tersedia' : 
                      product.stok > 0 ? `Stok ${product.stok}` : 'Habis';
 
-  // Get category icon
   const getCategoryIcon = (category: string) => {
-    // Ekstrak ikon dari nama kategori jika ada
     const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
     const match = category.match(emojiRegex);
     return match ? match[0] : "";
   };
 
-  // Get category name without icon
   const getCategoryName = (category: string) => {
-    // Ekstrak nama tanpa ikon
     const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
     return category.replace(emojiRegex, "").trim();
   };
@@ -46,7 +41,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
   return (
     <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 sm:hover:-translate-y-1 flex flex-col h-full">
       <div className="relative h-28 sm:h-32 bg-gradient-to-br from-amber-50 to-orange-50 overflow-hidden flex-shrink-0">
-        {/* Loading skeleton */}
         {!imageLoaded && (
           <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
             <div className="text-gray-400 text-xs">Memuat...</div>
@@ -70,19 +64,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
               onLoad={handleImageLoad}
               loading="lazy"
             />
-            {/* Image overlay for better text visibility */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
           </>
         )}
         
-        {/* Discount Badge */}
         {discountPercentage > 0 && (
           <div className="absolute top-1.5 left-1.5 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full shadow-sm z-10">
             {discountPercentage}% OFF
           </div>
         )}
         
-        {/* Stock Badge */}
         <div className={`absolute top-1.5 right-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-xs font-medium shadow-sm z-10 ${
           product.stok > 10 ? 'bg-green-500 hover:bg-green-600' : 
           product.stok > 0 ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-red-500 hover:bg-red-600'

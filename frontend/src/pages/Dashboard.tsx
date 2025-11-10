@@ -127,6 +127,7 @@ const normalizeBarangData = (barang: BarangInput): Barang => {
     hargaBeli: barang.hargaBeli || barang.harga_beli || 0,
     hargaJual: barang.hargaJual || barang.harga_jual || 0,
     stok: barang.stok || 0,
+    stok_awal: barang.stok || 0,
     stokMinimal: barang.stokMinimal || barang.stok_minimal || 5,
     hargaFinal: barang.hargaFinal || 0,
     gambarUrl: barang.gambarUrl || barang.gambar_url || '',

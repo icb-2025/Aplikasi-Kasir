@@ -22,18 +22,14 @@ const ProductGrid: React.FC<ProductGridProps> = ({
   categories
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  // Perbaikan 1: Hapus setSortBy karena tidak digunakan
   const [sortBy] = useState<'name' | 'price' | 'stock'>('name');
 
-  // Filter dan sort products
   const filteredAndSortedProducts = useMemo(() => {
-    // Perbaikan 2: Ubah let menjadi const karena filtered tidak diubah nilainya
     const filtered = products.filter(product => 
       product.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.kategori.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
@@ -49,15 +45,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 
     return filtered;
   }, [products, searchQuery, sortBy]);
-
-  // Perbaikan 3: Hapus variabel stats karena tidak digunakan
-  // Kode stats yang dihapus:
-  // const stats = useMemo(() => {
-  //   const totalProducts = products.length;
-  //   const availableProducts = products.filter(p => p.stok > 0).length;
-  //   const lowStockProducts = products.filter(p => p.stok > 0 && p.stok <= 5).length;
-  //   return { totalProducts, availableProducts, lowStockProducts };
-  // }, [products]);
 
   if (isLoading) {
     return (
@@ -129,16 +116,10 @@ const ProductGrid: React.FC<ProductGridProps> = ({
           </h3>
         </div>
         
-        {/* Container dengan fixed width dan horizontal scroll */}
         <div className="relative">
-          {/* Scroll buttons untuk desktop */}
-         
-
-          {/* Categories container dengan fixed width dan horizontal scroll */}
           <div 
             id="categories-container"
             className="flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2"
-           
           >
             {categories.map((category) => (
               <button
@@ -149,7 +130,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                     ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/25 transform scale-105'
                     : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-md'
                 }`}
-               
               >
                 <span className="text-lg mb-1">{category.icon}</span>
                 <span className="text-xs text-center leading-tight line-clamp-2">{category.name}</span>
@@ -190,30 +170,16 @@ const ProductGrid: React.FC<ProductGridProps> = ({
           )}
         </div>
       ) : (
-        <>
-          
-
-          {/* Products Grid */}
-          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
-            {filteredAndSortedProducts.map((product) => (
-              <ProductCard
-                key={product._id}
-                product={product}
-                onAddToCart={onAddToCart}
-                onBuyNow={onBuyNow}
-              />
-            ))}
-          </div>
-
-          {/* Load More (optional) */}
-          {filteredAndSortedProducts.length >= 20 && (
-            <div className="text-center pt-8">
-              <button className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:border-amber-500 hover:text-amber-600 transition-all font-medium">
-                Muat Lebih Banyak
-              </button>
-            </div>
-          )}
-        </>
+        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
+          {filteredAndSortedProducts.map((product) => (
+            <ProductCard
+              key={product._id}
+              product={product}
+              onAddToCart={onAddToCart}
+              onBuyNow={onBuyNow}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
