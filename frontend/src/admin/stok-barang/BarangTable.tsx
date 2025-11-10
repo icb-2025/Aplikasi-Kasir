@@ -35,9 +35,9 @@ const getStokClass = (status?: string): string => {
 
 const getStokIcon = (status?: string): string => {
   const iconMap: { [key: string]: string } = {
-    "aman": "🟢",
-    "hampir habis": "🟡",
-    "habis": "🔴",
+    "aman": "✅",
+    "hampir habis": "⚠️",
+    "habis": "❌",
   };
   return iconMap[status?.toLowerCase() || ""] || "⚫";
 };

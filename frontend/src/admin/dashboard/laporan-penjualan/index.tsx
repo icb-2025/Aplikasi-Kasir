@@ -677,9 +677,13 @@ const LaporanPenjualan: React.FC = () => {
                       alt={item.produk}
                     />
                   ) : (
-                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                      <span className="text-xs text-gray-500">No Img</span>
-                    </div>
+                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                    <img
+                      src="../../images/nostokbarang.jpg"
+                      alt="No Stock"
+                      className="h-full w-full object-cover"
+                    />
+                </div>
                   )}
                 </div>
               </td>

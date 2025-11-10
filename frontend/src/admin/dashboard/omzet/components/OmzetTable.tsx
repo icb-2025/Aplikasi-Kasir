@@ -34,9 +34,6 @@ const OmzetTable: React.FC<OmzetTableProps> = ({ omzetData, formatRupiah: format
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Pencapaian
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Pertumbuhan
-              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -66,11 +63,6 @@ const OmzetTable: React.FC<OmzetTableProps> = ({ omzetData, formatRupiah: format
                   </div>
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                  +12.5%
-                </span>
-              </td>
             </tr>
             
             {/* Baris Minggu Ini */}
@@ -99,11 +91,6 @@ const OmzetTable: React.FC<OmzetTableProps> = ({ omzetData, formatRupiah: format
                   </div>
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                  +8.3%
-                </span>
-              </td>
             </tr>
             
             {/* Baris Bulan Ini */}
@@ -131,11 +118,6 @@ const OmzetTable: React.FC<OmzetTableProps> = ({ omzetData, formatRupiah: format
                     {omzetData ? `${Math.round((omzetData.bulan_ini / 2000000000) * 100)}%` : '0%'}
                   </div>
                 </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                  +15.2%
-                </span>
               </td>
             </tr>
           </tbody>
