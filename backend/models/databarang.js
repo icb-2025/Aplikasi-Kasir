@@ -8,6 +8,7 @@ const barangSchema = new Schema(
     harga_beli: { type: Number, required: true },
     harga_jual: { type: Number, required: true },
     stok: { type: Number, required: true },
+    stok_awal: { type: Number, default: 0},
     stok_minimal: { type: Number, default: 0 },
     hargaFinal: { type: Number, default: 0 },
     use_discount: { type: Boolean, default: true },

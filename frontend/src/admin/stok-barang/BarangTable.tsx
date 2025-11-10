@@ -206,17 +206,25 @@ const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => 
                           Minimal: {safeValue(item.stokMinimal, 5)}
                         </div>
                         {item.stok !== undefined && item.stokMinimal !== undefined && (
-                          <div className="w-full bg-gray-200 rounded-full h-1.5">
-                            <div 
-                              className={`h-1.5 rounded-full ${
-                                item.stok > item.stokMinimal ? 'bg-green-500' :
-                                item.stok > 0 ? 'bg-yellow-500' : 'bg-red-500'
-                              }`}
-                              style={{ 
-                                width: `${Math.min((item.stok / (item.stokMinimal || 1)) * 100, 100)}%` 
-                              }}
-                            ></div>
-                          </div>
+                         <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className={`h-1.5 rounded-full transition-all duration-300 ${
+                              item.stok <= 0
+                                ? 'bg-red-500'
+                                : item.stok <= (item.stokMinimal || 5)
+                                ? 'bg-yellow-500'
+                                : 'bg-green-500'
+                            }`}
+                            style={{
+                              width: `${
+                                item.stok_awal
+                                  ? Math.min((item.stok / item.stok_awal) * 100, 100)
+                                  : 100
+                              }%`,
+                            }}
+                          ></div>
+                        </div>
+                        
                         )}
                       </div>
                     </td>

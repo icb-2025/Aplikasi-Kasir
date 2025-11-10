@@ -60,6 +60,7 @@ export const createBarang = async (req, res) => {
       harga_beli,
       harga_jual,
       stok,
+      stok_awal,
       stok_minimal,
     } = req.body;
 
@@ -106,6 +107,7 @@ export const createBarang = async (req, res) => {
       harga_beli,
       harga_jual,
       stok,
+      stok_awal: stok_awal ?? stok,
       stok_minimal,
       hargaFinal: Math.round(hargaFinal),
       use_discount: useDiscount,
@@ -184,9 +186,17 @@ export const updateBarang = async (req, res) => {
       updateData.gambar_url = upload.secure_url;
     }
 
-    const barang = await Barang.findByIdAndUpdate(req.params.id, updateData, {
-      new: true,
-    });
+    const barangLama = await Barang.findById(req.params.id);
+if (!barangLama) return res.status(404).json({ message: "Barang tidak ditemukan" });
+
+if (req.body.stok && Number(req.body.stok) !== barangLama.stok) {
+  updateData.stok_awal = Number(req.body.stok);
+}
+
+const barang = await Barang.findByIdAndUpdate(req.params.id, updateData, {
+  new: true,
+});
+
     if (!barang)
       return res.status(404).json({ message: "Barang tidak ditemukan" });
 

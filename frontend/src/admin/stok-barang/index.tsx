@@ -17,6 +17,7 @@ export interface BarangAPI {
   harga_beli: number;
   harga_jual: number;
   stok: number;
+  stok_awal: number;
   stok_minimal?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -35,6 +36,7 @@ export interface Barang {
   hargaBeli: number;
   hargaJual: number;
   stok: number;
+  stok_awal: number
   stokMinimal?: number;
   hargaFinal?: number;
   gambarUrl?: string;
@@ -200,6 +202,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         hargaBeli: newBarang.harga_beli,
         hargaJual: newBarang.harga_jual,
         stok: newBarang.stok,
+        stok_awal: newBarang.stok_awal,
         stokMinimal: newBarang.stok_minimal || lowStockAlert,
         hargaFinal: newBarang.hargaFinal,
         gambarUrl: newBarang.gambar_url,
@@ -220,6 +223,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         hargaBeli: updatedBarang.harga_beli,
         hargaJual: updatedBarang.harga_jual,
         stok: updatedBarang.stok,
+        stok_awal: updatedBarang.stok_awal,
         stokMinimal: updatedBarang.stok_minimal || lowStockAlert,
         hargaFinal: updatedBarang.hargaFinal,
         gambarUrl: updatedBarang.gambar_url,
@@ -319,6 +323,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         hargaBeli: item.harga_beli,
         hargaJual: item.harga_jual,
         stok: item.stok,
+        stok_awal: item.stok_awal,
         stokMinimal: item.stok_minimal || lowStockAlert,
         hargaFinal: item.hargaFinal,
         gambarUrl: item.gambar_url,
