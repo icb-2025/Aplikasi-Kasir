@@ -68,7 +68,7 @@ export default function StokCard({ item, onSelect }: StokCardProps) {
           <div className="text-right">
             <p className="text-xs text-gray-500">Harga Jual</p>
             <p className="text-lg font-bold text-blue-600">
-              Rp {item.hargaJual.toLocaleString("id-ID")}
+              Rp {item.hargaFinal?.toLocaleString("id-ID")}
             </p>
           </div>
         </div>

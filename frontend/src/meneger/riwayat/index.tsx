@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import MenegerLayout from "../layout";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { portbe } from "../../../../backend/ngrokbackend";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const ipbe = import.meta.env.VITE_IPBE;
 
@@ -88,7 +89,6 @@ const MenegerRiwayatPage = () => {
       const stokUrl = `${ipbe}:${portbe}/api/admin/stok-barang`;
       const stokResponse = await fetch(stokUrl);
       
-      // Perbaikan: Menggunakan const karena stokMap tidak pernah diubah
       const stokMap: Record<string, string> = {};
       
       if (stokResponse.ok) {
@@ -117,14 +117,12 @@ const MenegerRiwayatPage = () => {
         const tahun = originalDate.getFullYear().toString();
         const hari = originalDate.toLocaleDateString("id-ID", { weekday: "long" }).toLowerCase();
 
-        // Perbaikan: Buat objek kasir dari string kasir_id
         const kasirObj: Kasir = {
           _id: item.kasir_id,
           nama_lengkap: item.kasir_id,
           username: item.kasir_id
         };
 
-        // Add gambar_url to barang_dibeli
         const barangDibeliWithImages = item.barang_dibeli.map(barang => ({
           ...barang,
           gambar_url: stokMap[barang.kode_barang] || undefined
@@ -206,7 +204,6 @@ const MenegerRiwayatPage = () => {
     setDetailVisible(prev => prev === id ? null : id);
   };
 
-  // Komponen untuk menampilkan gambar dengan fallback
   const BarangImage: React.FC<{ url?: string; name: string }> = ({ url, name }) => {
     const [imgError, setImgError] = useState(false);
     
@@ -230,7 +227,6 @@ const MenegerRiwayatPage = () => {
     );
   };
 
-  // Filter data
   const filteredData = dataRiwayat.filter(trx => {
     const yearMatch = filterTahun === "semua" || trx.tahun === filterTahun;
     const monthMatch = filterBulan === "semua" || trx.bulan === filterBulan;
@@ -280,7 +276,6 @@ const MenegerRiwayatPage = () => {
     return yearMatch && monthMatch && statusMatch && dayMatch && paymentMatch && kasirMatch;
   });
 
-  // Generate options untuk filter
   const tahunOptions = Array.from(
     new Set(dataRiwayat.map(trx => trx.tahun))
   ).sort((a, b) => parseInt(b) - parseInt(a));
@@ -289,7 +284,6 @@ const MenegerRiwayatPage = () => {
     new Set(dataRiwayat.map(trx => trx.metode_pembayaran))
   ).map(payment => ({ value: payment, label: payment }));
 
-  // Perbaikan: Buat kasirOptions dengan benar
   const kasirOptions = Array.from(
     new Set(
       dataRiwayat
@@ -340,27 +334,14 @@ const MenegerRiwayatPage = () => {
     { value: "desember", label: "Desember" }
   ];
 
-  // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
-
-  // Generate page numbers for pagination
-  const maxPageNumbersToShow = 5;
-  const startPage = Math.max(1, currentPage - Math.floor(maxPageNumbersToShow / 2));
-  const endPage = Math.min(totalPages, startPage + maxPageNumbersToShow - 1);
-  const adjustedStartPage = endPage - startPage + 1 < maxPageNumbersToShow 
-    ? Math.max(1, endPage - maxPageNumbersToShow + 1) 
-    : startPage;
-
-  const pageNumbers = [];
-  for (let i = 1; i <= totalPages; i++) {
-    pageNumbers.push(i);
-  }
-  const visiblePageNumbers = pageNumbers.slice(adjustedStartPage - 1, endPage);
+  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
 
   if (loading) {
     return (
@@ -687,89 +668,67 @@ const MenegerRiwayatPage = () => {
 
         {/* Pagination Controls */}
         {!loading && !error && totalPages > 1 && (
-          <div className="flex flex-col items-center space-y-4 md:space-y-0 md:flex-row md:justify-between">
-            <p className="text-sm text-gray-600">
-              Halaman {currentPage} dari {totalPages}
-            </p>
-            
-            <div className="flex justify-center items-center space-x-1">
-              {/* Tombol Previous */}
-              <button
-                onClick={() => paginate(currentPage - 1)}
-                disabled={currentPage === 1}
-                className={`px-3 py-2 rounded-lg border text-sm flex items-center ${
-                  currentPage === 1 
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                    : 'bg-white text-gray-700 hover:bg-gray-50 transition'
-                }`}
-              >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                Sebelumnya
-              </button>
-
-              {/* Tombol-tombol Halaman */}
-              <div className="hidden md:flex space-x-1">
-                {adjustedStartPage > 1 && (
-                  <>
-                    <button
-                      onClick={() => paginate(1)}
-                      className="px-3 py-2 rounded-lg border bg-white text-gray-700 hover:bg-gray-50 transition text-sm"
-                    >
-                      1
-                    </button>
-                    {adjustedStartPage > 2 && <span className="px-1 py-2">...</span>}
-                  </>
-                )}
-
-                {visiblePageNumbers.map(number => (
-                  <button
-                    key={number}
-                    onClick={() => paginate(number)}
-                    className={`px-3 py-2 rounded-lg border text-sm ${
-                      currentPage === number
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-white text-gray-700 hover:bg-gray-50 transition'
-                    }`}
-                  >
-                    {number}
-                  </button>
-                ))}
-
-                {endPage < totalPages && (
-                  <>
-                    {endPage < totalPages - 1 && <span className="px-1 py-2">...</span>}
-                    <button
-                      onClick={() => paginate(totalPages)}
-                      className="px-3 py-2 rounded-lg border bg-white text-gray-700 hover:bg-gray-50 transition text-sm"
-                    >
-                      {totalPages}
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Tombol Next */}
-              <button
-                onClick={() => paginate(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className={`px-3 py-2 rounded-lg border text-sm flex items-center ${
-                  currentPage === totalPages
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 transition'
-                }`}
-              >
-                Selanjutnya
-                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-6">
+            <div className="text-sm text-gray-600">
+              Menampilkan <span className="font-semibold text-gray-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredData.length)}</span> dari{' '}
+              <span className="font-semibold text-gray-900">{filteredData.length}</span> transaksi
             </div>
             
-            {/* Mobile page indicator */}
-            <div className="md:hidden text-sm text-gray-600">
-              Halaman {currentPage} dari {totalPages}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={prevPage}
+                disabled={currentPage === 1}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                  currentPage === 1 
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                }`}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Sebelumnya</span>
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => paginate(pageNum)}
+                      className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                        currentPage === pageNum 
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md scale-105' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                onClick={nextPage}
+                disabled={currentPage === totalPages}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                  currentPage === totalPages 
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                }`}
+              >
+                <span className="hidden sm:inline">Selanjutnya</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
         )}

@@ -7,6 +7,7 @@ import LoadingSpinner from "../../components/LoadingSpinner";
 import { SweetAlert } from "../../components/SweetAlert";
 import io, { Socket } from 'socket.io-client';
 import { portbe } from "../../../../backend/ngrokbackend";
+import { ChevronLeft, ChevronRight } from 'lucide-react'; // Tambahkan import ini
 const ipbe = import.meta.env.VITE_IPBE;
 
 export interface BarangAPI {
@@ -44,7 +45,6 @@ export interface Barang {
   useDiscount?: boolean;
 }
 
-// Tambahkan interface untuk kategori
 interface KategoriAPI {
   _id: string;
   nama: string;
@@ -71,7 +71,6 @@ interface ApiError extends Error {
 }
 
 const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang }) => {
-  // Perbaikan: Deklarasi socketRef yang benar
   const socketRef = useRef<Socket | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -101,7 +100,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     useDiscount: true,
   });
 
-  // Fungsi untuk generate kode barang acak 9 karakter
   const generateRandomCode = () => {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
@@ -111,7 +109,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     return result;
   };
 
-  // Fetch pengaturan dari API
   const fetchSettings = useCallback(async () => {
     try {
       console.log("Fetching settings...");
@@ -154,7 +151,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     }
   }, [setDataBarang]);
 
-  // Fetch kategori dari API
   const fetchKategori = useCallback(async () => {
     try {
       console.log("Fetching kategori...");
@@ -184,7 +180,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     }
   }, [formData.kategori]);
 
-  // Inisialisasi Socket.IO
   useEffect(() => {
     if (!settingsLoaded) return;
     
@@ -234,7 +229,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
 
     socketRef.current.on('barang:deleted', (payload: { id: string; nama?: string }) => {
       const { id, nama } = payload;
-
       setDataBarang(prevData => {
         const found = prevData.find(item => item._id === id);
         const nameToShow = nama ?? found?.nama ?? 'Tanpa Nama';
@@ -619,48 +613,66 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
               />
               
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6">
-                  <div className="text-sm text-gray-700">
-                    Menampilkan {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, filteredBarang.length)} dari {filteredBarang.length} barang
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-6">
+                  <div className="text-sm text-gray-600">
+                    Menampilkan <span className="font-semibold text-gray-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredBarang.length)}</span> dari{' '}
+                    <span className="font-semibold text-gray-900">{filteredBarang.length}</span> barang
                   </div>
-                  <div className="flex space-x-2">
+                  
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={prevPage}
                       disabled={currentPage === 1}
-                      className={`px-3 py-1 rounded-md ${currentPage === 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                        currentPage === 1 
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                          : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                      }`}
                     >
-                      Sebelumnya
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Sebelumnya</span>
                     </button>
                     
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-                      
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => paginate(pageNum)}
-                          className={`px-3 py-1 rounded-md ${currentPage === pageNum ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => paginate(pageNum)}
+                            className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                              currentPage === pageNum 
+                                ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md scale-105' 
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
                     
                     <button
                       onClick={nextPage}
                       disabled={currentPage === totalPages}
-                      className={`px-3 py-1 rounded-md ${currentPage === totalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                        currentPage === totalPages 
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                          : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                      }`}
                     >
-                      Selanjutnya
+                      <span className="hidden sm:inline">Selanjutnya</span>
+                      <ChevronRight className="h-4 w-4" />
                     </button>
                   </div>
                 </div>

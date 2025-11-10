@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import MainLayout from "../layout";
 import { getSocket } from "../../utils/socket";
-import { Landmark, Wallet, TrendingUp, CreditCard } from "lucide-react";
+import { Landmark, Wallet, TrendingUp, CreditCard, ChevronLeft, ChevronRight } from "lucide-react";
 import { portbe } from "../../../../backend/ngrokbackend";
 const ipbe = import.meta.env.VITE_IPBE;
 const ApiKey = import.meta.env.VITE_API_KEY;
@@ -42,7 +42,6 @@ interface StatusUpdateData {
   updatedAt: string;
 }
 
-// Interface untuk produk item
 interface ProdukItem {
   _id: string;
   kode_barang: string;
@@ -80,19 +79,16 @@ const PesananKasirPage = () => {
   useEffect(() => {
     const fetchKasirId = async () => {
       try {
-        // Coba ambil dari localStorage terlebih dahulu
         const storedKasirId = localStorage.getItem('kasirId');
         
         if (storedKasirId) {
           setKasirId(storedKasirId);
         } else {
-          // Jika tidak ada di localStorage, ambil dari API
           const token = localStorage.getItem('token');
           if (!token) {
             throw new Error('Token tidak ditemukan. Silakan login terlebih dahulu.');
           }
           
-          // Gunakan endpoint /api/admin/users sebagai alternatif
           const usersUrl = `${ipbe}:${portbe}/api/admin/users`;
           console.debug("Fetching kasir user info", { url: usersUrl, tokenPresent: !!token });
 
@@ -106,9 +102,7 @@ const PesananKasirPage = () => {
           if (res.ok) {
             const usersData = await res.json();
             
-            // Cari user yang sedang login
             if (Array.isArray(usersData) && usersData.length > 0) {
-              // Ambil user pertama sebagai contoh
               const currentUser = usersData[0];
               
               if (currentUser && currentUser._id) {
@@ -165,15 +159,12 @@ const PesananKasirPage = () => {
     
     try {
       setLoading(true);
-      // Menggunakan kasir_id untuk filter — sertakan Bearer token dan x-api-key sesuai backend teman
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('Token tidak ditemukan. Silakan login kembali.');
       }
 
-      // Hitung offset berdasarkan halaman saat ini
       const offset = (currentPage - 1) * itemsPerPage;
-      // Tambahkan parameter sort untuk mengurutkan dari yang terbaru
       const url = `${ipbe}:${portbe}/api/transaksi?kasir_id=${kasirId}&limit=${itemsPerPage}&offset=${offset}&sort=-tanggal_transaksi`;
       const headers = {
         'Authorization': `Bearer ${token}`,
@@ -187,33 +178,27 @@ const PesananKasirPage = () => {
 
         if (res.ok) {
           const data = await res.json();
-          // Pastikan data adalah array
           const dataArray: PesananItem[] = Array.isArray(data) ? data : (data.data || []);
           
-          // Sorting tambahan di frontend untuk memastikan urutan yang benar
           dataArray.sort((a: PesananItem, b: PesananItem) => {
             const dateA = new Date(a.tanggal_transaksi).getTime();
             const dateB = new Date(b.tanggal_transaksi).getTime();
-            return dateB - dateA; // Urutkan dari yang terbaru ke terlama
+            return dateB - dateA;
           });
           
           setPesananList(dataArray);
           
-          // Jika API mengembalikan informasi total items, gunakan itu
           if (data.total) {
             setTotalItems(data.total);
           } else {
-            // Jika tidak ada total items, kita tetap gunakan panjang array saat ini
             setTotalItems(dataArray.length);
           }
         } else {
-          // If server responded with a non-2xx status, try to read body for more detail
           let body = null;
           try { body = await res.text(); } catch { /* ignore */ }
           throw new Error(`Gagal mengambil data pesanan: ${res.status} ${res.statusText} ${body ? '- ' + body : ''}`);
         }
       } catch (fetchErr) {
-        // Re-throw to be handled by outer catch, but attach more info for debugging
         console.error('Fetch transaksi failed detailed:', fetchErr);
         throw fetchErr;
       }
@@ -240,19 +225,15 @@ const PesananKasirPage = () => {
       };
 
       const handleNewTransaction = (data: PesananItem) => {
-        // Hanya tambahkan jika transaksi ini milik kasir yang sedang login
         if (data.kasir_id === kasirId) {
           setPesananList(prev => {
-            // Cek apakah transaksi sudah ada di list
             const exists = prev.some(item => item._id === data._id);
             
             if (exists) {
-              // Jika sudah ada, update data transaksi tersebut
               return prev.map(item => 
                 item._id === data._id ? { ...item, ...data } : item
               );
             } else {
-              // Jika belum ada, tambahkan di paling atas
               return [data, ...prev];
             }
           });
@@ -269,24 +250,19 @@ const PesananKasirPage = () => {
     }
   }, [kasirId, fetchPesanan]);
 
-  // Tambah transaksi baru via navigate state
   useEffect(() => {
     if (locationState?.transaksiTerbaru && kasirId) {
-      // Hanya tambahkan jika transaksi ini milik kasir yang sedang login
       if (locationState.transaksiTerbaru.kasir_id === kasirId) {
         setPesananList(prev => {
-          // Cek apakah transaksi sudah ada di list
           const exists = prev.some(p => p._id === locationState.transaksiTerbaru?._id);
           
           if (exists) {
-            // Jika sudah ada, update data transaksi tersebut
             return prev.map(item => 
               item._id === locationState.transaksiTerbaru?._id 
                 ? { ...item, ...locationState.transaksiTerbaru! } 
                 : item
             );
           } else {
-            // Jika belum ada, tambahkan di paling atas
             return [locationState.transaksiTerbaru!, ...prev];
           }
         });
@@ -294,12 +270,10 @@ const PesananKasirPage = () => {
     }
   }, [locationState, kasirId]);
 
-  // Reset ke halaman pertama ketika ada perubahan filter
   useEffect(() => {
     setCurrentPage(1);
   }, [kasirId]);
 
-  // Pagination handlers
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
   
   const nextPage = () => {
@@ -345,7 +319,6 @@ const PesananKasirPage = () => {
     }
   };
 
-  // Fungsi untuk mendapatkan ikon metode pembayaran
   const getPaymentIcon = (method: string) => {
     if (method.includes('Virtual Account')) return <Landmark className="h-5 w-5 text-blue-500" />;
     if (method.includes('E-Wallet')) return <Wallet className="h-5 w-5 text-green-500" />;
@@ -354,7 +327,6 @@ const PesananKasirPage = () => {
     return <CreditCard className="h-5 w-5 text-gray-500" />;
   };
 
-  // Fungsi untuk mendapatkan gambar produk
   const getProdukImage = (kodeBarang?: string) => {
     if (!kodeBarang) return null;
     const produk = produkList.find(p => p.kode_barang === kodeBarang);
@@ -397,7 +369,6 @@ const PesananKasirPage = () => {
     );
   }
 
-  // Hitung total halaman
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   return (
@@ -405,9 +376,6 @@ const PesananKasirPage = () => {
       <div className="max-w-6xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Pesanan Kasir</h1>
-          <div className="text-sm text-gray-600">
-            Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, totalItems)} dari {totalItems} pesanan
-          </div>
         </div>
 
         {loading ? (
@@ -429,11 +397,7 @@ const PesananKasirPage = () => {
                         <h2 className="text-xl font-bold text-gray-800">#{pesanan.nomor_transaksi}</h2>
                         <p className="text-sm text-gray-500 mt-1">{formatTanggal(pesanan.tanggal_transaksi)}</p>
                       </div>
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                          pesanan.status
-                        )}`}
-                      >
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(pesanan.status)}`}>
                         {pesanan.status}
                       </span>
                     </div>
@@ -503,52 +467,51 @@ const PesananKasirPage = () => {
               ))}
             </div>
 
-            {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-8">
-                <div className="text-sm text-gray-700">
-                  Halaman {currentPage} dari {totalPages}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-6">
+                <div className="text-sm text-gray-600">
+                  Menampilkan <span className="font-semibold text-gray-900">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari{' '}
+                  <span className="font-semibold text-gray-900">{totalItems}</span> pesanan
                 </div>
-                <div className="flex items-center space-x-2">
+                
+                <div className="flex items-center gap-2">
                   <button
                     onClick={prevPage}
                     disabled={currentPage === 1}
-                    className={`px-4 py-2 rounded-md flex items-center ${
-                      currentPage === 1
-                        ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                        : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                      currentPage === 1 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
                     }`}
                   >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Sebelumnya
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline">Sebelumnya</span>
                   </button>
                   
-                  <div className="flex space-x-1">
+                  <div className="flex items-center gap-1">
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let page;
+                      let pageNum;
                       if (totalPages <= 5) {
-                        page = i + 1;
+                        pageNum = i + 1;
                       } else if (currentPage <= 3) {
-                        page = i + 1;
+                        pageNum = i + 1;
                       } else if (currentPage >= totalPages - 2) {
-                        page = totalPages - 4 + i;
+                        pageNum = totalPages - 4 + i;
                       } else {
-                        page = currentPage - 2 + i;
+                        pageNum = currentPage - 2 + i;
                       }
                       
                       return (
                         <button
-                          key={page}
-                          onClick={() => paginate(page)}
-                          className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            currentPage === page
-                              ? "bg-orange-500 text-white"
-                              : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                          key={pageNum}
+                          onClick={() => paginate(pageNum)}
+                          className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                            currentPage === pageNum 
+                              ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md scale-105' 
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           }`}
                         >
-                          {page}
+                          {pageNum}
                         </button>
                       );
                     })}
@@ -557,16 +520,14 @@ const PesananKasirPage = () => {
                   <button
                     onClick={nextPage}
                     disabled={currentPage === totalPages}
-                    className={`px-4 py-2 rounded-md flex items-center ${
-                      currentPage === totalPages
-                        ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                        : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                      currentPage === totalPages 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
                     }`}
                   >
-                    Selanjutnya
-                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                    <span className="hidden sm:inline">Selanjutnya</span>
+                    <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
               </div>

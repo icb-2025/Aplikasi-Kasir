@@ -61,27 +61,51 @@ const MenegerDashboard = () => {
         if (stokResponse.ok) {
           const stokData: StokBarang[] = await stokResponse.json();
           
-          const stokMap: Record<string, string> = {};
+          // Buat peta untuk pencarian cepat berdasarkan kode_barang
+          const stokMap: Record<string, StokBarang> = {};
           stokData.forEach((item: StokBarang) => {
-            if (item.kode_barang && item.gambar_url) {
-              stokMap[item.kode_barang] = item.gambar_url;
+            if (item.kode_barang) {
+              stokMap[item.kode_barang] = item;
             }
           });
           
+          // Buat peta untuk pencarian berdasarkan nama_barang (normalisasi nama)
+          const stokNameMap: Record<string, StokBarang> = {};
+          stokData.forEach((item: StokBarang) => {
+            const normalizedName = item.nama_barang.toLowerCase().trim();
+            stokNameMap[normalizedName] = item;
+          });
+          
           const barangTerlarisWithImages = dashboardData.barang_terlaris.map((barang: BarangTerlaris) => {
-            let gambarUrl = stokMap[barang.kode_barang || ""];
+            let gambarUrl = barang.gambar_url;
+            let kodeBarang = barang.kode_barang;
             
-            if (!gambarUrl) {
-              const matchingItem = stokData.find(item => 
-                item.nama_barang.toLowerCase() === barang.nama_barang.toLowerCase()
-              );
-              if (matchingItem && matchingItem.gambar_url) {
-                gambarUrl = matchingItem.gambar_url;
+            // Coba cari berdasarkan kode_barang jika ada
+            if (kodeBarang && stokMap[kodeBarang]) {
+              const stokItem = stokMap[kodeBarang];
+              if (!gambarUrl && stokItem.gambar_url) {
+                gambarUrl = stokItem.gambar_url;
+              }
+            } else {
+              // Jika tidak ada kode_barang atau tidak ditemukan, cari berdasarkan nama
+              const normalizedName = barang.nama_barang.toLowerCase().trim();
+              const matchingItem = stokNameMap[normalizedName];
+              
+              if (matchingItem) {
+                // Isi kode_barang jika kosong
+                if (!kodeBarang) {
+                  kodeBarang = matchingItem.kode_barang;
+                }
+                // Isi gambar_url jika kosong
+                if (!gambarUrl && matchingItem.gambar_url) {
+                  gambarUrl = matchingItem.gambar_url;
+                }
               }
             }
             
             return {
               ...barang,
+              kode_barang: kodeBarang,
               gambar_url: gambarUrl
             };
           });
@@ -319,7 +343,7 @@ const MenegerDashboard = () => {
                         <span className="font-medium">{item.jumlah} terjual</span>
                       </p>
                       <p className="text-xs text-gray-400 hidden sm:block">
-                        Kode: {item.kode_barang || "N/A"}
+                        Kode: {item.kode_barang || "-"}
                       </p>
                     </div>
                   </div>

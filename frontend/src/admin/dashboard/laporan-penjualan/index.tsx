@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, type PieLabel } from 'recharts';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { exportPdf, exportExcel } from './utils';
-import { Landmark, Wallet, TrendingUp, CreditCard } from 'lucide-react';
+import { Landmark, Wallet, TrendingUp, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
+
 // Interface untuk data dari API
 interface LaporanHarian {
   tanggal: string;
@@ -299,6 +300,8 @@ const LaporanPenjualan: React.FC = () => {
 
   // Fungsi untuk mengubah halaman
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
 
   // Fungsi untuk mengekspor data
   const handleExport = (type: 'pdf' | 'excel') => {
@@ -544,273 +547,241 @@ const LaporanPenjualan: React.FC = () => {
 
           {/* Detail Biaya Operasional */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
-  <div className="p-6 border-b border-gray-200">
-    <h2 className="text-lg font-semibold text-gray-800">Detail Biaya Operasional</h2>
-    <p className="text-sm text-gray-600">Rincian biaya operasional periode ini</p>
-  </div>
-  <div className="overflow-x-auto">
-    <table className="min-w-full divide-y divide-gray-200">
-      <thead className="bg-gray-50">
-        <tr>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Kategori
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Jumlah
-          </th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-200">
-        <tr className="transition-colors hover:bg-gray-50 bg-white">
-          <td className="px-6 py-4 whitespace-nowrap">
-            <div className="text-sm font-medium text-gray-900">Listrik</div>
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap">
-            <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.listrik)}</div>
-          </td>
-        </tr>
-        <tr className="transition-colors hover:bg-gray-50 bg-amber-50">
-          <td className="px-6 py-4 whitespace-nowrap">
-            <div className="text-sm font-medium text-gray-900">Air</div>
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap">
-            <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.air)}</div>
-          </td>
-        </tr>
-        <tr className="transition-colors hover:bg-gray-50 bg-white">
-          <td className="px-6 py-4 whitespace-nowrap">
-            <div className="text-sm font-medium text-gray-900">Internet</div>
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap">
-            <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.internet)}</div>
-          </td>
-        </tr>
-        <tr className="transition-colors hover:bg-gray-50 bg-amber-50">
-          <td className="px-6 py-4 whitespace-nowrap">
-            <div className="text-sm font-medium text-gray-900">Sewa Tempat</div>
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap">
-            <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.sewa_tempat)}</div>
-          </td>
-        </tr>
-        <tr className="transition-colors hover:bg-gray-50 bg-white">
-          <td className="px-6 py-4 whitespace-nowrap">
-            <div className="text-sm font-medium text-gray-900">Gaji Karyawan</div>
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap">
-            <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.gaji_karyawan)}</div>
-          </td>
-        </tr>
-        <tr className="bg-gray-100 border-t-2 border-gray-300">
-  <td className="px-6 py-4 whitespace-nowrap">
-    <div className="text-sm font-bold text-gray-900">Total</div>
-  </td>
-  <td className="px-6 py-4 whitespace-nowrap">
-    <div className="text-sm font-bold text-gray-900">{formatRupiah(data.biaya_operasional_id.total)}</div>
-  </td>
-</tr>
-      </tbody>
-    </table>
-  </div>
-</div>
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-800">Detail Biaya Operasional</h2>
+              <p className="text-sm text-gray-600">Rincian biaya operasional periode ini</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Kategori
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Jumlah
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  <tr className="transition-colors hover:bg-gray-50 bg-white">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">Listrik</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.listrik)}</div>
+                    </td>
+                  </tr>
+                  <tr className="transition-colors hover:bg-gray-50 bg-amber-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">Air</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.air)}</div>
+                    </td>
+                  </tr>
+                  <tr className="transition-colors hover:bg-gray-50 bg-white">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">Internet</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.internet)}</div>
+                    </td>
+                  </tr>
+                  <tr className="transition-colors hover:bg-gray-50 bg-amber-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">Sewa Tempat</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.sewa_tempat)}</div>
+                    </td>
+                  </tr>
+                  <tr className="transition-colors hover:bg-gray-50 bg-white">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">Gaji Karyawan</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.gaji_karyawan)}</div>
+                    </td>
+                  </tr>
+                  <tr className="bg-gray-100 border-t-2 border-gray-300">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-bold text-gray-900">Total</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-bold text-gray-900">{formatRupiah(data.biaya_operasional_id.total)}</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           {/* Tabel Produk Terlaris */}
-         {/* Tabel Produk Terlaris */}
-<div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
-  <div className="p-6 border-b border-gray-200">
-    <h2 className="text-lg font-semibold text-gray-800">Produk Terlaris</h2>
-    <p className="text-sm text-gray-600">Berdasarkan total laba</p>
-  </div>
-  <div className="overflow-x-auto">
-    <table className="min-w-full divide-y divide-gray-200">
-      <thead className="bg-gray-50">
-        <tr>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Produk
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Gambar
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Harga Jual
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Harga Beli
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Laba/Item
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Jumlah Terjual
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Total Laba
-          </th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-200">
-        {currentItems.length === 0 ? (
-          <tr>
-            <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-              Tidak ada data produk
-            </td>
-          </tr>
-        ) : (
-          currentItems.map((item, index) => (
-            <tr 
-              key={index} 
-              className={`transition-colors hover:bg-gray-50 ${
-                index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
-              }`}
-            >
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">
-                  {item.produk}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex justify-center">
-                  {item.gambar_url ? (
-                    <img 
-                      className="h-10 w-10 rounded-full object-cover" 
-                      src={item.gambar_url} 
-                      alt={item.produk}
-                    />
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-800">Produk Terlaris</h2>
+              <p className="text-sm text-gray-600">Berdasarkan total laba</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Produk
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Gambar
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Harga Jual
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Harga Beli
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Laba/Item
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Jumlah Terjual
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Total Laba
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {currentItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                        Tidak ada data produk
+                      </td>
+                    </tr>
                   ) : (
-                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                    <img
-                      src="../../images/nostokbarang.jpg"
-                      alt="No Stock"
-                      className="h-full w-full object-cover"
-                    />
-                </div>
+                    currentItems.map((item, index) => (
+                      <tr 
+                        key={index} 
+                        className={`transition-colors hover:bg-gray-50 ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+                        }`}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {item.produk}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex justify-center">
+                            {item.gambar_url ? (
+                              <img 
+                                className="h-10 w-10 rounded-full object-cover" 
+                                src={item.gambar_url} 
+                                alt={item.produk}
+                              />
+                            ) : (
+                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                                <img
+                                  src="../../images/nostokbarang.jpg"
+                                  alt="No Stock"
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{formatRupiah(item.harga_jual)}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{formatRupiah(item.harga_beli)}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className={`text-sm font-medium ${item.labaPerItem >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatRupiah(item.labaPerItem)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{item.jumlahTerjual}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className={`text-sm font-medium ${item.totalLaba >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatRupiah(item.totalLaba)}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
                   )}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-900">{formatRupiah(item.harga_jual)}</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-900">{formatRupiah(item.harga_beli)}</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className={`text-sm font-medium ${item.labaPerItem >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatRupiah(item.labaPerItem)}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-900">{item.jumlahTerjual}</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className={`text-sm font-medium ${item.totalLaba >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatRupiah(item.totalLaba)}
-                </div>
-              </td>
-            </tr>
-          ))
-        )}
-      </tbody>
-    </table>
-  </div>
-  
-  {/* Pagination */}
-  {produkTerlaris.length > itemsPerPage && (
-    <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-      <div className="flex-1 flex justify-between sm:hidden">
-        <button
-          onClick={() => paginate(currentPage - 1)}
-          disabled={currentPage === 1}
-          className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-            currentPage === 1 
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-              : 'bg-white text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          Sebelumnya
-        </button>
-        <button
-          onClick={() => paginate(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-            currentPage === totalPages 
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-              : 'bg-white text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          Selanjutnya
-        </button>
-      </div>
-      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm text-gray-700">
-            Menampilkan <span className="font-medium">{indexOfFirstItem + 1}</span> hingga{' '}
-            <span className="font-medium">
-              {Math.min(indexOfLastItem, produkTerlaris.length)}
-            </span>{' '}
-            dari <span className="font-medium">{produkTerlaris.length}</span> hasil
-          </p>
-        </div>
-        <div>
-          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-            <button
-              onClick={() => paginate(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
-                currentPage === 1 
-                  ? 'text-gray-300 cursor-not-allowed' 
-                  : 'text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              <span className="sr-only">Sebelumnya</span>
-              &larr;
-            </button>
+                </tbody>
+              </table>
+            </div>
             
-            {/* Page numbers */}
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
-              }
-              
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => paginate(pageNum)}
-                  className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                    currentPage === pageNum
-                      ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                  }`}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-            
-            <button
-              onClick={() => paginate(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
-                currentPage === totalPages 
-                  ? 'text-gray-300 cursor-not-allowed' 
-                  : 'text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              <span className="sr-only">Selanjutnya</span>
-              &rarr;
-            </button>
-          </nav>
-        </div>
-      </div>
-    </div>
-  )}
-</div>
+            {/* Pagination */}
+            {produkTerlaris.length > itemsPerPage && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-6">
+                <div className="text-sm text-gray-600">
+                  Menampilkan <span className="font-semibold text-gray-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, produkTerlaris.length)}</span> dari{' '}
+                  <span className="font-semibold text-gray-900">{produkTerlaris.length}</span> produk
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={prevPage}
+                    disabled={currentPage === 1}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                      currentPage === 1 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                    }`}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline">Sebelumnya</span>
+                  </button>
+                  
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => paginate(pageNum)}
+                          className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                            currentPage === pageNum 
+                              ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md scale-105' 
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={nextPage}
+                    disabled={currentPage === totalPages}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                      currentPage === totalPages 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                    }`}
+                  >
+                    <span className="hidden sm:inline">Selanjutnya</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Grafik Metode Pembayaran */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

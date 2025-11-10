@@ -12,7 +12,9 @@ import {
   Smartphone,
   Building2,
   University,
-  QrCode
+  QrCode,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface TransactionTableProps {
@@ -52,6 +54,9 @@ const TransactionTable: React.FC<TransactionTableProps> = ({ tableData }) => {
     setCurrentPage(pageNumber);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
 
   // Export to PDF with table
   const exportToPDF = () => {
@@ -157,103 +162,136 @@ const TransactionTable: React.FC<TransactionTableProps> = ({ tableData }) => {
             Export Excel
           </button>
         </div>
-        <div className="text-sm text-gray-500">
-          Menampilkan {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, tableData.length)} dari {tableData.length} transaksi
-        </div>
       </div>
       
       {currentItems.length > 0 ? (
         <>
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-  <div className="overflow-x-auto">
-    <table className="min-w-full divide-y divide-gray-200">
-      <thead className="bg-gray-50">
-        <tr>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Tanggal
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Metode Pembayaran
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Total Penjualan
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Persentase Laba
-          </th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-200">
-        {currentItems.map((item, index) => {
-          const profitPercentage = item.total > 0 ? ((item.laba / item.total) * 100).toFixed(2) : '0';
-          const profitPercentageNum = parseFloat(profitPercentage);
-          
-          return (
-            <tr 
-              key={index} 
-              className={`transition-colors hover:bg-gray-50 ${
-                index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
-              }`}
-            >
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-900">
-                  {item.tanggal}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">
-                  <div className="flex items-center">
-                    {getPaymentIcon(item.metode)}
-                    <span className="ml-2">{formatMethodName(item.metode)}</span>
-                  </div>
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-900">
-                  Rp {item.total.toLocaleString('id-ID')}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`inline-flex px-3 py-1 text-xs leading-5 font-semibold rounded-full ${profitPercentageNum >= 20 ? 'bg-green-100 text-green-800' : profitPercentageNum >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
-                  {profitPercentage}%
-                </span>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  </div>
-</div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tanggal
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Metode Pembayaran
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Total Penjualan
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Persentase Laba
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {currentItems.map((item, index) => {
+                    const profitPercentage = item.total > 0 ? ((item.laba / item.total) * 100).toFixed(2) : '0';
+                    const profitPercentageNum = parseFloat(profitPercentage);
+                    
+                    return (
+                      <tr 
+                        key={index} 
+                        className={`transition-colors hover:bg-gray-50 ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+                        }`}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {item.tanggal}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            <div className="flex items-center">
+                              {getPaymentIcon(item.metode)}
+                              <span className="ml-2">{formatMethodName(item.metode)}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            Rp {item.total.toLocaleString('id-ID')}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-3 py-1 text-xs leading-5 font-semibold rounded-full ${profitPercentageNum >= 20 ? 'bg-green-100 text-green-800' : profitPercentageNum >= 10 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                            {profitPercentage}%
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex justify-center mt-6">
-              <nav className="inline-flex rounded-md shadow-sm">
+          {/* Pagination - Updated to match UsersPage */}
+          {tableData.length > itemsPerPage && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-6">
+              <div className="text-sm text-gray-600">
+                Menampilkan <span className="font-semibold text-gray-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, tableData.length)}</span> dari{' '}
+                <span className="font-semibold text-gray-900">{tableData.length}</span> transaksi
+              </div>
+              
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handlePageChange(currentPage - 1)}
+                  onClick={prevPage}
                   disabled={currentPage === 1}
-                  className={`py-2 px-4 border border-gray-300 rounded-l-md text-sm font-medium ${currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                    currentPage === 1 
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                  }`}
                 >
-                  Sebelumnya
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Sebelumnya</span>
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`py-2 px-4 border border-gray-300 text-sm font-medium ${currentPage === page ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                  >
-                    {page}
-                  </button>
-                ))}
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                          currentPage === pageNum 
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md scale-105' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
                 <button
-                  onClick={() => handlePageChange(currentPage + 1)}
+                  onClick={nextPage}
                   disabled={currentPage === totalPages}
-                  className={`py-2 px-4 border border-gray-300 rounded-r-md text-sm font-medium ${currentPage === totalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                    currentPage === totalPages 
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                  }`}
                 >
-                  Selanjutnya
+                  <span className="hidden sm:inline">Selanjutnya</span>
+                  <ChevronRight className="h-4 w-4" />
                 </button>
-              </nav>
+              </div>
             </div>
           )}
         </>

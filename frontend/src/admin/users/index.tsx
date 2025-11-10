@@ -5,8 +5,8 @@ import SweetAlert from '../../components/SweetAlert';
 import UserModal from './component/usermodal';
 import UserTable from './component/usertable';
 import UserFilter from './component/userfilter';
-import Pagination from './component/pagination';
 import { portbe } from '../../../../backend/ngrokbackend';
+import { ChevronLeft, ChevronRight } from 'lucide-react'; // Tambahkan import ini
 const ipbe = import.meta.env.VITE_IPBE;
 
 
@@ -234,11 +234,9 @@ const UsersPage: React.FC = () => {
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
   // Handle page change
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    // Scroll to top of the table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
 
   return (
     <div className="p-6">
@@ -267,15 +265,71 @@ const UsersPage: React.FC = () => {
             onDelete={handleDelete} 
           />
           
-          {/* Pagination Component */}
-          {filteredUsers.length > 0 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={filteredUsers.length}
-              itemsPerPage={itemsPerPage}
-              onPageChange={handlePageChange}
-            />
+          {/* Pagination */}
+          {filteredUsers.length > itemsPerPage && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-6">
+              <div className="text-sm text-gray-600">
+                Menampilkan <span className="font-semibold text-gray-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredUsers.length)}</span> dari{' '}
+                <span className="font-semibold text-gray-900">{filteredUsers.length}</span> user
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={prevPage}
+                  disabled={currentPage === 1}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                    currentPage === 1 
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                  }`}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Sebelumnya</span>
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => paginate(pageNum)}
+                        className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                          currentPage === pageNum 
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md scale-105' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={nextPage}
+                  disabled={currentPage === totalPages}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                    currentPage === totalPages 
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                  }`}
+                >
+                  <span className="hidden sm:inline">Selanjutnya</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
           )}
         </>
       )}

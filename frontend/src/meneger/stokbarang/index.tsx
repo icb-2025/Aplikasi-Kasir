@@ -1,6 +1,6 @@
 import type { Barang } from "../../admin/stok-barang";
 import MenegerLayout from "../layout";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import StokFilter from "./StokFilter";
 import StokSummary from "./StokSummary";
@@ -11,6 +11,29 @@ import { portbe } from "../../../../backend/ngrokbackend";
 
 const ipbe = import.meta.env.VITE_IPBE;
 const API_BASE_URL = `${ipbe}:${portbe}`;
+
+// Definisikan tipe untuk data yang diterima dari API
+interface ApiBarang {
+  _id: string;
+  kode?: string;
+  kode_barang?: string;
+  nama?: string;
+  nama_barang?: string;
+  kategori?: string;
+  hargaBeli?: number;
+  harga_beli?: number;
+  hargaJual?: number;
+  harga_jual?: number;
+  stok?: number;
+  stokMinimal?: number;
+  stok_minimal?: number;
+  hargaFinal?: number;
+  gambarUrl?: string;
+  gambar_url?: string;
+  status?: string;
+  useDiscount?: boolean;
+  use_discount?: boolean;
+}
 
 interface StokBarangMenegerProps {
   dataBarang: Barang[];
@@ -31,7 +54,7 @@ export default function StokBarangMeneger({
   const socketRef = useRef<Socket | null>(null);
 
   // Fungsi untuk normalisasi data
-  const normalizeBarangData = (barang: any): Barang => {
+  const normalizeBarangData = useCallback((barang: ApiBarang): Barang => {
     return {
       _id: barang._id || '',
       kode: barang.kode || barang.kode_barang || '',
@@ -47,10 +70,10 @@ export default function StokBarangMeneger({
       status: barang.status || 'aman',
       useDiscount: barang.useDiscount || barang.use_discount || true
     };
-  };
+  }, []);
 
   // Inisialisasi Socket.io
-  const initializeSocket = () => {
+  const initializeSocket = useCallback(() => {
     try {
       const token = localStorage.getItem('token');
       console.log('Initializing socket with token:', token ? 'Present' : 'Missing');
@@ -80,7 +103,7 @@ export default function StokBarangMeneger({
       });
       
       // Listener untuk perubahan barang
-      socketRef.current.on('barang:updated', (updatedBarang: any) => {
+      socketRef.current.on('barang:updated', (updatedBarang: ApiBarang) => {
         console.log('Received barang:updated event:', updatedBarang);
         const normalizedBarang = normalizeBarangData(updatedBarang);
         setDataBarang(prevList => 
@@ -112,7 +135,7 @@ export default function StokBarangMeneger({
       });
       
       // Listener untuk barang baru
-      socketRef.current.on('barang:created', (newBarang: any) => {
+      socketRef.current.on('barang:created', (newBarang: ApiBarang) => {
         console.log('Received barang:created event:', newBarang);
         const normalizedBarang = normalizeBarangData(newBarang);
         setDataBarang(prevList => [...prevList, normalizedBarang]);
@@ -127,10 +150,10 @@ export default function StokBarangMeneger({
     } catch (socketError) {
       console.error('Error initializing socket:', socketError);
     }
-  };
+  }, [normalizeBarangData]);
 
   // Fetch data dari server
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setSocketLoading(true);
       setError(null);
@@ -170,7 +193,7 @@ export default function StokBarangMeneger({
         setDataBarang(initialDataBarang);
       }
     }
-  };
+  }, [initializeSocket, normalizeBarangData, initialDataBarang]);
 
   useEffect(() => {
     // Jika sudah ada data awal, tidak perlu loading
@@ -195,7 +218,7 @@ export default function StokBarangMeneger({
       }
       clearInterval(interval);
     };
-  }, [initialDataBarang]);
+  }, [fetchData, initializeSocket, initialDataBarang]);
 
   // Dapatkan semua kategori unik dari dataBarang
   const uniqueCategories = useMemo(() => {

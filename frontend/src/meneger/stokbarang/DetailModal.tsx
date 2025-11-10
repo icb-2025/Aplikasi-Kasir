@@ -177,7 +177,7 @@ export default function DetailModal({ item, onClose }: DetailModalProps) {
                 </div>
                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                   <p className="text-sm text-gray-600 mb-1">Harga Jual</p>
-                  <p className="text-lg md:text-xl font-bold text-blue-700">Rp {item.hargaJual.toLocaleString("id-ID")}</p>
+                  <p className="text-lg md:text-xl font-bold text-blue-700">Rp {item.hargaFinal?.toLocaleString("id-ID")}</p>
                 </div>
               </div>
 
@@ -187,7 +187,7 @@ export default function DetailModal({ item, onClose }: DetailModalProps) {
                   <div>
                     <p className="text-sm text-gray-600">Margin Keuntungan</p>
                     <p className="text-lg md:text-xl font-bold text-yellow-700">
-                      Rp {(item.hargaJual - item.hargaBeli).toLocaleString("id-ID")}
+                      Rp {(item.hargaBeli - item.hargaJual).toLocaleString("id-ID")}
                     </p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-sm font-semibold ${profitStatus.color} flex items-center`}>
