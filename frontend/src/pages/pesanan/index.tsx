@@ -728,20 +728,26 @@ const StatusPesananPage = () => {
                 className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-2 text-white">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => setIsReceiptModalOpen(false)}
-                      className="p-2 rounded-full hover:bg-white/20 transition-colors"
-                    >
-                      <X className="w-6 h-6" />
-                    </button>
-                  </div>
-                </div>
+               <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-2 text-white">
+  <div className="flex items-center justify-between">
+    <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2">
+        {/* Ikon Riwayat Pesanan */}
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h1 className="text-lg font-bold">Riwayat Pesanan</h1>
+      </div>
+      {/* Konten tambahan bisa ditambahkan di sini */}
+    </div>
+    <button 
+      onClick={() => setIsReceiptModalOpen(false)}
+      className="p-2 rounded-full hover:bg-white/20 transition-colors"
+    >
+      <X className="w-6 h-6" />
+    </button>
+  </div>
+</div>
 
                 <div className="flex-1 overflow-y-auto p-6">
                   <div className="max-w-md mx-auto bg-white shadow-lg rounded-lg p-6 print:w-full print:shadow-none print:mt-0">
