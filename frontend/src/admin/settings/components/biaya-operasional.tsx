@@ -30,9 +30,10 @@ const BiayaOperasionalSettings: React.FC<BiayaOperasionalSettingsProps> = ({
   saving 
 }) => {
   const [loading, setLoading] = useState<boolean>(true);
-  const [deleting, setDeleting] = useState<boolean>(false);
   const [deletingItem, setDeletingItem] = useState<boolean>(false);
+  const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [newItemName, setNewItemName] = useState<string>('');
+  const [newItemAmount, setNewItemAmount] = useState<number>(0);
   const [biayaData, setBiayaData] = useState<BiayaOperasionalData>({
     rincian_biaya: [],
     total: 0,
@@ -140,13 +141,18 @@ const BiayaOperasionalSettings: React.FC<BiayaOperasionalSettingsProps> = ({
 
   const handleAddItem = () => {
     if (!newItemName.trim()) {
-      SweetAlert.error('Nama item tidak boleh kosong');
+      SweetAlert.error('Nama biaya tidak boleh kosong');
+      return;
+    }
+
+    if (newItemAmount <= 0) {
+      SweetAlert.error('Jumlah biaya harus lebih dari 0');
       return;
     }
 
     const newItem: BiayaOperasionalItem = {
       nama: newItemName,
-      jumlah: 0
+      jumlah: newItemAmount
     };
 
     setBiayaData(prev => {
@@ -159,13 +165,16 @@ const BiayaOperasionalSettings: React.FC<BiayaOperasionalSettingsProps> = ({
       };
     });
 
+    // Reset form dan tutup modal
     setNewItemName('');
+    setNewItemAmount(0);
+    setShowAddModal(false);
   };
 
   const handleRemoveItem = async (itemId: string) => {
     const result = await SweetAlert.fire({
       title: 'Apakah Anda yakin?',
-      text: 'Item biaya akan dihapus',
+      text: 'Biaya akan dihapus',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -177,7 +186,7 @@ const BiayaOperasionalSettings: React.FC<BiayaOperasionalSettingsProps> = ({
     if (result.isConfirmed) {
       try {
         setDeletingItem(true);
-        SweetAlert.loading('Menghapus item biaya...');
+        SweetAlert.loading('Menghapus biaya...');
         
         // Kirim request DELETE ke endpoint item
         const token = getToken();
@@ -198,7 +207,7 @@ const BiayaOperasionalSettings: React.FC<BiayaOperasionalSettingsProps> = ({
         if (!response.ok) {
           const errorData = await response.json();
           console.error('Server error:', errorData);
-          throw new Error(errorData.message || 'Gagal menghapus item biaya');
+          throw new Error(errorData.message || 'Gagal menghapus biaya');
         }
         
         // Update state dengan menghapus item yang dihapus
@@ -215,10 +224,10 @@ const BiayaOperasionalSettings: React.FC<BiayaOperasionalSettingsProps> = ({
         });
         
         SweetAlert.close();
-        SweetAlert.success('Item biaya berhasil dihapus');
+        SweetAlert.success('Biaya berhasil dihapus');
       } catch (error) {
         SweetAlert.close();
-        SweetAlert.error(error instanceof Error ? error.message : 'Gagal menghapus item biaya');
+        SweetAlert.error(error instanceof Error ? error.message : 'Gagal menghapus biaya');
         console.error(error);
       } finally {
         setDeletingItem(false);
@@ -256,67 +265,6 @@ const BiayaOperasionalSettings: React.FC<BiayaOperasionalSettingsProps> = ({
     await onSaveBiayaOperasional(dataToSend);
   };
 
-  const handleDeleteBiayaOperasional = async () => {
-    if (!biayaData._id) {
-      SweetAlert.error('ID biaya operasional tidak ditemukan');
-      return;
-    }
-
-    try {
-      const result = await SweetAlert.fire({
-        title: 'Apakah Anda yakin?',
-        text: 'Data biaya operasional akan dihapus',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Ya, hapus!',
-        cancelButtonText: 'Batal'
-      });
-
-      if (result.isConfirmed) {
-        setDeleting(true);
-        SweetAlert.loading('Menghapus data biaya operasional...');
-        
-        const token = getToken();
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json'
-        };
-        
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-          headers['x-api-key'] = API_KEY;
-        }
-
-        const response = await fetch(`${BASE_API_URL}/${biayaData._id}`, {
-          method: 'DELETE',
-          headers
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Server error:', errorData);
-          throw new Error(errorData.message || 'Gagal menghapus data biaya operasional');
-        }
-        
-        SweetAlert.close();
-        SweetAlert.success('Data biaya operasional berhasil dihapus');
-        
-        // Reset form data dengan array kosong
-        setBiayaData({
-          rincian_biaya: [],
-          total: 0,
-        });
-      }
-    } catch (error) {
-      SweetAlert.close();
-      SweetAlert.error(error instanceof Error ? error.message : 'Gagal menghapus data biaya operasional');
-      console.error(error);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -335,35 +283,101 @@ const BiayaOperasionalSettings: React.FC<BiayaOperasionalSettingsProps> = ({
         
         {/* Action Buttons */}
         <div className="flex items-center space-x-3 mt-4 sm:mt-0">
-        </div>
-      </div>
-
-      {/* Add New Item Section */}
-      <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-200">
-        <h3 className="text-lg font-semibold text-blue-800 mb-3">Tambah Item Baru</h3>
-        <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-          <div className="flex-1">
-            <input
-              type="text"
-              value={newItemName}
-              onChange={(e) => setNewItemName(e.target.value)}
-              placeholder="Masukkan nama item biaya..."
-              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
-              onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
-            />
-          </div>
           <button
             type="button"
-            onClick={handleAddItem}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 flex items-center justify-center"
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 flex items-center"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
             </svg>
-            Tambah Item
+            Tambah Biaya
           </button>
         </div>
       </div>
+
+      {/* Modal Tambah Biaya */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Tambah Biaya Baru</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setNewItemName('');
+                    setNewItemAmount(0);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nama Biaya
+                  </label>
+                  <input
+                    type="text"
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    placeholder="Masukkan nama biaya..."
+                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
+                    autoFocus
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Jumlah Biaya
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 sm:text-sm">Rp</span>
+                    </div>
+                    <input
+                      type="number"
+                      value={newItemAmount}
+                      onChange={(e) => setNewItemAmount(parseFloat(e.target.value) || 0)}
+                      className="pl-10 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
+                      min="0"
+                      step="1000"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setNewItemName('');
+                      setNewItemAmount(0);
+                    }}
+                    className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddItem}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                  >
+                    Tambah
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Content Section */}
       {rincianBiaya.length === 0 ? (
@@ -377,7 +391,7 @@ const BiayaOperasionalSettings: React.FC<BiayaOperasionalSettingsProps> = ({
             <div className="ml-4">
               <h3 className="text-lg font-medium text-yellow-800">Belum ada data biaya operasional</h3>
               <p className="text-yellow-700 mt-2">
-                Silakan tambahkan item biaya operasional menggunakan form di atas.
+                Silakan tambahkan biaya operasional menggunakan tombol "Tambah Biaya" di atas.
               </p>
             </div>
           </div>
@@ -395,7 +409,7 @@ const BiayaOperasionalSettings: React.FC<BiayaOperasionalSettingsProps> = ({
                     onClick={() => handleRemoveItem(item._id!)}
                     disabled={deletingItem}
                     className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 transition-colors duration-200 opacity-0 group-hover:opacity-100"
-                    title="Hapus item"
+                    title="Hapus biaya"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -461,29 +475,15 @@ const BiayaOperasionalSettings: React.FC<BiayaOperasionalSettingsProps> = ({
         </div>
       )}
 
-      {/* Bottom Action Buttons for Mobile */}
+      {/* Bottom Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-8 pt-6 border-t border-gray-200">
         <div className="text-sm text-gray-500 mb-4 sm:mb-0">
           {rincianBiaya.length > 0 && (
-            <p>{rincianBiaya.length} item biaya operasional</p>
+            <p>{rincianBiaya.length} biaya operasional</p>
           )}
         </div>
         
         <div className="flex space-x-3">
-          {biayaData._id && (
-            <button
-              type="button"
-              onClick={handleDeleteBiayaOperasional}
-              disabled={deleting}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 transition-colors duration-200 flex items-center sm:hidden"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              {deleting ? 'Menghapus...' : 'Hapus'}
-            </button>
-          )}
-          
           <button
             type="button"
             onClick={handleSubmitBiaya}
