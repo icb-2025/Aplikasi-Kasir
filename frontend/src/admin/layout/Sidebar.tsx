@@ -95,6 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
         { name: 'Laporan Penjualan', path: '/admin/dashboard/laporan-penjualan' },
         { name: 'Breakdown Pembayaran', path: '/admin/dashboard/breakdown-pembayaran' },
         { name: 'Transaksi', path: '/admin/dashboard/transaksi' },
+        { name: 'Modal Penjualan', path: '/admin/dashboard/modal-penjualan' },
       ],
     },
     // Menu Stok Barang
@@ -109,13 +110,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
       icon: '📋',
       path: '/admin/status-pesanan',
     },
-    // Menu User - ditambahkan di sini
+    // Menu User
     {
       name: 'User',
       icon: '👥',
       path: '/admin/users',
     },
-    // Menu Profile - ditambahkan di sini
+    // Menu Profile
     {
       name: 'Profile',
       icon: '👤',
@@ -143,7 +144,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
 
       {/* Sidebar */}
       <div className={`bg-gradient-to-b from-orange-600 to-yellow-500 text-white w-64 fixed inset-y-0 left-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-30 shadow-xl flex flex-col`}>
-        {/* Logo dengan animasi - PERUBAHAN DI SINI */}
+        {/* Logo dengan animasi */}
         <div className="text-white flex items-center px-4 py-5 flex-shrink-0">
           <div className="flex items-center space-x-2">
             {storeLogo && !logoError ? (

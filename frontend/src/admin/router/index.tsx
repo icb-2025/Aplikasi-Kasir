@@ -1,3 +1,4 @@
+// src/admin/AdminRouter.tsx
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from '../layout';
@@ -8,12 +9,13 @@ import OmzetPage from '../dashboard/omzet';
 import StatusPesanan from '../dashboard/status-pesanan';
 import TopBarang from '../dashboard/top-barang';
 import Transaksi from '../dashboard/transaksi';
+import ModalPenjualan from '../dashboard/modal-penjualan'; // Import halaman modal penjualan
 import StokBarangAdmin from '../stok-barang';
 import StatusPesananAdmin from '../status-pesanan';
 import UsersPage from '../users';
 import SettingsPage from '../settings';
 import ProfilePage from '../profile';
-import Admin404 from '../notif/404notfound'; // Import halaman 404 khusus admin
+import Admin404 from '../notif/404notfound';
 import type { Barang } from '../stok-barang';
 
 interface AdminRouterProps {
@@ -34,6 +36,7 @@ const AdminRouter: React.FC<AdminRouterProps> = ({ dataBarang, setDataBarang }) 
           <Route path="laporan-penjualan" element={<LaporanPenjualan />} />
           <Route path="breakdown-pembayaran" element={<BreakdownPembayaran />} />
           <Route path="transaksi" element={<Transaksi />} />
+          <Route path="modal-penjualan" element={<ModalPenjualan />} /> {/* Route untuk modal penjualan */}
         </Route>
         
         {/* Stok Barang Route */}

@@ -17,6 +17,8 @@ interface ProdukLaba {
   harga_jual: number;
   harga_beli: number;
   laba: number;
+  jumlah?: number;
+  subtotal?: number;
   _id: string;
 }
 
@@ -27,6 +29,21 @@ interface MetodePembayaran {
 }
 
 // Interface untuk biaya operasional
+export interface BiayaOperasionalItem {
+  nama: string;
+  jumlah: number;
+  _id?: string;
+}
+
+export interface BiayaOperasionalData {
+  _id?: string;
+  rincian_biaya: BiayaOperasionalItem[];
+  total: number;
+  createdAt?: string;
+  __v?: number;
+}
+
+// Interface untuk biaya operasional yang sesuai dengan fungsi export
 interface BiayaOperasional {
   _id: string;
   listrik: number;
@@ -60,7 +77,7 @@ interface ApiResponse {
   };
   rekap_metode_pembayaran: MetodePembayaran[];
   _id: string;
-  biaya_operasional_id: BiayaOperasional;
+  biaya_operasional_id: string;
   pengeluaran: number;
   createdAt: string;
   updatedAt: string;
@@ -87,7 +104,7 @@ interface ProdukTerlaris {
   gambar_url?: string;
 }
 
-// Interface untuk data pie chart yang sesuai dengan Recharts
+// Interface untuk data pie chart
 interface PieData {
   name: string;
   value: number;
@@ -139,6 +156,13 @@ const LaporanPenjualan: React.FC = () => {
 
   // State untuk produk list
   const [produkList, setProdukList] = useState<ProdukItem[]>([]);
+  
+  // State untuk biaya operasional
+  const [biayaOperasional, setBiayaOperasional] = useState<BiayaOperasionalData>({
+    rincian_biaya: [],
+    total: 0,
+  });
+  const [loadingBiayaOperasional, setLoadingBiayaOperasional] = useState<boolean>(true);
 
   // Warna untuk pie chart
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1', '#EF4444', '#14B8A6', '#F97316'];
@@ -193,10 +217,52 @@ const LaporanPenjualan: React.FC = () => {
     fetchProdukList();
   }, []);
 
+  // Fetch data biaya operasional berdasarkan ID
+  const fetchBiayaOperasional = async (id: string) => {
+    try {
+      setLoadingBiayaOperasional(true);
+      
+      // Pastikan id adalah string dan tidak kosong
+      if (!id || typeof id !== 'string') {
+        console.error('Invalid biaya operasional ID:', id);
+        setBiayaOperasional({
+          rincian_biaya: [],
+          total: 0,
+        });
+        return;
+      }
+      
+      const response = await fetch(`${ipbe}:${portbe}/api/admin/biaya-operasional/${id}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.warn('Biaya operasional not found for ID:', id);
+          setBiayaOperasional({
+            rincian_biaya: [],
+            total: 0,
+          });
+          return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result: BiayaOperasionalData = await response.json();
+      setBiayaOperasional(result);
+    } catch (err) {
+      console.error('Error fetching biaya operasional:', err);
+      setBiayaOperasional({
+        rincian_biaya: [],
+        total: 0,
+      });
+    } finally {
+      setLoadingBiayaOperasional(false);
+    }
+  };
+
   // Fetch data laporan berdasarkan bulan yang dipilih
   useEffect(() => {
     const fetchData = async () => {
-      if (!selectedBulan) return; // Jangan fetch jika belum ada bulan yang dipilih
+      if (!selectedBulan) return;
       
       try {
         setLoading(true);
@@ -208,48 +274,91 @@ const LaporanPenjualan: React.FC = () => {
         
         const result: ApiResponse = await response.json();
         
-        // Log data untuk debugging
-        console.log('Data dari API:', result);
-        
-        // Validasi data sebelum digunakan
-        if (!result || !result.laba || !result.laba.detail) {
+        // Validasi data
+        if (!result || !result.laba || !Array.isArray(result.laba.detail)) {
           throw new Error('Data tidak valid atau tidak lengkap');
         }
         
         setData(result);
         
+        // Fetch biaya operasional jika ID tersedia
+        if (result.biaya_operasional_id && typeof result.biaya_operasional_id === 'string') {
+          await fetchBiayaOperasional(result.biaya_operasional_id);
+        } else {
+          console.warn('Invalid or missing biaya_operasional_id:', result.biaya_operasional_id);
+          setBiayaOperasional({
+            rincian_biaya: [],
+            total: 0,
+          });
+          setLoadingBiayaOperasional(false);
+        }
+        
         // Hitung total pendapatan (total harga jual)
-        const pendapatan = result.laba.detail.reduce((sum, item) => sum + item.harga_jual, 0);
+        const pendapatan = result.laba.detail.reduce((sum, item) => {
+          const jumlah = item.jumlah || 1;
+          const subtotal = item.subtotal || (item.harga_jual * jumlah);
+          return sum + subtotal;
+        }, 0);
         setTotalPendapatan(pendapatan);
         
         // Hitung total barang terjual
-        setTotalBarangTerjual(result.laba.detail.length);
+        const totalTerjual = result.laba.detail.reduce((sum, item) => {
+          return sum + (item.jumlah || 1);
+        }, 0);
+        setTotalBarangTerjual(totalTerjual);
         
         // Kelompokkan data produk terlaris
-        const produkMap = new Map<string, ProdukTerlaris>();
+        const produkMap = new Map<string, {
+          produk: string;
+          totalHargaJual: number;
+          totalHargaBeli: number;
+          totalLaba: number;
+          totalJumlah: number;
+          gambar_url?: string;
+        }>();
         
         result.laba.detail.forEach(item => {
+          const jumlah = item.jumlah || 1;
+          const laba = item.laba || ((item.harga_jual - item.harga_beli) * jumlah);
+          
           if (produkMap.has(item.produk)) {
             const produk = produkMap.get(item.produk)!;
-            produk.jumlahTerjual += 1;
-            produk.totalLaba += item.laba;
+            produk.totalHargaJual += item.harga_jual * jumlah;
+            produk.totalHargaBeli += item.harga_beli * jumlah;
+            produk.totalLaba += laba;
+            produk.totalJumlah += jumlah;
           } else {
             // Cari produk di produkList untuk mendapatkan gambar
             const produkInfo = produkList.find(p => p.nama_barang === item.produk);
             produkMap.set(item.produk, {
               produk: item.produk,
-              harga_jual: item.harga_jual,
-              harga_beli: item.harga_beli,
-              labaPerItem: item.laba,
-              jumlahTerjual: 1,
-              totalLaba: item.laba,
-              gambar_url: produkInfo ? produkInfo.gambar_url : '' // Tambahkan gambar
+              totalHargaJual: item.harga_jual * jumlah,
+              totalHargaBeli: item.harga_beli * jumlah,
+              totalLaba: laba,
+              totalJumlah: jumlah,
+              gambar_url: produkInfo ? produkInfo.gambar_url : ''
             });
           }
         });
         
-        // Konversi Map ke array dan urutkan berdasarkan total laba
-        const produkArray = Array.from(produkMap.values());
+        // Konversi Map ke array dan hitung rata-rata harga
+        const produkArray = Array.from(produkMap.values()).map(item => {
+          const rataHargaJual = item.totalHargaJual / item.totalJumlah;
+          const rataHargaBeli = item.totalHargaBeli / item.totalJumlah;
+          const labaPerItem = rataHargaJual - rataHargaBeli;
+          
+          return {
+            produk: item.produk,
+            harga_jual: rataHargaJual,
+            harga_beli: rataHargaBeli,
+            labaPerItem: labaPerItem,
+            jumlahTerjual: item.totalJumlah,
+            totalLaba: item.totalLaba,
+            gambar_url: item.gambar_url
+          };
+        });
+        
+        // Urutkan berdasarkan total laba
         produkArray.sort((a, b) => b.totalLaba - a.totalLaba);
         
         setProdukTerlaris(produkArray);
@@ -271,7 +380,7 @@ const LaporanPenjualan: React.FC = () => {
     };
 
     fetchData();
-  }, [selectedBulan, produkList]); // Tambahkan produkList sebagai dependency
+  }, [selectedBulan, produkList]);
 
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -307,6 +416,44 @@ const LaporanPenjualan: React.FC = () => {
   const handleExport = (type: 'pdf' | 'excel') => {
     if (!data) return;
     
+    // Konversi data biaya operasional ke format yang sesuai dengan fungsi export
+    const biayaOperasionalExport: BiayaOperasional = {
+      _id: biayaOperasional._id || '',
+      listrik: 0,
+      air: 0,
+      internet: 0,
+      sewa_tempat: 0,
+      gaji_karyawan: 0,
+      total: biayaOperasional.total || 0,
+      createdAt: biayaOperasional.createdAt || new Date().toISOString(),
+      __v: biayaOperasional.__v || 0
+    };
+    
+    // Isi nilai berdasarkan data yang ada
+    if (biayaOperasional.rincian_biaya && Array.isArray(biayaOperasional.rincian_biaya)) {
+      biayaOperasional.rincian_biaya.forEach(item => {
+        switch (item.nama.toLowerCase()) {
+          case 'listrik':
+            biayaOperasionalExport.listrik = item.jumlah || 0;
+            break;
+          case 'air':
+            biayaOperasionalExport.air = item.jumlah || 0;
+            break;
+          case 'internet':
+            biayaOperasionalExport.internet = item.jumlah || 0;
+            break;
+          case 'sewa tempat':
+          case 'sewa':
+            biayaOperasionalExport.sewa_tempat = item.jumlah || 0;
+            break;
+          case 'gaji karyawan':
+          case 'gaji':
+            biayaOperasionalExport.gaji_karyawan = item.jumlah || 0;
+            break;
+        }
+      });
+    }
+    
     // Siapkan data untuk export
     const exportData = {
       periode: data.periode,
@@ -325,7 +472,7 @@ const LaporanPenjualan: React.FC = () => {
       totalPendapatan: totalPendapatan,
       totalBarangTerjual: totalBarangTerjual,
       pengeluaran: data.pengeluaran,
-      biaya_operasional: data.biaya_operasional_id
+      biaya_operasional: biayaOperasionalExport
     };
     
     if (type === 'pdf') {
@@ -385,7 +532,7 @@ const LaporanPenjualan: React.FC = () => {
   // Handle perubahan select bulan
   const handleBulanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedBulan(e.target.value);
-    setCurrentPage(1); // Reset pagination ke halaman 1
+    setCurrentPage(1);
   };
 
   // Dapatkan icon berdasarkan metode pembayaran
@@ -478,15 +625,6 @@ const LaporanPenjualan: React.FC = () => {
             </div>
           </div>
         </div>
-      ) : !data.laba || !data.laba.detail ? (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-          <div className="flex">
-            <div className="text-yellow-700">
-              <p className="font-medium">Data Laba Tidak Lengkap</p>
-              <p className="text-sm">Data laba atau detail laba tidak tersedia.</p>
-            </div>
-          </div>
-        </div>
       ) : (
         <>
           <div className="mb-6 flex justify-between items-center">
@@ -511,11 +649,6 @@ const LaporanPenjualan: React.FC = () => {
               <p className="text-xs text-gray-500">periode terpilih</p>
             </div>
             <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Total Transaksi</h3>
-              <p className="text-2xl font-bold text-purple-600">{data.laba.detail.length}</p>
-              <p className="text-xs text-gray-500">periode terpilih</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow">
               <h3 className="text-sm font-medium text-gray-500">Total Barang Terjual</h3>
               <p className="text-2xl font-bold text-orange-600">{totalBarangTerjual}</p>
               <p className="text-xs text-gray-500">periode terpilih</p>
@@ -526,7 +659,7 @@ const LaporanPenjualan: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <div className="bg-white p-4 rounded-lg shadow">
               <h3 className="text-sm font-medium text-gray-500">Biaya Operasional</h3>
-              <p className="text-2xl font-bold text-red-600">{formatRupiah(data.biaya_operasional_id.total)}</p>
+              <p className="text-2xl font-bold text-red-600">{formatRupiah(biayaOperasional.total)}</p>
               <p className="text-xs text-gray-500">periode terpilih</p>
             </div>
           </div>
@@ -538,68 +671,53 @@ const LaporanPenjualan: React.FC = () => {
               <p className="text-sm text-gray-600">Rincian biaya operasional periode ini</p>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Kategori
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Jumlah
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  <tr className="transition-colors hover:bg-gray-50 bg-white">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">Listrik</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.listrik)}</div>
-                    </td>
-                  </tr>
-                  <tr className="transition-colors hover:bg-gray-50 bg-amber-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">Air</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.air)}</div>
-                    </td>
-                  </tr>
-                  <tr className="transition-colors hover:bg-gray-50 bg-white">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">Internet</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.internet)}</div>
-                    </td>
-                  </tr>
-                  <tr className="transition-colors hover:bg-gray-50 bg-amber-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">Sewa Tempat</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.sewa_tempat)}</div>
-                    </td>
-                  </tr>
-                  <tr className="transition-colors hover:bg-gray-50 bg-white">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">Gaji Karyawan</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatRupiah(data.biaya_operasional_id.gaji_karyawan)}</div>
-                    </td>
-                  </tr>
-                  <tr className="bg-gray-100 border-t-2 border-gray-300">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-bold text-gray-900">Total</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-bold text-gray-900">{formatRupiah(data.biaya_operasional_id.total)}</div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              {loadingBiayaOperasional ? (
+                <div className="flex justify-center items-center h-40">
+                  <LoadingSpinner />
+                </div>
+              ) : biayaOperasional.rincian_biaya.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Tidak ada data biaya operasional</p>
+                </div>
+              ) : (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Kategori
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Jumlah
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {biayaOperasional.rincian_biaya.map((item, index) => (
+                      <tr 
+                        key={item._id || index} 
+                        className={`transition-colors hover:bg-gray-50 ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+                        }`}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{item.nama}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{formatRupiah(item.jumlah)}</div>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-100 border-t-2 border-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-gray-900">Total</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-gray-900">{formatRupiah(biayaOperasional.total)}</div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
 
