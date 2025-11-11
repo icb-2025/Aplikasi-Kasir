@@ -529,20 +529,6 @@ const LaporanPenjualan: React.FC = () => {
               <p className="text-2xl font-bold text-red-600">{formatRupiah(data.biaya_operasional_id.total)}</p>
               <p className="text-xs text-gray-500">periode terpilih</p>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Laba Kotor</h3>
-              <p className="text-2xl font-bold text-green-600">
-                {formatRupiah(totalPendapatan - data.laba.detail.reduce((sum, item) => sum + item.harga_beli, 0))}
-              </p>
-              <p className="text-xs text-gray-500">periode terpilih</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Rata-rata Laba per Transaksi</h3>
-              <p className="text-2xl font-bold text-indigo-600">
-                {data.laba.detail.length > 0 ? formatRupiah(data.laba.total_laba / data.laba.detail.length) : formatRupiah(0)}
-              </p>
-              <p className="text-xs text-gray-500">periode terpilih</p>
-            </div>
           </div>
 
           {/* Detail Biaya Operasional */}

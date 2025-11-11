@@ -160,8 +160,8 @@ const OmzetPage: React.FC = () => {
 
       {/* Ringkasan */}
       <OmzetSummary 
-        omzetData={omzetData?.omzet || null} 
       />
+      
     </div>
   );
 };

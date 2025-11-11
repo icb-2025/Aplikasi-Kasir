@@ -17,7 +17,9 @@ import {
   X,
   Printer,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Filter,
+  CalendarDays
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
@@ -80,6 +82,7 @@ const SETTINGS_URL = `${ipbe}:${portbe}/api/admin/settings`;
 
 const StatusPesananPage = () => {
   const [filterStatus, setFilterStatus] = useState<string>("semua");
+  const [filterDate, setFilterDate] = useState<string>("hari-ini"); // Default: hari ini
   const [pesananList, setPesananList] = useState<Pesanan[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,10 +92,10 @@ const StatusPesananPage = () => {
   const [kasir, setKasir] = useState<Kasir | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [settings, setSettings] = useState<Settings>({ receiptHeader: "", receiptFooter: "" });
+  const [showDateFilter, setShowDateFilter] = useState(false); // Kontrol visibilitas filter tanggal
   const itemsPerPage = 10;
  
   const location = useLocation();
-  
   const locationState = location.state as LocationState | null;
 
   // Fetch data pesanan dari API
@@ -173,6 +176,50 @@ const StatusPesananPage = () => {
     }
   };
 
+  // Fungsi untuk memfilter pesanan berdasarkan tanggal
+  const filterByDate = (pesanan: Pesanan, filter: string) => {
+    const today = new Date();
+    const pesananDate = new Date(pesanan.createdAt);
+    
+    // Reset waktu untuk perbandingan yang akurat
+    today.setHours(0, 0, 0, 0);
+    pesananDate.setHours(0, 0, 0, 0);
+    
+    switch (filter) {
+      case "hari-ini": {
+        return pesananDate.getTime() === today.getTime();
+      }
+      case "kemarin": {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return pesananDate.getTime() === yesterday.getTime();
+      }
+      case "7-hari": {
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        return pesananDate >= sevenDaysAgo;
+      }
+      case "30-hari": {
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return pesananDate >= thirtyDaysAgo;
+      }
+      case "bulan-ini": {
+        return pesananDate.getMonth() === today.getMonth() && 
+               pesananDate.getFullYear() === today.getFullYear();
+      }
+      case "bulan-lalu": {
+        const lastMonth = new Date(today);
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        return pesananDate.getMonth() === lastMonth.getMonth() && 
+               pesananDate.getFullYear() === lastMonth.getFullYear();
+      }
+      default: {
+        return true; // "semua" tanggal
+      }
+    }
+  };
+
   useEffect(() => {
     fetchPesanan();
     fetchSettings();
@@ -202,16 +249,21 @@ const StatusPesananPage = () => {
   // Reset halaman saat filter atau pencarian berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStatus, searchTerm]);
+  }, [filterStatus, searchTerm, filterDate]);
 
-  // Filter pesanan berdasarkan status - tambahkan pengecekan array
-  const filteredPesanan = filterStatus === "semua" 
+  // Filter pesanan berdasarkan status dan tanggal
+  const filteredByStatus = filterStatus === "semua" 
     ? (Array.isArray(pesananList) ? pesananList : [])
     : (Array.isArray(pesananList) ? pesananList.filter(pesanan => pesanan.status === filterStatus) : []);
 
-  // Filter berdasarkan pencarian - tambahkan pengecekan array
-  const searchedPesanan = Array.isArray(filteredPesanan) 
-    ? filteredPesanan.filter(
+  // Filter berdasarkan tanggal
+  const filteredByDate = Array.isArray(filteredByStatus) 
+    ? filteredByStatus.filter(pesanan => filterByDate(pesanan, filterDate))
+    : [];
+
+  // Filter berdasarkan pencarian
+  const searchedPesanan = Array.isArray(filteredByDate) 
+    ? filteredByDate.filter(
         (item) =>
           (item.order_id ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
           (item.metode_pembayaran ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -222,7 +274,7 @@ const StatusPesananPage = () => {
       )
     : [];
 
-  // Pagination logic - tambahkan pengecekan array
+  // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = Array.isArray(searchedPesanan) ? searchedPesanan.slice(indexOfFirstItem, indexOfLastItem) : [];
@@ -295,11 +347,6 @@ const StatusPesananPage = () => {
     if (!value || isNaN(value)) return "Rp 0";
     return `Rp ${value.toLocaleString("id-ID")}`;
   };
-
-  // Summary statistics - tambahkan pengecekan array
-  const totalPesanan = Array.isArray(pesananList) ? pesananList.length : 0;
-  const selesaiPesanan = Array.isArray(pesananList) ? pesananList.filter(item => item.status === "selesai").length : 0;
-  const dibatalkanPesanan = Array.isArray(pesananList) ? pesananList.filter(item => item.status === "dibatalkan").length : 0;
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -440,7 +487,7 @@ const StatusPesananPage = () => {
             </div>
           )}
 
-          {/* Filter Status */}
+          {/* Filter Status dan Tanggal */}
           <div className="bg-gray-50 p-4 rounded-lg mb-6">
             <div className="flex flex-wrap items-center gap-4">
               <span className="text-sm font-medium text-gray-700">Filter Status:</span>
@@ -461,89 +508,78 @@ const StatusPesananPage = () => {
                   )
                 )}
               </div>
+              
+              {/* Filter Tanggal */}
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-sm font-medium text-gray-700">Tanggal:</span>
+                <button 
+                  onClick={() => setShowDateFilter(!showDateFilter)}
+                  className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  {filterDate === "hari-ini" && "Hari Ini"}
+                  {filterDate === "kemarin" && "Kemarin"}
+                  {filterDate === "7-hari" && "7 Hari Terakhir"}
+                  {filterDate === "30-hari" && "30 Hari Terakhir"}
+                  {filterDate === "bulan-ini" && "Bulan Ini"}
+                  {filterDate === "bulan-lalu" && "Bulan Lalu"}
+                  {filterDate === "semua" && "Semua Tanggal"}
+                  <Filter className="h-4 w-4" />
+                </button>
+              </div>
             </div>
+            
+            {/* Dropdown Filter Tanggal */}
+            {showDateFilter && (
+              <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {[
+                    { value: "hari-ini", label: "Hari Ini" },
+                    { value: "kemarin", label: "Kemarin" },
+                    { value: "7-hari", label: "7 Hari Terakhir" },
+                    { value: "30-hari", label: "30 Hari Terakhir" },
+                    { value: "bulan-ini", label: "Bulan Ini" },
+                    { value: "bulan-lalu", label: "Bulan Lalu" },
+                    { value: "semua", label: "Semua Tanggal" }
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setFilterDate(option.value);
+                        setShowDateFilter(false);
+                      }}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        filterDate === option.value
+                          ? "bg-amber-500 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-6">
-            <div className="bg-white overflow-hidden shadow rounded-lg border border-gray-200 hover:shadow-md transition-all">
-              <div className="px-4 py-5 sm:p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                    <svg className="h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Total</dt>
-                      <dd className="flex items-baseline">
-                        <div className="text-2xl font-semibold text-gray-900">{totalPesanan}</div>
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg border border-gray-200 hover:shadow-md transition-all">
-              <div className="px-4 py-5 sm:p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-green-100 rounded-md p-3">
-                    <svg className="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Selesai</dt>
-                      <dd className="flex items-baseline">
-                        <div className="text-2xl font-semibold text-gray-900">{selesaiPesanan}</div>
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg border border-gray-200 hover:shadow-md transition-all">
-              <div className="px-4 py-5 sm:p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-red-100 rounded-md p-3">
-                    <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Dibatalkan</dt>
-                      <dd className="flex items-baseline">
-                        <div className="text-2xl font-semibold text-gray-900">{dibatalkanPesanan}</div>
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          
 
           {loading ? (
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
             </div>
           ) : searchedPesanan.length === 0 ? (
-            /* Pesanan Kosong */
             <div className="text-center py-12">
               <div className="text-6xl mb-4">📝</div>
               <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                {filterStatus === "semua" && searchTerm === ""
-                  ? "Tidak Ada Pesanan" 
-                  : `Tidak Ada Pesanan`}
+                {filterDate === "hari-ini" && filterStatus === "semua" && searchTerm === ""
+                  ? "Tidak Ada Transaksi Hari Ini" 
+                  : "Tidak Ada Pesanan"}
               </h3>
               <p className="text-gray-500">
-                {filterStatus === "semua" && searchTerm === ""
-                  ? "Riwayat pesanan Anda akan muncul di sini" 
-                  : "Riwayat pesanan Anda akan muncul di sini"}
+                {filterDate === "hari-ini" && filterStatus === "semua" && searchTerm === ""
+                  ? "Belum ada transaksi pada hari ini" 
+                  : "Tidak ada pesanan yang sesuai dengan filter"}
               </p>
             </div>
           ) : (
@@ -728,26 +764,24 @@ const StatusPesananPage = () => {
                 className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
                 onClick={(e) => e.stopPropagation()}
               >
-               <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-2 text-white">
-  <div className="flex items-center justify-between">
-    <div className="flex items-center space-x-4">
-      <div className="flex items-center space-x-2">
-        {/* Ikon Riwayat Pesanan */}
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <h1 className="text-lg font-bold">Riwayat Pesanan</h1>
-      </div>
-      {/* Konten tambahan bisa ditambahkan di sini */}
-    </div>
-    <button 
-      onClick={() => setIsReceiptModalOpen(false)}
-      className="p-2 rounded-full hover:bg-white/20 transition-colors"
-    >
-      <X className="w-6 h-6" />
-    </button>
-  </div>
-</div>
+                <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-2 text-white">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h1 className="text-lg font-bold">Riwayat Pesanan</h1>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setIsReceiptModalOpen(false)}
+                      className="p-2 rounded-full hover:bg-white/20 transition-colors"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
 
                 <div className="flex-1 overflow-y-auto p-6">
                   <div className="max-w-md mx-auto bg-white shadow-lg rounded-lg p-6 print:w-full print:shadow-none print:mt-0">
