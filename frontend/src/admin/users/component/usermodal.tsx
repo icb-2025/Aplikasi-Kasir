@@ -92,8 +92,7 @@ const UserModal: React.FC<UserModalProps> = ({ showModal, editingUser, onClose, 
     await onSubmit(formData);
   };
 
-  // Debugging log
-  console.log("Modal rendered, showModal:", showModal);
+  
 
   if (!showModal) return null;
 

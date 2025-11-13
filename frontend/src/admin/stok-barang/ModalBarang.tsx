@@ -1,5 +1,5 @@
-// ModalBarang.tsx
-import React, { useState, useEffect } from "react";
+// src/admin/stok-barang/ModalBarang.tsx
+import React, { useState, useEffect, useRef } from "react";
 
 export interface BarangFormData {
   kode: string;
@@ -13,6 +13,17 @@ export interface BarangFormData {
   useDiscount?: boolean;
 }
 
+export interface BahanBakuItem {
+  nama_produk: string;
+  total_porsi: number;
+  modal_per_porsi: number;
+  bahan?: Array<{
+    nama: string;
+    harga: number;
+    jumlah: number;
+  }>;
+}
+
 interface ModalBarangProps {
   visible: boolean;
   isEditing: boolean;
@@ -22,6 +33,7 @@ interface ModalBarangProps {
   onClose: () => void;
   loading?: boolean;
   kategoriOptions: string[];
+  bahanBakuList: BahanBakuItem[];
   onGenerateCode: () => void;
 }
 
@@ -34,16 +46,13 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
   onClose,
   loading = false,
   kategoriOptions,
+  bahanBakuList,
   onGenerateCode
 }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedBahan, setSelectedBahan] = useState<BahanBakuItem | null>(null);
+  const isUpdating = useRef(false);
 
-  // Debug log untuk kategoriOptions
-  useEffect(() => {
-    console.log("Kategori options in ModalBarang:", kategoriOptions);
-  }, [kategoriOptions]);
-
-  // sync previewUrl dengan formData.gambarUrl
   useEffect(() => {
     if (formData.gambarUrl) {
       setPreviewUrl(formData.gambarUrl);
@@ -51,6 +60,29 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
       setPreviewUrl(null);
     }
   }, [formData.gambarUrl]);
+
+  useEffect(() => {
+    if (isUpdating.current) return;
+    
+    if (formData.nama && bahanBakuList.length > 0) {
+      const matchingBahan = bahanBakuList.find(item => 
+        item.nama_produk.toLowerCase() === formData.nama.toLowerCase()
+      );
+      
+      if (matchingBahan) {
+        isUpdating.current = true;
+        onInputChange("hargaBeli", matchingBahan.modal_per_porsi.toString());
+        onInputChange("stok", matchingBahan.total_porsi.toString());
+        setSelectedBahan(matchingBahan);
+        
+        setTimeout(() => {
+          isUpdating.current = false;
+        }, 0);
+      } else {
+        setSelectedBahan(null);
+      }
+    }
+  }, [formData.nama, bahanBakuList, onInputChange]);
 
   if (!visible) return null;
 
@@ -72,10 +104,11 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
     setPreviewUrl(null);
   };
 
+  const produkList = [...new Set(bahanBakuList.map(item => item.nama_produk))];
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto max-h-[95vh] overflow-hidden border border-gray-200">
-        {/* Header */}
         <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -100,10 +133,8 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
           </div>
         </div>
 
-        {/* Form */}
         <form onSubmit={onSubmit} className="px-8 py-6 overflow-y-auto max-h-[60vh]">
           <div className="space-y-6">
-            {/* Kode Barang */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">
                 Kode Barang <span className="text-red-500">*</span>
@@ -111,7 +142,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
               <div className="flex gap-3">
                 <input
                   type="text"
-                  value={formData.kode}
+                  value={formData.kode || ""}
                   onChange={(e) => onInputChange("kode", e.target.value)}
                   className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 bg-white"
                   required
@@ -129,29 +160,48 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
               </div>
             </div>
 
-            {/* Nama Barang */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">
                 Nama Barang <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={formData.nama}
+                value={formData.nama || ""}
                 onChange={(e) => onInputChange("nama", e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 bg-white"
                 required
                 disabled={loading}
                 placeholder="Masukkan nama barang"
               />
+              {produkList.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500 mb-1">Pilih dari produk yang tersedia:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {produkList.map((produk, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => onInputChange("nama", produk)}
+                        className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                          formData.nama === produk
+                            ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                        }`}
+                      >
+                        {produk}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Kategori */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">
                 Kategori <span className="text-red-500">*</span>
               </label>
               <select
-                value={formData.kategori}
+                value={formData.kategori || ""}
                 onChange={(e) => onInputChange("kategori", e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 bg-white appearance-none"
                 required
@@ -174,7 +224,45 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
               )}
             </div>
 
-            {/* Discount Toggle */}
+            {selectedBahan && (
+              <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                <div className="flex items-start space-x-3">
+                  <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-blue-800">Informasi Bahan Baku</h4>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Produk: <span className="font-medium">{selectedBahan.nama_produk}</span>
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div className="text-sm text-blue-700">
+                        Modal per Porsi: <span className="font-medium">Rp {selectedBahan.modal_per_porsi.toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="text-sm text-blue-700">
+                        Total Porsi: <span className="font-medium">{selectedBahan.total_porsi}</span>
+                      </div>
+                    </div>
+                    {selectedBahan.bahan && selectedBahan.bahan.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-blue-600 font-medium">Komposisi Bahan:</p>
+                        <div className="mt-1 space-y-1">
+                          {selectedBahan.bahan.map((bahan, index) => (
+                            <div key={index} className="text-xs text-blue-700 flex justify-between">
+                              <span>{bahan.nama}</span>
+                              <span>Rp {bahan.harga.toLocaleString('id-ID')} x {bahan.jumlah}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
               <div className="flex items-center space-x-3">
                 <div className="p-2 rounded-lg bg-white border border-blue-200">
@@ -199,28 +287,30 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
               </label>
             </div>
 
-            {/* Harga Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Harga Beli */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-gray-700">
-                  Harga Beli <span className="text-red-500">*</span>
+                  Harga Beli (Modal per Porsi) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">Rp</span>
                   <input
                     type="number"
                     min="0"
-                    value={formData.hargaBeli}
+                    value={formData.hargaBeli || ""}
                     onChange={(e) => onInputChange("hargaBeli", e.target.value)}
                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 bg-white"
                     required
-                    disabled={loading}
+                    disabled={loading || !!selectedBahan}
                   />
                 </div>
+                {selectedBahan && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ Harga diambil dari bahan baku (Modal per Porsi)
+                  </p>
+                )}
               </div>
 
-              {/* Harga Jual */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-gray-700">
                   Harga Jual <span className="text-red-500">*</span>
@@ -230,7 +320,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
                   <input
                     type="number"
                     min="0"
-                    value={formData.hargaJual}
+                    value={formData.hargaJual || ""}
                     onChange={(e) => onInputChange("hargaJual", e.target.value)}
                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 bg-white"
                     required
@@ -240,33 +330,35 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
               </div>
             </div>
 
-            {/* Stok */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">
-                Stok <span className="text-red-500">*</span>
+                Stok (Total Porsi) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 min="0"
-                value={formData.stok}
+                value={formData.stok || ""}
                 onChange={(e) => onInputChange("stok", e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 bg-white"
                 required
-                disabled={loading}
+                disabled={loading || !!selectedBahan}
               />
+              {selectedBahan && (
+                <p className="text-xs text-green-600 mt-1">
+                  ✓ Stok diambil dari bahan baku (Total Porsi)
+                </p>
+              )}
             </div>
 
-            {/* Gambar Barang */}
             <div className="space-y-3">
               <label className="block text-sm font-semibold text-gray-700">
                 Gambar Barang
               </label>
               
-              {/* Preview Image */}
               {(previewUrl || formData.gambarUrl) && (
                 <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
                   <img
-                    src={previewUrl || formData.gambarUrl}
+                    src={previewUrl || formData.gambarUrl || ""}
                     alt="Preview"
                     className="h-20 w-20 object-cover rounded-lg border-2 border-white shadow-sm"
                   />
@@ -287,7 +379,6 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
                 </div>
               )}
 
-              {/* File Input */}
               <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 transition-all duration-200 bg-gray-50/50">
                 <input
                   type="file"
@@ -318,7 +409,6 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
             </div>
           </div>
 
-          {/* Actions */}
           <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end space-x-3">
             <button
               type="button"

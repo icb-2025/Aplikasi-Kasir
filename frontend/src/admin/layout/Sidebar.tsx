@@ -95,7 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
         { name: 'Laporan Penjualan', path: '/admin/dashboard/laporan-penjualan' },
         { name: 'Breakdown Pembayaran', path: '/admin/dashboard/breakdown-pembayaran' },
         { name: 'Transaksi', path: '/admin/dashboard/transaksi' },
-        { name: 'Modal Penjualan', path: '/admin/dashboard/modal-penjualan' },
+        
       ],
     },
     // Menu Stok Barang
@@ -104,11 +104,27 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
       icon: '📦',
       path: '/admin/stok-barang',
     },
+    // Menu Modal Bahan Baku - Ditambahkan di sini
+    {
+      name: 'Modal Bahan Baku',
+      icon: '📋',
+      path: '/admin/modal-bahanbaku',
+    },
     // Menu Status Pesanan
     {
       name: 'Status Pesanan',
       icon: '📋',
       path: '/admin/status-pesanan',
+    },
+    // Menu Biaya
+    {
+      name: 'Biaya',
+      icon: '💰',
+      submenu: [
+        { name: 'Modal Penjualan', path: '/admin/biaya/modal-penjualan' }, 
+        { name: 'Biaya Layanan', path: '/admin/biaya/biaya-layanan' }, 
+        // Modal Bahan Baku dihapus dari sini
+      ],
     },
     // Menu User
     {
@@ -131,9 +147,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
 
   return (
     <>
-      {/* Tombol Toggle Sidebar untuk Mobile - Fixed Position di luar sidebar */}
-      
-
       {/* Sidebar Backdrop (for mobile) */}
       {isOpen && (
         <div 

@@ -8,13 +8,13 @@ import Tabs from './components/Tabs';
 import GeneralSettings from './components/GeneralSettings';
 import ReceiptSettings from './components/ReceiptSettings';
 import PaymentSettings from './components/PaymentSettings';
-import BiayaOperasionalSettings from './components/biaya-operasional';
-import AdvancedSettings from './components/AdvancedSettings';
+// import BiayaOperasionalSettings from './components/biaya-operasional';
+// import AdvancedSettings from './components/AdvancedSettings';
 import { portbe } from '../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 const ApiKey = import.meta.env.VITE_API_KEY;
 // Import interface with type-only import
-import type { BiayaOperasionalData } from './components/biaya-operasional';
+// import type { BiayaOperasionalData } from './components/biaya-operasional';
 
 interface PaymentChannel {
   name: string;
@@ -79,7 +79,7 @@ const SettingsPage: React.FC = () => {
   });
 
   const BASE_API_URL = `${ipbe}:${portbe}/api/admin/settings`;
-  const BIAYA_OPERASIONAL_API_URL = `${ipbe}:${portbe}/api/admin/biaya-operasional`;
+  // const BIAYA_OPERASIONAL_API_URL = `${ipbe}:${portbe}/api/admin/biaya-operasional`;
   const API_KEY = `${ApiKey}`; // Ganti dengan API key yang sesuai
 
   // Fungsi untuk mendapatkan token dari localStorage
@@ -665,43 +665,43 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleSaveBiayaOperasional = async (data: BiayaOperasionalData) => {
-    try {
-      setSaving(true);
-      SweetAlert.loading('Menyimpan biaya operasional...');
+  // const handleSaveBiayaOperasional = async (data: BiayaOperasionalData) => {
+  //   try {
+  //     setSaving(true);
+  //     SweetAlert.loading('Menyimpan biaya operasional...');
       
-      const token = getToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
+  //     const token = getToken();
+  //     const headers: Record<string, string> = {
+  //       'Content-Type': 'application/json'
+  //     };
       
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-        headers['x-api-key'] = API_KEY;
-      }
+  //     if (token) {
+  //       headers['Authorization'] = `Bearer ${token}`;
+  //       headers['x-api-key'] = API_KEY;
+  //     }
       
-      const response = await fetch(BIAYA_OPERASIONAL_API_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(data)
-      });
+  //     const response = await fetch(BIAYA_OPERASIONAL_API_URL, {
+  //       method: 'POST',
+  //       headers,
+  //       body: JSON.stringify(data)
+  //     });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Server error:', errorData);
-        throw new Error(errorData.message || 'Gagal menyimpan biaya operasional');
-      }
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       console.error('Server error:', errorData);
+  //       throw new Error(errorData.message || 'Gagal menyimpan biaya operasional');
+  //     }
       
-      SweetAlert.close();
-      SweetAlert.success('Biaya operasional berhasil disimpan');
-    } catch (error) {
-      SweetAlert.close();
-      SweetAlert.error(error instanceof Error ? error.message : 'Gagal menyimpan biaya operasional');
-      console.error(error);
-    } finally {
-      setSaving(false);
-    }
-  };
+  //     SweetAlert.close();
+  //     SweetAlert.success('Biaya operasional berhasil disimpan');
+  //   } catch (error) {
+  //     SweetAlert.close();
+  //     SweetAlert.error(error instanceof Error ? error.message : 'Gagal menyimpan biaya operasional');
+  //     console.error(error);
+  //   } finally {
+  //     setSaving(false);
+  //   }
+  // };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -951,19 +951,19 @@ const SettingsPage: React.FC = () => {
               />
             )}
             
-            {activeTab === 'biaya-operasional' && (
+            {/* {activeTab === 'biaya-operasional' && (
               <BiayaOperasionalSettings 
                 onSaveBiayaOperasional={handleSaveBiayaOperasional}
                 saving={saving}
               />
             )}
-            
-            {activeTab === 'advanced' && (
+             */}
+            {/* {activeTab === 'advanced' && (
               <AdvancedSettings 
                 formData={formData} 
                 handleInputChange={handleInputChange} 
               />
-            )}
+            )} */}
           </div>
 
           {/* Hanya tampilkan tombol simpan jika bukan tab biaya-operasional */}

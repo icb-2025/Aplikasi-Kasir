@@ -77,11 +77,15 @@ interface ApiResponse {
   };
   rekap_metode_pembayaran: MetodePembayaran[];
   _id: string;
-  biaya_operasional_id: string;
+  biaya_operasional_id: string | BiayaOperasionalData;
   pengeluaran: number;
   createdAt: string;
   updatedAt: string;
   __v: number;
+  // Data tambahan dari backend
+  total_pendapatan: number;
+  total_barang_terjual: number;
+  produk_terlaris: ProdukTerlaris[];
 }
 
 // Interface untuk daftar bulan
@@ -121,21 +125,6 @@ interface TooltipProps {
   }>;
 }
 
-// Interface untuk produk item
-interface ProdukItem {
-  _id: string;
-  kode_barang: string;
-  nama_barang: string;
-  kategori: string;
-  harga_beli: number;
-  harga_jual: number;
-  stok: number;
-  stok_minimal: number;
-  gambar_url: string;
-  status: string;
-  hargaFinal?: number;
-}
-
 const LaporanPenjualan: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -153,9 +142,6 @@ const LaporanPenjualan: React.FC = () => {
   const [daftarBulan, setDaftarBulan] = useState<DaftarBulan[]>([]);
   const [selectedBulan, setSelectedBulan] = useState<string>('');
   const [loadingBulan, setLoadingBulan] = useState<boolean>(true);
-
-  // State untuk produk list
-  const [produkList, setProdukList] = useState<ProdukItem[]>([]);
   
   // State untuk biaya operasional
   const [biayaOperasional, setBiayaOperasional] = useState<BiayaOperasionalData>({
@@ -163,7 +149,7 @@ const LaporanPenjualan: React.FC = () => {
     total: 0,
   });
   const [loadingBiayaOperasional, setLoadingBiayaOperasional] = useState<boolean>(true);
-
+  
   // Warna untuk pie chart
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1', '#EF4444', '#14B8A6', '#F97316'];
 
@@ -194,27 +180,6 @@ const LaporanPenjualan: React.FC = () => {
     };
 
     fetchDaftarBulan();
-  }, []);
-
-  // Fetch data produk untuk mendapatkan gambar
-  useEffect(() => {
-    const fetchProdukList = async () => {
-      try {
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/stok-barang`);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result: ProdukItem[] = await response.json();
-        setProdukList(result);
-      } catch (err) {
-        console.error('Error fetching produk list:', err);
-        setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengambil data produk');
-      }
-    };
-
-    fetchProdukList();
   }, []);
 
   // Fetch data biaya operasional berdasarkan ID
@@ -281,11 +246,18 @@ const LaporanPenjualan: React.FC = () => {
         
         setData(result);
         
-        // Fetch biaya operasional jika ID tersedia
-        if (result.biaya_operasional_id && typeof result.biaya_operasional_id === 'string') {
-          await fetchBiayaOperasional(result.biaya_operasional_id);
+        // Periksa biaya_operasional_id
+        if (result.biaya_operasional_id) {
+          if (typeof result.biaya_operasional_id === 'string') {
+            // Jika berupa string, fetch data biaya operasional
+            await fetchBiayaOperasional(result.biaya_operasional_id);
+          } else if (typeof result.biaya_operasional_id === 'object') {
+            // Jika berupa objek, gunakan langsung
+            setBiayaOperasional(result.biaya_operasional_id as BiayaOperasionalData);
+            setLoadingBiayaOperasional(false);
+          }
         } else {
-          console.warn('Invalid or missing biaya_operasional_id:', result.biaya_operasional_id);
+          console.warn('Missing biaya_operasional_id');
           setBiayaOperasional({
             rincian_biaya: [],
             total: 0,
@@ -293,75 +265,10 @@ const LaporanPenjualan: React.FC = () => {
           setLoadingBiayaOperasional(false);
         }
         
-        // Hitung total pendapatan (total harga jual)
-        const pendapatan = result.laba.detail.reduce((sum, item) => {
-          const jumlah = item.jumlah || 1;
-          const subtotal = item.subtotal || (item.harga_jual * jumlah);
-          return sum + subtotal;
-        }, 0);
-        setTotalPendapatan(pendapatan);
-        
-        // Hitung total barang terjual
-        const totalTerjual = result.laba.detail.reduce((sum, item) => {
-          return sum + (item.jumlah || 1);
-        }, 0);
-        setTotalBarangTerjual(totalTerjual);
-        
-        // Kelompokkan data produk terlaris
-        const produkMap = new Map<string, {
-          produk: string;
-          totalHargaJual: number;
-          totalHargaBeli: number;
-          totalLaba: number;
-          totalJumlah: number;
-          gambar_url?: string;
-        }>();
-        
-        result.laba.detail.forEach(item => {
-          const jumlah = item.jumlah || 1;
-          const laba = item.laba || ((item.harga_jual - item.harga_beli) * jumlah);
-          
-          if (produkMap.has(item.produk)) {
-            const produk = produkMap.get(item.produk)!;
-            produk.totalHargaJual += item.harga_jual * jumlah;
-            produk.totalHargaBeli += item.harga_beli * jumlah;
-            produk.totalLaba += laba;
-            produk.totalJumlah += jumlah;
-          } else {
-            // Cari produk di produkList untuk mendapatkan gambar
-            const produkInfo = produkList.find(p => p.nama_barang === item.produk);
-            produkMap.set(item.produk, {
-              produk: item.produk,
-              totalHargaJual: item.harga_jual * jumlah,
-              totalHargaBeli: item.harga_beli * jumlah,
-              totalLaba: laba,
-              totalJumlah: jumlah,
-              gambar_url: produkInfo ? produkInfo.gambar_url : ''
-            });
-          }
-        });
-        
-        // Konversi Map ke array dan hitung rata-rata harga
-        const produkArray = Array.from(produkMap.values()).map(item => {
-          const rataHargaJual = item.totalHargaJual / item.totalJumlah;
-          const rataHargaBeli = item.totalHargaBeli / item.totalJumlah;
-          const labaPerItem = rataHargaJual - rataHargaBeli;
-          
-          return {
-            produk: item.produk,
-            harga_jual: rataHargaJual,
-            harga_beli: rataHargaBeli,
-            labaPerItem: labaPerItem,
-            jumlahTerjual: item.totalJumlah,
-            totalLaba: item.totalLaba,
-            gambar_url: item.gambar_url
-          };
-        });
-        
-        // Urutkan berdasarkan total laba
-        produkArray.sort((a, b) => b.totalLaba - a.totalLaba);
-        
-        setProdukTerlaris(produkArray);
+        // Ambil data langsung dari backend tanpa perhitungan
+        setTotalPendapatan(result.total_pendapatan || 0);
+        setTotalBarangTerjual(result.total_barang_terjual || 0);
+        setProdukTerlaris(result.produk_terlaris || []);
         
         // Siapkan data untuk pie chart
         const pieDataArray = result.rekap_metode_pembayaran.map(item => ({
@@ -380,7 +287,7 @@ const LaporanPenjualan: React.FC = () => {
     };
 
     fetchData();
-  }, [selectedBulan, produkList]);
+  }, [selectedBulan]);
 
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -918,30 +825,35 @@ const LaporanPenjualan: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Distribusi Metode Pembayaran</h2>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={renderCustomizedLabel}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {pieData.map((_, idx) => (
-                        <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+  <h2 className="text-lg font-semibold text-gray-800 mb-4">Distribusi Metode Pembayaran</h2>
+  <div className="h-80 w-full">
+    {pieData.length > 0 ? (
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart width={400} height={300}>
+          <Pie
+            data={pieData}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            label={renderCustomizedLabel}
+            outerRadius={80}
+            fill="#8884d8"
+            dataKey="value"
+          >{pieData.map((_, idx) => (
+              <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip content={<CustomTooltip />} />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
+    ) : (
+      <div className="flex justify-center items-center h-full">
+        <LoadingSpinner />
+      </div>
+    )}
+  </div>
+</div>
           </div>
         </>
       )}
