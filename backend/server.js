@@ -26,11 +26,14 @@ import adminStok from "./routes/admin/stok.js";
 import adminLaporan from "./routes/admin/laporan.js";
 import adminUsers from "./routes/admin/user.js";
 import adminbiayaoperasional from "./routes/admin/biayaoperasional.js";
+import adminbiayalayanan from "./routes/admin/biayalayanan.js"
+import adminmodalutama from "./routes/admin/modalutama.js"
 import userAuth from "./middleware/user.js";
 import session from "express-session";
 import passport from "./config/passportGoogle.js";
 import googleAuthRoutes from "./routes/googleAuthRoutes.js";
 import { debugTokenLogger } from "./middleware/debugTokenLogger.js"; //debug all for frontend
+import modalutama from "./models/modalutama.js";
 
 dotenv.config();
 const app = express();
@@ -82,6 +85,8 @@ app.use("/api/admin/laporan", adminLaporan);
 app.use("/api/admin/users", adminUsers);
 app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/admin/biaya-operasional", adminbiayaoperasional);
+app.use("/api/admin/biaya-layanan", adminbiayalayanan)
+app.use("/api/admin/modal-utama", adminmodalutama)
 
 app.use(cors())
 app.get("/", (req, res) => {

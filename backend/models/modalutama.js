@@ -1,0 +1,127 @@
+// models/ModalUtama.js
+import mongoose from "mongoose";
+
+// 🧾 Sub-schema: bahan tiap produk
+const produkBahanSchema = new mongoose.Schema({
+  nama_produk: { type: String, required: true },
+  bahan: [
+    {
+      nama: { type: String, required: true },
+      harga: { type: Number, required: true }, // total harga bahan
+      jumlah: { type: Number, required: true, default: 1 }, // total unit/porsi dari bahan
+    },
+  ],
+});
+
+// ✨ Virtual: harga per porsi tiap bahan
+produkBahanSchema.virtual("bahan_dengan_harga_porsi").get(function () {
+  return this.bahan.map((item) => ({
+    ...item.toObject(),
+    harga_porsi:
+      item.jumlah && item.jumlah > 0
+        ? parseFloat((item.harga / item.jumlah).toFixed(2))
+        : item.harga,
+  }));
+});
+
+// ✨ Virtual: total harga bahan (semua bahan digabung)
+produkBahanSchema.virtual("total_harga_bahan").get(function () {
+  return parseFloat(
+    this.bahan.reduce((sum, item) => sum + (item.harga || 0), 0).toFixed(2)
+  );
+});
+
+// ✨ Virtual: total jumlah porsi dari semua bahan
+produkBahanSchema.virtual("total_porsi").get(function () {
+  return this.bahan.reduce((sum, item) => sum + (item.jumlah || 0), 0);
+});
+
+// ✨ Virtual: modal per porsi (total harga bahan / total porsi)
+produkBahanSchema.virtual("modal_per_porsi").get(function () {
+  const totalHarga = this.total_harga_bahan;
+  const totalPorsi = this.total_porsi;
+  const modal = totalPorsi > 0 ? totalHarga / totalPorsi : 0;
+  return parseFloat(modal.toFixed(2));
+});
+
+// 🏦 Modal utama schema
+const modalUtamaSchema = new mongoose.Schema(
+  {
+    total_modal: { type: Number, required: true, default: 0 },
+
+    // 🧂 Semua bahan baku dalam bentuk produk
+    bahan_baku: [produkBahanSchema],
+
+    // ⚙️ Biaya operasional
+    biaya_operasional: [
+      {
+        nama: { type: String, required: true },
+        total: { type: Number, required: true, default: 0 },
+      },
+    ],
+
+    sisa_modal: { type: Number, required: true, default: 0 },
+
+    riwayat: [
+      {
+        tanggal: { type: Date, default: Date.now },
+        keterangan: String,
+        tipe: { type: String, enum: ["pengeluaran", "pemasukan"] },
+        jumlah: Number,
+        saldo_setelah: Number,
+      },
+    ],
+  },
+  { timestamps: true }
+);
+
+// 🧮 Middleware: update sisa_modal otomatis sebelum save
+modalUtamaSchema.pre("save", function (next) {
+  const totalBahan = this.bahan_baku.reduce(
+    (acc, produk) => acc + produk.total_harga_bahan,
+    0
+  );
+
+  const totalOperasional = this.biaya_operasional.reduce(
+    (acc, b) => acc + (b.total || 0),
+    0
+  );
+
+  const totalPengeluaran = totalBahan + totalOperasional;
+  this.sisa_modal = parseFloat((this.total_modal - totalPengeluaran).toFixed(2));
+  next();
+});
+
+// ✨ Virtual: total pengeluaran (bahan + operasional)
+modalUtamaSchema.virtual("total_pengeluaran").get(function () {
+  const totalBahan = this.bahan_baku.reduce(
+    (acc, produk) => acc + produk.total_harga_bahan,
+    0
+  );
+
+  const totalOperasional = this.biaya_operasional.reduce(
+    (acc, b) => acc + (b.total || 0),
+    0
+  );
+
+  return parseFloat((totalBahan + totalOperasional).toFixed(2));
+});
+
+// ✨ Virtual: total harga semua bahan (semua produk)
+modalUtamaSchema.virtual("total_harga_semua_bahan").get(function () {
+  return parseFloat(
+    this.bahan_baku.reduce(
+      (total, produk) => total + produk.total_harga_bahan,
+      0
+    ).toFixed(2)
+  );
+});
+
+modalUtamaSchema.set("toJSON", { virtuals: true });
+modalUtamaSchema.set("toObject", { virtuals: true });
+produkBahanSchema.set("toJSON", { virtuals: true });
+produkBahanSchema.set("toObject", { virtuals: true });
+
+export default mongoose.model("ModalUtama", modalUtamaSchema, "ModalUtama");
+
+

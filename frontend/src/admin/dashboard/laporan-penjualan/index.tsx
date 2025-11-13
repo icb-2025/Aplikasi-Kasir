@@ -318,28 +318,29 @@ const LaporanPenjualan: React.FC = () => {
         }>();
         
         result.laba.detail.forEach(item => {
-          const jumlah = item.jumlah || 1;
-          const laba = item.laba || ((item.harga_jual - item.harga_beli) * jumlah);
-          
-          if (produkMap.has(item.produk)) {
-            const produk = produkMap.get(item.produk)!;
-            produk.totalHargaJual += item.harga_jual * jumlah;
-            produk.totalHargaBeli += item.harga_beli * jumlah;
-            produk.totalLaba += laba;
-            produk.totalJumlah += jumlah;
-          } else {
-            // Cari produk di produkList untuk mendapatkan gambar
-            const produkInfo = produkList.find(p => p.nama_barang === item.produk);
-            produkMap.set(item.produk, {
-              produk: item.produk,
-              totalHargaJual: item.harga_jual * jumlah,
-              totalHargaBeli: item.harga_beli * jumlah,
-              totalLaba: laba,
-              totalJumlah: jumlah,
-              gambar_url: produkInfo ? produkInfo.gambar_url : ''
-            });
-          }
-        });
+  const jumlah = item.jumlah || 1;
+  const hargaBeliPerUnit = jumlah > 0 ? item.harga_beli / jumlah : item.harga_beli;
+  const laba = item.laba || ((item.harga_jual - hargaBeliPerUnit) * jumlah);
+  
+  if (produkMap.has(item.produk)) {
+    const produk = produkMap.get(item.produk)!;
+    produk.totalHargaJual += item.harga_jual * jumlah;
+    produk.totalHargaBeli += hargaBeliPerUnit * jumlah;
+    produk.totalLaba += laba;
+    produk.totalJumlah += jumlah;
+  } else {
+    const produkInfo = produkList.find(p => p.nama_barang === item.produk);
+    produkMap.set(item.produk, {
+      produk: item.produk,
+      totalHargaJual: item.harga_jual * jumlah,
+      totalHargaBeli: hargaBeliPerUnit * jumlah,
+      totalLaba: laba,
+      totalJumlah: jumlah,
+      gambar_url: produkInfo ? produkInfo.gambar_url : ''
+    });
+  }
+});
+
         
         // Konversi Map ke array dan hitung rata-rata harga
         const produkArray = Array.from(produkMap.values()).map(item => {

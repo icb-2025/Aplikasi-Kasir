@@ -265,10 +265,6 @@ function TopNav() {
                 <p className="text-sm font-medium text-gray-800">{userName}</p>
                 <p className="text-xs text-gray-500">{userEmail}</p>
               </div>
-              <button className="block w-full text-left px-4 py-3 hover:bg-orange-50 text-sm flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                Pengaturan
-              </button>
               <button 
                 onClick={handleLogout}
                 className="block w-full text-left px-4 py-3 hover:bg-red-50 text-sm flex items-center gap-2 text-red-600"

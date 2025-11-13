@@ -3,39 +3,57 @@ import { io } from "../../server.js";
 import BiayaOperasional from "../../models/biayaoperasional.js";
 import Barang from "../../models/databarang.js";
 import Settings from "../../models/settings.js";
+import { kurangiModalUtama } from "./utils/updatemodalutama.js";
+
 
 // Tambah atau edit biaya operasional (hanya satu dokumen)
 export const addOrUpdateBiaya = async (req, res) => {
   try {
-    const { listrik, air, internet, sewa_tempat, gaji_karyawan } = req.body;
+    // Sekarang kita hanya menerima satu array: rincian_biaya
+    const { rincian_biaya } = req.body;
+
+    // Validasi dasar: pastikan yang dikirim adalah array
+    if (!Array.isArray(rincian_biaya)) {
+      return res.status(400).json({ message: "Data rincian_biaya harus berupa array" });
+    }
 
     // cek apakah sudah ada data
     let biaya = await BiayaOperasional.findOne();
 
     if (biaya) {
-      // kalau sudah ada, update saja
-      biaya.listrik = Number(listrik) || 0;
-      biaya.air = Number(air) || 0;
-      biaya.internet = Number(internet) || 0;
-      biaya.sewa_tempat = Number(sewa_tempat) || 0;
-      biaya.gaji_karyawan = Number(gaji_karyawan) || 0;
+  // Loop melalui setiap item baru yang dikirim
+  for (const newItem of rincian_biaya) {
+    // Cari apakah item dengan nama yang sama sudah ada di array
+    const existingItemIndex = biaya.rincian_biaya.findIndex(
+      (item) => item.nama === newItem.nama
+    );
 
-      // total dihitung otomatis oleh middleware
-      await biaya.save();
-      // Setelah update biaya operasional, update hargaFinal semua barang
-      await updateAllBarangHargaFinal();
-      res.json({ message: "Biaya operasional berhasil diperbarui!", data: biaya });
+    if (existingItemIndex !== -1) {
+      // Jika sudah ada, update jumlahnya
+      console.log(`Mengupdate item: ${newItem.nama}`);
+      biaya.rincian_biaya[existingItemIndex].jumlah = newItem.jumlah;
     } else {
-      // kalau belum ada sama sekali, buat satu kali saja
+      // Jika belum ada, tambahkan item baru
+      console.log(`Menambahkan item baru: ${newItem.nama}`);
+      biaya.rincian_biaya.push(newItem);
+    }
+  }
+
+  await biaya.save();
+  // Hitung total baru dari semua rincian biaya
+const totalBaru = rincian_biaya.reduce((acc, b) => acc + (Number(b.jumlah) || 0), 0);
+
+// Update ModalUtama (kurangi sisa modal)
+await kurangiModalUtama(totalBaru, "Pembayaran biaya operasional bulanan");
+
+  await updateAllBarangHargaFinal();
+  res.json({ message: "Biaya operasional berhasil diperbarui!", data: biaya });
+} else {
+      // kalau belum ada, buat baru dengan array rincian_biaya
       const newBiaya = new BiayaOperasional({
-        listrik: Number(listrik) || 0,
-        air: Number(air) || 0,
-        internet: Number(internet) || 0,
-        sewa_tempat: Number(sewa_tempat) || 0,
-        gaji_karyawan: Number(gaji_karyawan) || 0,
+        rincian_biaya: rincian_biaya,
       });
       await newBiaya.save();
-      // Setelah buat biaya operasional, update hargaFinal semua barang
       await updateAllBarangHargaFinal();
       res.json({ message: "Biaya operasional pertama berhasil dibuat!", data: newBiaya });
     }
@@ -46,7 +64,6 @@ export const addOrUpdateBiaya = async (req, res) => {
 }
 
 // Fungsi untuk update hargaFinal semua barang
-
 export const updateAllBarangHargaFinal = async () => {
   const settings = (await Settings.findOne()) || (await Settings.create({}));
   const taxRate = settings?.taxRate ?? 0;
@@ -181,5 +198,34 @@ export const getBiaya = async (req, res) => {
     res.json(data || {});
   } catch (err) {
     res.status(500).json({ message: "Gagal mengambil data", error: err.message });
+  }
+};
+
+export const deleteRincianBiayaById = async (req, res) => {
+  try {
+    const { id } = req.params; // Ambil ID dari URL parameter
+
+    if (!id) {
+      return res.status(400).json({ message: "ID item biaya tidak diberikan" });
+    }
+
+    // Cari dokumen biaya operasional
+    const biaya = await BiayaOperasional.findOne();
+
+    if (!biaya) {
+      return res.status(404).json({ message: "Data biaya operasional tidak ditemukan" });
+    }
+
+    // Gunakan metode `pull` untuk menghapus item dari array berdasarkan _id
+    // `id` di sini adalah _id dari subdocument di dalam array rincian_biaya
+    biaya.rincian_biaya.pull({ _id: id });
+
+    await biaya.save();
+    await updateAllBarangHargaFinal();
+
+    res.json({ message: "Item biaya berhasil dihapus!", data: biaya });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Gagal menghapus item biaya", error: err.message });
   }
 };
