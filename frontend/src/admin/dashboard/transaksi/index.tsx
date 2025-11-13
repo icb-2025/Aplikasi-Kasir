@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { portbe } from '../../../../../backend/ngrokbackend';
-// Tambahkan import ikon dari Lucide React
 import { Landmark, Wallet, TrendingUp, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const ipbe = import.meta.env.VITE_IPBE;
@@ -114,13 +113,6 @@ const Transaksi: React.FC = () => {
   const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
   const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
 
-  const stats = {
-    total: transaksi.length,
-    totalRevenue: transaksi.filter(t => t.status === 'selesai').reduce((sum, t) => sum + t.total_harga, 0),
-    avgTransaction: transaksi.length > 0 ? transaksi.reduce((sum, t) => sum + t.total_harga, 0) / transaksi.length : 0,
-    completed: transaksi.filter(t => t.status === 'selesai').length
-  };
-
   const formatRupiah = (amount: number): string => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -158,7 +150,6 @@ const Transaksi: React.FC = () => {
     }
   };
 
-  // Ubah fungsi getPaymentIcon untuk menggunakan Lucide React
   const getPaymentIcon = (method: string): React.ReactNode => {
     if (method.toLowerCase().includes('virtual')) return <Landmark className="h-5 w-5 text-blue-500" />;
     if (method.toLowerCase().includes('e-wallet')) return <Wallet className="h-5 w-5 text-green-500" />;
@@ -205,7 +196,6 @@ const Transaksi: React.FC = () => {
                   <div className="bg-white rounded-xl border border-gray-200 p-4">
                     <label className="block text-sm font-medium text-gray-500 mb-2">Metode Pembayaran</label>
                     <div className="flex items-center gap-2">
-                      {/* Ganti dengan Lucide React */}
                       {getPaymentIcon(transaction.metode_pembayaran)}
                       <p className="text-sm text-gray-900 font-medium">{transaction.metode_pembayaran}</p>
                     </div>
@@ -355,7 +345,7 @@ const Transaksi: React.FC = () => {
             <div className="flex items-center gap-3">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-2">
                 <span className="text-sm text-gray-500">Total: </span>
-                <span className="font-semibold text-gray-900">{stats.total} Transaksi</span>
+                <span className="font-semibold text-gray-900">{transaksi.length} Transaksi</span>
               </div>
             </div>
           </div>
@@ -370,7 +360,7 @@ const Transaksi: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Pendapatan</p>
-                <p className="text-2xl font-bold text-gray-900">{formatRupiah(stats.totalRevenue)}</p>
+                <p className="text-2xl font-bold text-gray-900">{formatRupiah(0)}</p>
               </div>
             </div>
           </div>
@@ -382,7 +372,7 @@ const Transaksi: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">Rata-rata Transaksi</p>
-                <p className="text-2xl font-bold text-gray-900">{formatRupiah(stats.avgTransaction)}</p>
+                <p className="text-2xl font-bold text-gray-900">{formatRupiah(0)}</p>
               </div>
             </div>
           </div>
@@ -394,7 +384,7 @@ const Transaksi: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">Selesai</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
+                <p className="text-2xl font-bold text-gray-900">0</p>
               </div>
             </div>
           </div>
@@ -402,10 +392,11 @@ const Transaksi: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                <span className="text-2xl">⏳</span>
+                <span className="text-2xl">X</span>
               </div>
               <div>
-               
+                <p className="text-sm font-medium text-gray-600">Dibatalkan</p>
+                <p className="text-2xl font-bold text-gray-900">0</p>
               </div>
             </div>
           </div>
@@ -575,7 +566,6 @@ const Transaksi: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 hidden md:table-cell">
                         <div className="flex items-center gap-2">
-                          {/* Ganti dengan Lucide React */}
                           {getPaymentIcon(trans.metode_pembayaran)}
                           <span className="text-sm text-gray-600">{trans.metode_pembayaran}</span>
                         </div>

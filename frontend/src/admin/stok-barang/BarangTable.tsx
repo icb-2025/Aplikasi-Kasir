@@ -1,9 +1,10 @@
+// src/admin/stok-barang/BarangTable.tsx
 import React from "react";
 import type { Barang } from ".";
+import type { BahanBakuItem } from "./ModalBarang";
 import { portbe } from "../../../../backend/ngrokbackend";
 const ipbe = import.meta.env.VITE_IPBE;
 
-// Utility functions
 const safeValue = <T,>(value: T | null | undefined, fallback: T): T => {
   if (value === null || value === undefined) return fallback;
   if (typeof value === 'number' && isNaN(value)) return fallback;
@@ -46,9 +47,15 @@ interface BarangTableProps {
   data: Barang[];
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  bahanBakuList?: BahanBakuItem[];
 }
 
-const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => {
+const BarangTable: React.FC<BarangTableProps> = ({ 
+  data, 
+  onEdit, 
+  onDelete,
+  bahanBakuList = []
+}) => {
   if (!data) {
     return (
       <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
@@ -60,7 +67,6 @@ const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => 
     );
   }
 
-  // Fungsi untuk mendapatkan URL gambar yang benar
   const getImageUrl = (gambarUrl?: string): string | null => {
     if (!gambarUrl) return null;
     
@@ -71,9 +77,18 @@ const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => 
     return `${ipbe}:${portbe}${gambarUrl.startsWith('/') ? '' : '/'}${gambarUrl}`;
   };
 
+  const getBahanBakuInfo = (namaBarang: string): BahanBakuItem | null => {
+    if (bahanBakuList.length === 0) return null;
+    
+    const matchingBahan = bahanBakuList.find(item => 
+      item.nama_produk.toLowerCase() === namaBarang.toLowerCase()
+    );
+    
+    return matchingBahan || null;
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      {/* Table Container */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50/80 backdrop-blur-sm">
@@ -97,6 +112,9 @@ const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => 
                 Harga Jual
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                Margin
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
                 Harga Final
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
@@ -116,6 +134,7 @@ const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => 
                 const imageUrl = getImageUrl(item.gambarUrl);
                 const isLowStock = item.status === "hampir habis";
                 const isOutOfStock = item.status === "habis";
+                const bahanBakuInfo = getBahanBakuInfo(item.nama);
                 
                 return (
                   <tr 
@@ -126,7 +145,6 @@ const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => 
                       index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
                     } ${isOutOfStock ? 'border-l-4 border-l-red-400' : ''}`}
                   >
-                    {/* Gambar */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex justify-center">
                         {imageUrl ? (
@@ -152,60 +170,77 @@ const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => 
                       </div>
                     </td>
 
-                    {/* Kode */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-mono font-medium text-gray-900 bg-gray-50 px-2 py-1 rounded border border-gray-200 inline-block">
                         {safeValue(item.kode, "-")}
                       </div>
                     </td>
 
-                    {/* Nama */}
                     <td className="px-6 py-4">
                       <div className="max-w-xs">
                         <div className="text-sm font-medium text-gray-900 truncate" title={item.nama || "-"}>
                           {safeValue(item.nama, "-")}
                         </div>
+                        {bahanBakuInfo && (
+                          <div className="text-xs text-blue-600 mt-1 flex items-center">
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Bahan: {bahanBakuInfo.bahan && bahanBakuInfo.bahan.length > 0 
+                              ? bahanBakuInfo.bahan.map(b => b.nama).join(", ") 
+                              : "Tidak ada data bahan"}
+                          </div>
+                        )}
                       </div>
                     </td>
 
-                    {/* Kategori */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
                         {safeValue(item.kategori, "-")}
                       </span>
                     </td>
 
-                    {/* Harga Beli */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-600 font-medium">
                         {formatCurrency(safeValue(item.hargaBeli, 0))}
                       </div>
+                      {bahanBakuInfo && (
+                        <div className="text-xs text-green-600 mt-1">
+                          ✓ Dari bahan baku
+                        </div>
+                      )}
                     </td>
 
-                    {/* Harga Jual */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-600 font-medium">
                         {formatCurrency(safeValue(item.hargaJual, 0))}
                       </div>
                     </td>
 
-                    {/* Harga Final */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {item.margin !== undefined ? `${item.margin}%` : '-'}
+                      </div>
+                    </td>
+
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-semibold text-green-700 bg-green-50 px-2 py-1 rounded border border-green-200">
                         {formatCurrency(safeValue(item.hargaFinal, 0))}
                       </div>
                     </td>
 
-                    {/* Stok */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col space-y-1">
                         <div className="text-sm font-medium text-gray-900">
                           {safeValue(item.stok, 0)}
                         </div>
-                        {item.stok !== undefined && item.stokMinimal !== undefined && (
-                          <div className="w-20 bg-gray-200 rounded-full h-2 overflow-hidden">
-                            <div
-                              className={`h-2 rounded-full transition-all duration-300 ${
+                        <div className="text-xs text-gray-500">
+                          Minimal: {safeValue(item.stokMinimal, 5)}
+                        </div>
+                        {item.stok !== undefined && item.stok_awal !== undefined && (
+                          <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                            <div 
+                              className={`h-1.5 rounded-full transition-all duration-300 ${
                                 item.stok <= 0
                                   ? 'bg-red-500'
                                   : item.stok <= (item.stokMinimal || 5)
@@ -224,7 +259,7 @@ const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => 
                         )}
                       </div>
                     </td>
-                    {/* Status */}
+
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
                         <span className="text-sm">{getStokIcon(item.status)}</span>
@@ -238,7 +273,6 @@ const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => 
                       </div>
                     </td>
 
-                    {/* Aksi */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
                         <button
@@ -264,7 +298,7 @@ const BarangTable: React.FC<BarangTableProps> = ({ data, onEdit, onDelete }) => 
               })
             ) : (
               <tr>
-                <td colSpan={10} className="px-6 py-12 text-center">
+                <td colSpan={11} className="px-6 py-12 text-center">
                   <div className="flex flex-col items-center justify-center">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                       <span className="text-2xl">📦</span>

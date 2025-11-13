@@ -1,13 +1,14 @@
+// src/admin/stok-barang/index.tsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import BarangTable from "./BarangTable";
-import ModalBarang from "./ModalBarang";
+import ModalBarang, { type BahanBakuItem } from "./ModalBarang";
 import ModalCategory from "./ModalCategory";
 import type { BarangFormData } from "./ModalBarang";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { SweetAlert } from "../../components/SweetAlert";
 import io, { Socket } from 'socket.io-client';
 import { portbe } from "../../../../backend/ngrokbackend";
-import { ChevronLeft, ChevronRight } from 'lucide-react'; // Tambahkan import ini
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 const ipbe = import.meta.env.VITE_IPBE;
 
 export interface BarangAPI {
@@ -27,6 +28,7 @@ export interface BarangAPI {
   gambar_url?: string;
   status?: string;
   use_discount?: boolean;
+  margin?: number;
 }
 
 export interface Barang {
@@ -43,6 +45,7 @@ export interface Barang {
   gambarUrl?: string;
   status?: string;
   useDiscount?: boolean;
+  margin?: number;
 }
 
 interface KategoriAPI {
@@ -65,6 +68,7 @@ interface SettingsUpdate {
 const API_URL = `${ipbe}:${portbe}/api/admin/stok-barang`;
 const KATEGORI_API_URL = `${ipbe}:${portbe}/api/admin/kategori`;
 const SETTINGS_API_URL = `${ipbe}:${portbe}/api/admin/settings`;
+const BAHAN_BAKU_API_URL = `${ipbe}:${portbe}/api/admin/modal-utama`;
 
 interface ApiError extends Error {
   message: string;
@@ -87,6 +91,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [bahanBakuList, setBahanBakuList] = useState<BahanBakuItem[]>([]);
   
   const [formData, setFormData] = useState<BarangFormData>({
     kode: "",
@@ -108,6 +113,33 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     }
     return result;
   };
+
+  const fetchBahanBaku = useCallback(async () => {
+    try {
+      const response = await fetch(BAHAN_BAKU_API_URL);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      
+      const bahanBakuData: BahanBakuItem[] = [];
+      if (data.bahan_baku && Array.isArray(data.bahan_baku)) {
+        data.bahan_baku.forEach((produk: any) => {
+          if (produk.nama_produk && produk.total_porsi !== undefined && produk.modal_per_porsi !== undefined) {
+            bahanBakuData.push({
+              nama_produk: produk.nama_produk,
+              total_porsi: produk.total_porsi,
+              modal_per_porsi: produk.modal_per_porsi,
+              bahan: produk.bahan
+            });
+          }
+        });
+      }
+      
+      setBahanBakuList(bahanBakuData);
+      console.log("Bahan baku data:", bahanBakuData);
+    } catch (err) {
+      console.error("Gagal mengambil data bahan baku:", err);
+    }
+  }, []);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -200,6 +232,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         gambarUrl: newBarang.gambar_url,
         status: newBarang.status || (newBarang.stok <= 0 ? "habis" : newBarang.stok <= lowStockAlert ? "hampir habis" : "aman"),
         useDiscount: typeof newBarang.use_discount !== 'undefined' ? newBarang.use_discount : true,
+        margin: newBarang.margin,
       };
       
       setDataBarang(prevData => [...prevData, mappedBarang]);
@@ -220,6 +253,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         gambarUrl: updatedBarang.gambar_url,
         status: updatedBarang.status || (updatedBarang.stok <= 0 ? "habis" : updatedBarang.stok <= lowStockAlert ? "hampir habis" : "aman"),
         useDiscount: typeof updatedBarang.use_discount !== 'undefined' ? updatedBarang.use_discount : true,
+        margin: updatedBarang.margin,
       };
       
       setDataBarang(prevData => 
@@ -316,6 +350,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         gambarUrl: item.gambar_url,
         status: item.status || (item.stok <= 0 ? "habis" : item.stok <= lowStockAlert ? "hampir habis" : "aman"),
         useDiscount: typeof item.use_discount !== 'undefined' ? item.use_discount : true,
+        margin: item.margin,
       }));
       setDataBarang(mapped);
     } catch (err) {
@@ -336,8 +371,9 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     if (settingsLoaded) {
       fetchBarang();
       fetchKategori();
+      fetchBahanBaku();
     }
-  }, [fetchBarang, fetchKategori, settingsLoaded]);
+  }, [fetchBarang, fetchKategori, fetchBahanBaku, settingsLoaded]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -610,6 +646,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
                 data={currentItems}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                bahanBakuList={bahanBakuList}
               />
               
               {totalPages > 1 && (
@@ -694,6 +731,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         }}
         loading={actionLoading}
         kategoriOptions={kategoriList}
+        bahanBakuList={bahanBakuList}
         onGenerateCode={() => handleInputChange("kode", generateRandomCode())}
       />
 

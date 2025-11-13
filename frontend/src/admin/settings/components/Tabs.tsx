@@ -40,7 +40,7 @@ const Tabs: React.FC<TabsProps> = ({ activeTab, setActiveTab }) => {
         >
           Pembayaran
         </button>
-        <button
+        {/* <button
           className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
             activeTab === 'biaya-operasional'
               ? 'border-blue-500 text-blue-600'
@@ -49,8 +49,8 @@ const Tabs: React.FC<TabsProps> = ({ activeTab, setActiveTab }) => {
           onClick={() => setActiveTab('biaya-operasional')}
         >
           Biaya Operasional
-        </button>
-        <button
+        </button> */}
+        {/* <button
           className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
             activeTab === 'advanced'
               ? 'border-blue-500 text-blue-600'
@@ -59,7 +59,7 @@ const Tabs: React.FC<TabsProps> = ({ activeTab, setActiveTab }) => {
           onClick={() => setActiveTab('advanced')}
         >
           Lanjutan
-        </button>
+        </button> */}
       </nav>
     </div>
   );

@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
-import { Crown, Medal, Award, Star } from 'lucide-react'; // Hapus Trophy dari import
+import { Crown, Medal, Award, Star } from 'lucide-react';
 import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
+
 interface BarangTerlaris {
   nama_barang: string;
   jumlah: number;
+  persentase?: number; // Tambahkan field persentase dari backend
 }
 
 interface ApiResponse {
   barang_terlaris: BarangTerlaris[];
+  total_penjualan?: number; // Tambahkan field total penjualan dari backend
 }
 
 // Tambahkan interface untuk produk item
@@ -33,6 +36,7 @@ const TopBarang: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [produkList, setProdukList] = useState<ProdukItem[]>([]); // State untuk produk list
   const [loadingProduk, setLoadingProduk] = useState<boolean>(true); // State untuk loading produk
+  const [totalPenjualan, setTotalPenjualan] = useState<number>(0); // State untuk total penjualan dari backend
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,6 +52,11 @@ const TopBarang: React.FC = () => {
         
         const result: ApiResponse = await response.json();
         setData(result.barang_terlaris);
+        
+        // Ambil total penjualan dari backend jika tersedia
+        if (result.total_penjualan !== undefined) {
+          setTotalPenjualan(result.total_penjualan);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengambil data');
       } finally {
@@ -81,9 +90,6 @@ const TopBarang: React.FC = () => {
 
     fetchProdukList();
   }, []);
-
-  // Hitung total penjualan
-  const totalPenjualan = data.reduce((total, barang) => total + barang.jumlah, 0);
 
   // Format angka
   const formatAngka = (num: number): string => {
@@ -179,7 +185,7 @@ const TopBarang: React.FC = () => {
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Rata-rata per Barang</h3>
           <p className="text-2xl font-bold text-purple-600">
-            {formatAngka(totalPenjualan > 0 ? Math.round(totalPenjualan / data.length) : 0)}
+            {formatAngka(totalPenjualan > 0 && data.length > 0 ? Math.round(totalPenjualan / data.length) : 0)}
           </p>
           <p className="text-xs text-gray-500 mt-1">Periode: saat ini</p>
         </div>
@@ -198,7 +204,10 @@ const TopBarang: React.FC = () => {
             ) : (
               <div className="space-y-4">
                 {data.map((barang, index) => {
-                  const percentage = totalPenjualan > 0 ? (barang.jumlah / totalPenjualan) * 100 : 0;
+                  // Gunakan persentase dari backend jika tersedia, jika tidak hitung di frontend
+                  const percentage = barang.persentase !== undefined ? 
+                    barang.persentase : 
+                    (totalPenjualan > 0 ? (barang.jumlah / totalPenjualan) * 100 : 0);
                   const color = getProgressColor(index);
                   const gambarUrl = getProdukImage(barang.nama_barang);
                   
@@ -254,7 +263,10 @@ const TopBarang: React.FC = () => {
             ) : (
               <div className="space-y-3">
                 {data.map((barang, index) => {
-                  const percentage = totalPenjualan > 0 ? (barang.jumlah / totalPenjualan) * 100 : 0;
+                  // Gunakan persentase dari backend jika tersedia, jika tidak hitung di frontend
+                  const percentage = barang.persentase !== undefined ? 
+                    barang.persentase : 
+                    (totalPenjualan > 0 ? (barang.jumlah / totalPenjualan) * 100 : 0);
                   const color = getProgressColor(index);
                   
                   return (
@@ -291,94 +303,97 @@ const TopBarang: React.FC = () => {
 
       {/* Tabel Detail */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden mt-6">
-  <div className="p-6 border-b border-gray-200">
-    <h2 className="text-lg font-semibold text-gray-800">Detail Barang Terlaris</h2>
-    <p className="text-sm text-gray-500">Periode: saat ini</p>
-  </div>
-  <div className="overflow-x-auto">
-    <table className="min-w-full divide-y divide-gray-200">
-      <thead className="bg-gray-50">
-        <tr>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Peringkat
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Gambar
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Nama Barang
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Jumlah Terjual
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Trend
-          </th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-200">
-        {data.map((barang, index) => {
-          const percentage = totalPenjualan > 0 ? (barang.jumlah / totalPenjualan) * 100 : 0;
-          const color = getProgressColor(index);
-          const gambarUrl = getProdukImage(barang.nama_barang);
-          
-          return (
-            <tr 
-              key={barang.nama_barang} 
-              className={`transition-colors hover:bg-gray-50 ${
-                index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
-              }`}
-            >
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex items-center justify-center">
-                  {getRankingIcon(index)}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex justify-center">
-                  {gambarUrl ? (
-                    <img 
-                      src={gambarUrl} 
-                      alt={barang.nama_barang}
-                      className="h-10 w-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                      <span className="text-xs text-gray-500">No Img</span>
-                    </div>
-                  )}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">
-                  {barang.nama_barang}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-900">
-                  {formatAngka(barang.jumlah)} unit
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex items-center">
-                  <div className="w-16 h-2 bg-gray-200 rounded-full mr-2">
-                    <div 
-                      className={`h-2 rounded-full ${color}`}
-                      style={{ width: `${Math.min(percentage, 100)}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm text-gray-500">
-                    {percentage.toFixed(1)}%
-                  </span>
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  </div>
-</div>
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-800">Detail Barang Terlaris</h2>
+          <p className="text-sm text-gray-500">Periode: saat ini</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Peringkat
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Gambar
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nama Barang
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Jumlah Terjual
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Trend
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {data.map((barang, index) => {
+                // Gunakan persentase dari backend jika tersedia, jika tidak hitung di frontend
+                const percentage = barang.persentase !== undefined ? 
+                  barang.persentase : 
+                  (totalPenjualan > 0 ? (barang.jumlah / totalPenjualan) * 100 : 0);
+                const color = getProgressColor(index);
+                const gambarUrl = getProdukImage(barang.nama_barang);
+                
+                return (
+                  <tr 
+                    key={barang.nama_barang} 
+                    className={`transition-colors hover:bg-gray-50 ${
+                      index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+                    }`}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center justify-center">
+                        {getRankingIcon(index)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex justify-center">
+                        {gambarUrl ? (
+                          <img 
+                            src={gambarUrl} 
+                            alt={barang.nama_barang}
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <span className="text-xs text-gray-500">No Img</span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {barang.nama_barang}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {formatAngka(barang.jumlah)} unit
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="w-16 h-2 bg-gray-200 rounded-full mr-2">
+                          <div 
+                            className={`h-2 rounded-full ${color}`}
+                            style={{ width: `${Math.min(percentage, 100)}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          {percentage.toFixed(1)}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
