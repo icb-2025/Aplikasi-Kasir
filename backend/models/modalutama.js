@@ -19,15 +19,15 @@ produkBahanSchema.virtual("bahan_dengan_harga_porsi").get(function () {
     ...item.toObject(),
     harga_porsi:
       item.jumlah && item.jumlah > 0
-        ? parseFloat((item.harga / item.jumlah).toFixed(2))
+        ? Math.round(item.harga / item.jumlah)
         : item.harga,
   }));
 });
 
 // ✨ Virtual: total harga bahan (semua bahan digabung)
 produkBahanSchema.virtual("total_harga_bahan").get(function () {
-  return parseFloat(
-    this.bahan.reduce((sum, item) => sum + (item.harga || 0), 0).toFixed(2)
+  return Math.round(
+    this.bahan.reduce((sum, item) => sum + (item.harga || 0), 0)
   );
 });
 
@@ -41,7 +41,7 @@ produkBahanSchema.virtual("modal_per_porsi").get(function () {
   const totalHarga = this.total_harga_bahan;
   const totalPorsi = this.total_porsi;
   const modal = totalPorsi > 0 ? totalHarga / totalPorsi : 0;
-  return parseFloat(modal.toFixed(2));
+  return Math.round(modal);
 });
 
 // 🏦 Modal utama schema
@@ -88,7 +88,7 @@ modalUtamaSchema.pre("save", function (next) {
   );
 
   const totalPengeluaran = totalBahan + totalOperasional;
-  this.sisa_modal = parseFloat((this.total_modal - totalPengeluaran).toFixed(2));
+  this.sisa_modal = Math.round(this.total_modal - totalPengeluaran);
   next();
 });
 
@@ -104,16 +104,16 @@ modalUtamaSchema.virtual("total_pengeluaran").get(function () {
     0
   );
 
-  return parseFloat((totalBahan + totalOperasional).toFixed(2));
+  return Math.round(totalBahan + totalOperasional);
 });
 
 // ✨ Virtual: total harga semua bahan (semua produk)
 modalUtamaSchema.virtual("total_harga_semua_bahan").get(function () {
-  return parseFloat(
+  return Math.round(
     this.bahan_baku.reduce(
       (total, produk) => total + produk.total_harga_bahan,
       0
-    ).toFixed(2)
+    )
   );
 });
 
@@ -123,5 +123,3 @@ produkBahanSchema.set("toJSON", { virtuals: true });
 produkBahanSchema.set("toObject", { virtuals: true });
 
 export default mongoose.model("ModalUtama", modalUtamaSchema, "ModalUtama");
-
-

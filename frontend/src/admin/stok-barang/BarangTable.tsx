@@ -70,18 +70,33 @@ const BarangTable: React.FC<BarangTableProps> = ({
   const getImageUrl = (gambarUrl?: string): string | null => {
     if (!gambarUrl) return null;
     
+    // Jika URL sudah lengkap (http/https), gunakan langsung
     if (gambarUrl.startsWith('http://') || gambarUrl.startsWith('https://')) {
       return gambarUrl;
     }
     
+    // Jika URL relative, tambahkan base URL
     return `${ipbe}:${portbe}${gambarUrl.startsWith('/') ? '' : '/'}${gambarUrl}`;
   };
 
-  const getBahanBakuInfo = (namaBarang: string): BahanBakuItem | null => {
+  const getBahanBakuInfo = (barang: Barang): BahanBakuItem | null => {
+    // Cek apakah barang memiliki data bahan baku langsung
+    if (barang.bahanBaku && barang.bahanBaku.length > 0) {
+      return {
+        nama_produk: barang.nama,
+        total_porsi: barang.bahanBaku.reduce((sum, produk) => 
+          sum + (produk.bahan?.reduce((bahanSum, bahan) => bahanSum + (bahan.jumlah || 0), 0) || 0), 0
+        ),
+        modal_per_porsi: barang.hargaBeli || 0, // Gunakan harga beli dari backend
+        bahan: barang.bahanBaku.flatMap(produk => produk.bahan || [])
+      };
+    }
+    
+    // Cari di daftar bahan baku global
     if (bahanBakuList.length === 0) return null;
     
     const matchingBahan = bahanBakuList.find(item => 
-      item.nama_produk.toLowerCase() === namaBarang.toLowerCase()
+      item.nama_produk.toLowerCase() === barang.nama.toLowerCase()
     );
     
     return matchingBahan || null;
@@ -134,7 +149,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                 const imageUrl = getImageUrl(item.gambarUrl);
                 const isLowStock = item.status === "hampir habis";
                 const isOutOfStock = item.status === "habis";
-                const bahanBakuInfo = getBahanBakuInfo(item.nama);
+                const bahanBakuInfo = getBahanBakuInfo(item);
                 
                 return (
                   <tr 
@@ -241,9 +256,9 @@ const BarangTable: React.FC<BarangTableProps> = ({
                           <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                             <div 
                               className={`h-1.5 rounded-full transition-all duration-300 ${
-                                item.stok <= 0
+                                item.status === "habis"
                                   ? 'bg-red-500'
-                                  : item.stok <= (item.stokMinimal || 5)
+                                  : item.status === "hampir habis"
                                   ? 'bg-yellow-500'
                                   : 'bg-green-500'
                               }`}

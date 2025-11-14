@@ -1,5 +1,26 @@
 // src/admin/stok-barang/ModalBarang.tsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
+import { X, Plus, Trash2, Calculator } from "lucide-react";
+
+export interface BahanBakuItem {
+  nama_produk: string;
+  total_porsi: number;
+  modal_per_porsi: number;
+  bahan: Array<{
+    nama: string;
+    harga: number;
+    jumlah: number;
+  }>;
+}
+
+export interface BahanBakuFormData {
+  nama_produk: string;
+  bahan: Array<{
+    nama: string;
+    harga: number;
+    jumlah: number;
+  }>;
+}
 
 export interface BarangFormData {
   kode: string;
@@ -8,30 +29,20 @@ export interface BarangFormData {
   hargaBeli: string;
   hargaJual: string;
   stok: string;
-  gambar?: File | null;
-  gambarUrl?: string;
-  useDiscount?: boolean;
-}
-
-export interface BahanBakuItem {
-  nama_produk: string;
-  total_porsi: number;
-  modal_per_porsi: number;
-  bahan?: Array<{
-    nama: string;
-    harga: number;
-    jumlah: number;
-  }>;
+  gambarUrl: string;
+  gambar: File | null;
+  useDiscount: boolean;
+  bahanBaku?: BahanBakuFormData[];
 }
 
 interface ModalBarangProps {
   visible: boolean;
   isEditing: boolean;
   formData: BarangFormData;
-  onInputChange: (field: keyof BarangFormData, value: string | File | null | boolean) => void;
+  onInputChange: (field: keyof BarangFormData, value: string | File | null | boolean | BahanBakuFormData[]) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
-  loading?: boolean;
+  loading: boolean;
   kategoriOptions: string[];
   bahanBakuList: BahanBakuItem[];
   onGenerateCode: () => void;
@@ -44,401 +55,612 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
   onInputChange,
   onSubmit,
   onClose,
-  loading = false,
+  loading,
   kategoriOptions,
   bahanBakuList,
   onGenerateCode
 }) => {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [selectedBahan, setSelectedBahan] = useState<BahanBakuItem | null>(null);
-  const isUpdating = useRef(false);
+  const [activeTab, setActiveTab] = useState<"basic" | "bahan">("basic");
+  const [useBahanBaku, setUseBahanBaku] = useState(false);
+  const [selectedBahanBaku, setSelectedBahanBaku] = useState<string>("");
+  const [margin, setMargin] = useState(0);
+  const [showCalculation, setShowCalculation] = useState(false);
 
   useEffect(() => {
-    if (formData.gambarUrl) {
-      setPreviewUrl(formData.gambarUrl);
+    // Check if the item has bahan baku data
+    if (formData && formData.bahanBaku && formData.bahanBaku.length > 0) {
+      setUseBahanBaku(true);
     } else {
-      setPreviewUrl(null);
+      setUseBahanBaku(false);
     }
-  }, [formData.gambarUrl]);
+  }, [formData?.bahanBaku]);
 
   useEffect(() => {
-    if (isUpdating.current) return;
-    
-    if (formData.nama && bahanBakuList.length > 0) {
-      const matchingBahan = bahanBakuList.find(item => 
-        item.nama_produk.toLowerCase() === formData.nama.toLowerCase()
-      );
-      
-      if (matchingBahan) {
-        isUpdating.current = true;
-        onInputChange("hargaBeli", matchingBahan.modal_per_porsi.toString());
-        onInputChange("stok", matchingBahan.total_porsi.toString());
-        setSelectedBahan(matchingBahan);
-        
-        setTimeout(() => {
-          isUpdating.current = false;
-        }, 0);
-      } else {
-        setSelectedBahan(null);
+    // Calculate margin when hargaBeli or hargaJual changes
+    if (formData && formData.hargaBeli && formData.hargaJual) {
+      const beli = parseFloat(formData.hargaBeli);
+      const jual = parseFloat(formData.hargaJual);
+      if (!isNaN(beli) && !isNaN(jual) && beli > 0) {
+        const marginValue = ((jual - beli) / beli) * 100;
+        setMargin(Math.round(marginValue));
       }
     }
-  }, [formData.nama, bahanBakuList, onInputChange]);
+  }, [formData?.hargaBeli, formData?.hargaJual]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      onInputChange("gambar", e.target.files[0]);
+    }
+  };
+
+  const handleBahanBakuChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedValue = e.target.value;
+    setSelectedBahanBaku(selectedValue);
+    
+    if (selectedValue) {
+      const selected = bahanBakuList.find(item => item.nama_produk === selectedValue);
+      if (selected) {
+        // Update form data with selected bahan baku
+        onInputChange("bahanBaku", [{
+          nama_produk: selected.nama_produk,
+          bahan: selected.bahan
+        }]);
+        
+        // Calculate harga beli based on modal per porsi
+        if (selected.modal_per_porsi > 0) {
+          onInputChange("hargaBeli", selected.modal_per_porsi.toString());
+        }
+      }
+    }
+  };
+
+  const addBahanBakuItem = () => {
+    const newBahanBaku: BahanBakuFormData = {
+      nama_produk: "",
+      bahan: []
+    };
+    
+    const currentBahanBaku = formData?.bahanBaku || [];
+    onInputChange("bahanBaku", [...currentBahanBaku, newBahanBaku]);
+  };
+
+  const removeBahanBakuItem = (index: number) => {
+    const currentBahanBaku = formData?.bahanBaku || [];
+    const updatedBahanBaku = currentBahanBaku.filter((_, i) => i !== index);
+    onInputChange("bahanBaku", updatedBahanBaku);
+  };
+
+  const updateBahanBakuItem = (index: number, field: keyof BahanBakuFormData, value: string | Array<{nama: string, harga: number, jumlah: number}>) => {
+    const currentBahanBaku = formData?.bahanBaku || [];
+    const updatedBahanBaku = [...currentBahanBaku];
+    updatedBahanBaku[index] = {
+      ...updatedBahanBaku[index],
+      [field]: value
+    };
+    onInputChange("bahanBaku", updatedBahanBaku);
+  };
+
+  const addBahanItem = (bahanBakuIndex: number) => {
+    const currentBahanBaku = formData?.bahanBaku || [];
+    const updatedBahanBaku = [...currentBahanBaku];
+    
+    if (!updatedBahanBaku[bahanBakuIndex].bahan) {
+      updatedBahanBaku[bahanBakuIndex].bahan = [];
+    }
+    
+    updatedBahanBaku[bahanBakuIndex].bahan.push({
+      nama: "",
+      harga: 0,
+      jumlah: 1
+    });
+    
+    onInputChange("bahanBaku", updatedBahanBaku);
+  };
+
+  const removeBahanItem = (bahanBakuIndex: number, bahanIndex: number) => {
+    const currentBahanBaku = formData?.bahanBaku || [];
+    const updatedBahanBaku = [...currentBahanBaku];
+    
+    updatedBahanBaku[bahanBakuIndex].bahan = updatedBahanBaku[bahanBakuIndex].bahan.filter(
+      (_, i) => i !== bahanIndex
+    );
+    
+    onInputChange("bahanBaku", updatedBahanBaku);
+  };
+
+  const updateBahanItem = (bahanBakuIndex: number, bahanIndex: number, field: "nama" | "harga" | "jumlah", value: string | number) => {
+    const currentBahanBaku = formData?.bahanBaku || [];
+    const updatedBahanBaku = [...currentBahanBaku];
+    
+    updatedBahanBaku[bahanBakuIndex].bahan[bahanIndex] = {
+      ...updatedBahanBaku[bahanBakuIndex].bahan[bahanIndex],
+      [field]: field === "nama" ? value : Number(value)
+    };
+    
+    onInputChange("bahanBaku", updatedBahanBaku);
+  };
+
+  const calculateTotalHargaBahan = () => {
+    if (!formData?.bahanBaku || formData.bahanBaku.length === 0) return 0;
+    
+    return formData.bahanBaku.reduce((total, produk) => {
+      return total + produk.bahan.reduce((subtotal, bahan) => {
+        return subtotal + (bahan.harga || 0);
+      }, 0);
+    }, 0);
+  };
+
+  const calculateTotalPorsi = () => {
+    if (!formData?.bahanBaku || formData.bahanBaku.length === 0) return 0;
+    
+    return formData.bahanBaku.reduce((total, produk) => {
+      return total + produk.bahan.reduce((subtotal, bahan) => {
+        return subtotal + (bahan.jumlah || 0);
+      }, 0);
+    }, 0);
+  };
+
+  const calculateModalPerPorsi = () => {
+    const totalHarga = calculateTotalHargaBahan();
+    const totalPorsi = calculateTotalPorsi();
+    return totalPorsi > 0 ? Math.round(totalHarga / totalPorsi) : 0;
+  };
+
+  const handleMarginChange = (value: string) => {
+    const marginValue = parseFloat(value);
+    if (!isNaN(marginValue)) {
+      setMargin(marginValue);
+      
+      if (formData?.hargaBeli && !isNaN(parseFloat(formData.hargaBeli))) {
+        const beli = parseFloat(formData.hargaBeli);
+        const jual = beli + (beli * (marginValue / 100));
+        onInputChange("hargaJual", jual.toString());
+      }
+    }
+  };
 
   if (!visible) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    onInputChange("gambar", file);
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => setPreviewUrl(reader.result as string);
-      reader.readAsDataURL(file);
-    } else {
-      setPreviewUrl(null);
-    }
-  };
-
-  const handleRemoveImage = () => {
-    onInputChange("gambar", null);
-    onInputChange("gambarUrl", "");
-    setPreviewUrl(null);
-  };
-
-  const produkList = [...new Set(bahanBakuList.map(item => item.nama_produk))];
-
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto max-h-[95vh] overflow-hidden border border-gray-200">
-        <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900">
-                  {isEditing ? "Edit Barang" : "Tambah Barang"}
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  {isEditing ? "Perbarui informasi barang" : "Tambahkan barang baru ke inventaris"}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white rounded-xl transition-all duration-200 text-gray-400 hover:text-gray-600"
-              disabled={loading}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-xl font-semibold text-gray-800">
+            {isEditing ? "Edit Barang" : "Tambah Barang Baru"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="h-6 w-6" />
+          </button>
         </div>
 
-        <form onSubmit={onSubmit} className="px-8 py-6 overflow-y-auto max-h-[60vh]">
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Kode Barang <span className="text-red-500">*</span>
-              </label>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={formData.kode || ""}
-                  onChange={(e) => onInputChange("kode", e.target.value)}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 bg-white"
-                  required
-                  disabled={loading}
-                  placeholder="Kode barang unik"
-                />
-                <button
-                  type="button"
-                  onClick={onGenerateCode}
-                  disabled={loading}
-                  className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 rounded-xl hover:from-gray-200 hover:to-gray-100 border border-gray-300 transition-all duration-200 disabled:opacity-50 font-medium text-sm"
-                >
-                  Generate
-                </button>
-              </div>
-            </div>
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+          <div className="flex space-x-1 mb-6 border-b">
+            <button
+              className={`px-4 py-2 font-medium text-sm ${
+                activeTab === "basic"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+              onClick={() => setActiveTab("basic")}
+            >
+              Informasi Dasar
+            </button>
+            <button
+              className={`px-4 py-2 font-medium text-sm ${
+                activeTab === "bahan"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+              onClick={() => setActiveTab("bahan")}
+            >
+              Bahan Baku
+            </button>
+          </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Nama Barang <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.nama || ""}
-                onChange={(e) => onInputChange("nama", e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 bg-white"
-                required
-                disabled={loading}
-                placeholder="Masukkan nama barang"
-              />
-              {produkList.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-xs text-gray-500 mb-1">Pilih dari produk yang tersedia:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {produkList.map((produk, index) => (
+          <form onSubmit={onSubmit}>
+            {activeTab === "basic" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Kode Barang
+                    </label>
+                    <div className="flex">
+                      <input
+                        type="text"
+                        value={formData?.kode || ""}
+                        onChange={(e) => onInputChange("kode", e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Masukkan kode barang"
+                        required
+                      />
                       <button
-                        key={index}
                         type="button"
-                        onClick={() => onInputChange("nama", produk)}
-                        className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                          formData.nama === produk
-                            ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                        }`}
+                        onClick={onGenerateCode}
+                        className="px-3 py-2 bg-gray-200 text-gray-700 rounded-r-md hover:bg-gray-300 transition-colors"
+                        title="Generate kode acak"
                       >
-                        {produk}
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
                       </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Kategori <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.kategori || ""}
-                onChange={(e) => onInputChange("kategori", e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 bg-white appearance-none"
-                required
-                disabled={loading}
-              >
-                <option value="">Pilih Kategori</option>
-                {kategoriOptions.map((kategori) => (
-                  <option key={kategori} value={kategori}>
-                    {kategori}
-                  </option>
-                ))}
-              </select>
-              {kategoriOptions.length === 0 && (
-                <div className="flex items-center space-x-2 text-amber-600 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                  <span className="text-sm">Tidak ada kategori tersedia. Silakan tambah kategori terlebih dahulu.</span>
-                </div>
-              )}
-            </div>
-
-            {selectedBahan && (
-              <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
-                <div className="flex items-start space-x-3">
-                  <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-blue-800">Informasi Bahan Baku</h4>
-                    <p className="text-sm text-blue-700 mt-1">
-                      Produk: <span className="font-medium">{selectedBahan.nama_produk}</span>
-                    </p>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <div className="text-sm text-blue-700">
-                        Modal per Porsi: <span className="font-medium">Rp {selectedBahan.modal_per_porsi.toLocaleString('id-ID')}</span>
-                      </div>
-                      <div className="text-sm text-blue-700">
-                        Total Porsi: <span className="font-medium">{selectedBahan.total_porsi}</span>
-                      </div>
                     </div>
-                    {selectedBahan.bahan && selectedBahan.bahan.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-xs text-blue-600 font-medium">Komposisi Bahan:</p>
-                        <div className="mt-1 space-y-1">
-                          {selectedBahan.bahan.map((bahan, index) => (
-                            <div key={index} className="text-xs text-blue-700 flex justify-between">
-                              <span>{bahan.nama}</span>
-                              <span>Rp {bahan.harga.toLocaleString('id-ID')} x {bahan.jumlah}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nama Barang
+                    </label>
+                    <input
+                      type="text"
+                      value={formData?.nama || ""}
+                      onChange={(e) => onInputChange("nama", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Masukkan nama barang"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Kategori
+                    </label>
+                    <select
+                      value={formData?.kategori || ""}
+                      onChange={(e) => onInputChange("kategori", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      {kategoriOptions.map((kategori) => (
+                        <option key={kategori} value={kategori}>
+                          {kategori}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Stok
+                    </label>
+                    <input
+                      type="number"
+                      value={formData?.stok || ""}
+                      onChange={(e) => onInputChange("stok", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Masukkan stok"
+                      min="0"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Harga Beli
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-gray-500">Rp</span>
+                      <input
+                        type="number"
+                        value={formData?.hargaBeli || ""}
+                        onChange={(e) => onInputChange("hargaBeli", e.target.value)}
+                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="0"
+                        min="0"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Margin (%)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={margin}
+                        onChange={(e) => handleMarginChange(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="0"
+                        min="0"
+                      />
+                      <span className="absolute right-3 top-2 text-gray-500">%</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Harga Jual
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-gray-500">Rp</span>
+                      <input
+                        type="number"
+                        value={formData?.hargaJual || ""}
+                        onChange={(e) => onInputChange("hargaJual", e.target.value)}
+                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="0"
+                        min="0"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Gunakan Diskon
+                    </label>
+                    <div className="flex items-center h-10">
+                      <input
+                        type="checkbox"
+                        id="useDiscount"
+                        checked={!!formData?.useDiscount}
+                        onChange={(e) => onInputChange("useDiscount", e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="useDiscount" className="ml-2 text-sm text-gray-700">
+                        Aktifkan diskon untuk barang ini
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Gambar Barang
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                        id="gambar-upload"
+                      />
+                      <label
+                        htmlFor="gambar-upload"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md cursor-pointer text-center bg-gray-50 hover:bg-gray-100 transition-colors"
+                      >
+                        {formData?.gambar ? formData.gambar.name : "Pilih gambar"}
+                      </label>
+                    </div>
+                    {formData?.gambar && (
+                      <button
+                        type="button"
+                        onClick={() => onInputChange("gambar", null)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
                     )}
                   </div>
+                  {formData?.gambar && (
+                    <div className="mt-2">
+                      <img
+                        src={URL.createObjectURL(formData.gambar)}
+                        alt="Preview"
+                        className="h-20 w-20 object-cover rounded-md"
+                      />
+                    </div>
+                  )}
                 </div>
+
+                <div className="flex items-center space-x-2 pt-4">
+                  <input
+                    type="checkbox"
+                    id="use-bahan-baku"
+                    checked={useBahanBaku}
+                    onChange={(e) => setUseBahanBaku(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="use-bahan-baku" className="text-sm text-gray-700">
+                    Gunakan data bahan baku dari modal utama
+                  </label>
+                </div>
+
+                {useBahanBaku && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Pilih Bahan Baku
+                    </label>
+                    <select
+                      value={selectedBahanBaku}
+                      onChange={handleBahanBakuChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">-- Pilih bahan baku --</option>
+                      {bahanBakuList.map((item) => (
+                        <option key={item.nama_produk} value={item.nama_produk}>
+                          {item.nama_produk} (Modal per porsi: Rp {item.modal_per_porsi.toLocaleString("id-ID")})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             )}
 
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 rounded-lg bg-white border border-blue-200">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
-                  </svg>
+            {activeTab === "bahan" && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-gray-800">Data Bahan Baku</h3>
+                  <button
+                    type="button"
+                    onClick={addBahanBakuItem}
+                    className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center text-sm"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Tambah Produk
+                  </button>
                 </div>
-                <div>
-                  <span className="block text-sm font-semibold text-gray-800">Gunakan Diskon Global</span>
-                  <span className="block text-xs text-gray-600">Terapkan diskon sistem untuk produk ini</span>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={!!formData.useDiscount}
-                  onChange={(e) => onInputChange("useDiscount", e.target.checked)}
-                  disabled={loading}
-                  className="sr-only peer"
-                />
-                <div className="w-12 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Harga Beli (Modal per Porsi) <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">Rp</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.hargaBeli || ""}
-                    onChange={(e) => onInputChange("hargaBeli", e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 bg-white"
-                    required
-                    disabled={loading || !!selectedBahan}
-                  />
-                </div>
-                {selectedBahan && (
-                  <p className="text-xs text-green-600 mt-1">
-                    ✓ Harga diambil dari bahan baku (Modal per Porsi)
-                  </p>
+                {formData?.bahanBaku && formData.bahanBaku.length > 0 ? (
+                  <div className="space-y-4">
+                    {formData.bahanBaku.map((produk, produkIndex) => (
+                      <div key={produkIndex} className="border border-gray-200 rounded-md p-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <div className="flex-1 mr-2">
+                            <input
+                              type="text"
+                              value={produk.nama_produk}
+                              onChange={(e) => updateBahanBakuItem(produkIndex, "nama_produk", e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Nama produk"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeBahanBakuItem(produkIndex)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center mb-2">
+                            <h4 className="text-sm font-medium text-gray-700">Daftar Bahan</h4>
+                            <button
+                              type="button"
+                              onClick={() => addBahanItem(produkIndex)}
+                              className="px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center text-xs"
+                            >
+                              <Plus className="h-3 h-3 mr-1" />
+                              Tambah Bahan
+                            </button>
+                          </div>
+
+                          {produk.bahan && produk.bahan.length > 0 ? (
+                            <div className="space-y-2">
+                              {produk.bahan.map((bahan, bahanIndex) => (
+                                <div key={bahanIndex} className="grid grid-cols-12 gap-2">
+                                  <div className="col-span-5">
+                                    <input
+                                      type="text"
+                                      value={bahan.nama}
+                                      onChange={(e) => updateBahanItem(produkIndex, bahanIndex, "nama", e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                      placeholder="Nama bahan"
+                                    />
+                                  </div>
+                                  <div className="col-span-3">
+                                    <div className="relative">
+                                      <span className="absolute left-2 top-2 text-gray-500 text-sm">Rp</span>
+                                      <input
+                                        type="number"
+                                        value={bahan.harga}
+                                        onChange={(e) => updateBahanItem(produkIndex, bahanIndex, "harga", e.target.value)}
+                                        className="w-full pl-7 pr-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        placeholder="0"
+                                        min="0"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="col-span-3">
+                                    <input
+                                      type="number"
+                                      value={bahan.jumlah}
+                                      onChange={(e) => updateBahanItem(produkIndex, bahanIndex, "jumlah", e.target.value)}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                      placeholder="Jumlah"
+                                      min="1"
+                                    />
+                                  </div>
+                                  <div className="col-span-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => removeBahanItem(produkIndex, bahanIndex)}
+                                      className="w-full h-full text-red-500 hover:text-red-700 flex items-center justify-center"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-gray-500 text-sm italic">Belum ada bahan untuk produk ini</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">Belum ada data bahan baku. Klik "Tambah Produk" untuk menambahkan.</p>
                 )}
-              </div>
 
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Harga Jual <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">Rp</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.hargaJual || ""}
-                    onChange={(e) => onInputChange("hargaJual", e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 bg-white"
-                    required
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Stok (Total Porsi) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={formData.stok || ""}
-                onChange={(e) => onInputChange("stok", e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 bg-white"
-                required
-                disabled={loading || !!selectedBahan}
-              />
-              {selectedBahan && (
-                <p className="text-xs text-green-600 mt-1">
-                  ✓ Stok diambil dari bahan baku (Total Porsi)
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              <label className="block text-sm font-semibold text-gray-700">
-                Gambar Barang
-              </label>
-              
-              {(previewUrl || formData.gambarUrl) && (
-                <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                  <img
-                    src={previewUrl || formData.gambarUrl || ""}
-                    alt="Preview"
-                    className="h-20 w-20 object-cover rounded-lg border-2 border-white shadow-sm"
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-800">Preview Gambar</p>
+                <div className="mt-6 p-4 bg-gray-50 rounded-md">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-sm font-medium text-gray-700">Ringkasan Bahan Baku</h4>
                     <button
                       type="button"
-                      onClick={handleRemoveImage}
-                      disabled={loading}
-                      className="mt-1 text-sm text-red-600 hover:text-red-700 font-medium flex items-center space-x-1 transition-colors duration-200"
+                      onClick={() => setShowCalculation(!showCalculation)}
+                      className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      <span>Hapus Gambar</span>
+                      <Calculator className="h-4 w-4 mr-1" />
+                      {showCalculation ? "Sembunyikan" : "Tampilkan"} perhitungan
                     </button>
                   </div>
-                </div>
-              )}
-
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 transition-all duration-200 bg-gray-50/50">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  id="file-upload"
-                  disabled={loading}
-                />
-                <label htmlFor="file-upload" className="cursor-pointer disabled:opacity-50">
-                  <div className="flex flex-col items-center space-y-3">
-                    <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Total Harga Bahan:</span>
+                      <span className="ml-2 font-medium">Rp {calculateTotalHargaBahan().toLocaleString("id-ID")}</span>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        Klik untuk upload gambar
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Format: JPG, PNG, GIF • Maksimal 5MB
-                      </p>
+                      <span className="text-gray-600">Total Porsi:</span>
+                      <span className="ml-2 font-medium">{calculateTotalPorsi()}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Modal per Porsi:</span>
+                      <span className="ml-2 font-medium">Rp {calculateModalPerPorsi().toLocaleString("id-ID")}</span>
                     </div>
                   </div>
-                </label>
-              </div>
-            </div>
-          </div>
 
-          <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 shadow-sm"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={loading || kategoriOptions.length === 0}
-              className="px-8 py-3 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50 shadow-lg shadow-blue-500/25 flex items-center space-x-2 min-w-[120px] justify-center"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>{isEditing ? "Memperbarui..." : "Menyimpan..."}</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isEditing ? "M5 13l4 4L19 7" : "M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"} />
-                  </svg>
-                  <span>{isEditing ? "Update" : "Simpan"}</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
+                  {showCalculation && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-600">
+                      <p>Total Harga Bahan = Σ (harga semua bahan)</p>
+                      <p>Total Porsi = Σ (jumlah semua bahan)</p>
+                      <p>Modal per Porsi = Total Harga Bahan / Total Porsi</p>
+                      <p className="mt-2">
+                        <button
+                          type="button"
+                          onClick={() => onInputChange("hargaBeli", calculateModalPerPorsi().toString())}
+                          className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs"
+                        >
+                          Gunakan sebagai Harga Beli
+                        </button>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </form>
+        </div>
+
+        <div className="flex justify-end space-x-3 p-6 border-t bg-gray-50">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            {loading ? "Menyimpan..." : isEditing ? "Update" : "Simpan"}
+          </button>
+        </div>
       </div>
     </div>
   );
