@@ -1,4 +1,3 @@
-// src/admin/stok-barang/index.tsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import BarangTable from "./BarangTable";
 import ModalBarang, { type BahanBakuItem } from "./ModalBarang";
@@ -90,6 +89,17 @@ interface ApiError extends Error {
   message: string;
 }
 
+interface BahanBakuAPI {
+  nama_produk: string;
+  total_porsi?: number;
+  modal_per_porsi?: number;
+  bahan: Array<{
+    nama: string;
+    harga: number;
+    jumlah: number;
+  }>;
+}
+
 const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang }) => {
   const socketRef = useRef<Socket | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -139,13 +149,13 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       
       const bahanBakuData: BahanBakuItem[] = [];
       if (data.bahan_baku && Array.isArray(data.bahan_baku)) {
-        data.bahan_baku.forEach((produk: any) => {
+        data.bahan_baku.forEach((produk: BahanBakuAPI) => {
           if (produk.nama_produk && produk.bahan && Array.isArray(produk.bahan)) {
             bahanBakuData.push({
               nama_produk: produk.nama_produk,
               total_porsi: produk.total_porsi || 0,
               modal_per_porsi: produk.modal_per_porsi || 0,
-              bahan: produk.bahan.map((b: any) => ({
+              bahan: produk.bahan.map((b: { nama: string; harga: number; jumlah: number }) => ({
                 nama: b.nama,
                 harga: b.harga,
                 jumlah: b.jumlah
@@ -181,9 +191,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         setLowStockAlert(settings.lowStockAlert);
         console.log("Low stock alert set to:", settings.lowStockAlert);
         setSettingsLoaded(true);
-        
-        // Tidak melakukan perhitungan status di frontend, hanya mengatur lowStockAlert
-        // Status akan dihitung di backend
       }
     } catch (err) {
       console.error("Gagal mengambil pengaturan:", err);
@@ -221,13 +228,49 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     }
   }, [formData.kategori]);
 
+  const fetchBarang = useCallback(async () => {
+    setLoading(true);
+    setServerError(false);
+    try {
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const data: BarangAPI[] = await res.json();
+      
+      const mapped: Barang[] = data.map((item) => ({
+        _id: item._id,
+        kode: item.kode_barang,
+        nama: item.nama_barang,
+        kategori: item.kategori,
+        hargaBeli: item.harga_beli,
+        hargaJual: item.harga_jual,
+        stok: item.stok,
+        stok_awal: item.stok_awal,
+        stokMinimal: item.stok_minimal || lowStockAlert,
+        hargaFinal: item.hargaFinal,
+        gambarUrl: item.gambar_url,
+        status: item.status,
+        useDiscount: typeof item.use_discount !== 'undefined' ? item.use_discount : true,
+        margin: item.margin,
+        bahanBaku: item.bahan_baku || []
+      }));
+      
+      setDataBarang(mapped);
+    } catch (err) {
+      console.error("Gagal ambil data:", err);
+      setServerError(true);
+      SweetAlert.error("Gagal mengambil data barang");
+    } finally {
+      setLoading(false);
+      setInitialLoad(false);
+    }
+  }, [setDataBarang, lowStockAlert]);
+
   useEffect(() => {
     if (!settingsLoaded) return;
     
     socketRef.current = io(`${ipbe}:${portbe}`);
     
     socketRef.current.on('barang:created', (newBarang: BarangAPI) => {
-      // Langsung gunakan data dari backend tanpa perhitungan tambahan
       const mappedBarang: Barang = {
         _id: newBarang._id,
         kode: newBarang.kode_barang,
@@ -240,7 +283,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         stokMinimal: newBarang.stok_minimal || lowStockAlert,
         hargaFinal: newBarang.hargaFinal,
         gambarUrl: newBarang.gambar_url,
-        status: newBarang.status, // Gunakan status dari backend
+        status: newBarang.status,
         useDiscount: typeof newBarang.use_discount !== 'undefined' ? newBarang.use_discount : true,
         margin: newBarang.margin,
         bahanBaku: newBarang.bahan_baku || []
@@ -250,7 +293,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     });
 
     socketRef.current.on('barang:updated', (updatedBarang: BarangAPI) => {
-      // Langsung gunakan data dari backend tanpa perhitungan tambahan
       const mappedBarang: Barang = {
         _id: updatedBarang._id,
         kode: updatedBarang.kode_barang,
@@ -263,7 +305,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         stokMinimal: updatedBarang.stok_minimal || lowStockAlert,
         hargaFinal: updatedBarang.hargaFinal,
         gambarUrl: updatedBarang.gambar_url,
-        status: updatedBarang.status, // Gunakan status dari backend
+        status: updatedBarang.status,
         useDiscount: typeof updatedBarang.use_discount !== 'undefined' ? updatedBarang.use_discount : true,
         margin: updatedBarang.margin,
         bahanBaku: updatedBarang.bahan_baku || []
@@ -285,14 +327,13 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     });
 
     socketRef.current.on('stockUpdated', (data: { id: string; stok: number; status?: string }) => {
-      // Gunakan status dari backend jika tersedia
       setDataBarang(prevData => 
         prevData.map(item => {
           if (item._id === data.id) {
             return { 
               ...item, 
               stok: data.stok,
-              status: data.status || item.status // Gunakan status dari backend jika ada
+              status: data.status || item.status
             };
           }
           return item;
@@ -307,10 +348,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         const newLowStockAlert = updatedSettings.lowStockAlert;
         setLowStockAlert(newLowStockAlert);
         console.log("Low stock alert updated to:", newLowStockAlert);
-        
-        // Tidak melakukan perhitungan status di frontend
-        // Backend akan mengirimkan update status melalui socket atau API
-        // Refresh data untuk mendapatkan status yang sudah dihitung di backend
         fetchBarang();
       }
     });
@@ -325,45 +362,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         socketRef.current.disconnect();
       }
     };
-  }, [setDataBarang, lowStockAlert, settingsLoaded]);
-
-  const fetchBarang = useCallback(async () => {
-    setLoading(true);
-    setServerError(false);
-    try {
-      const res = await fetch(API_URL);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const data: BarangAPI[] = await res.json();
-      
-      // Langsung gunakan data dari backend tanpa perhitungan tambahan
-      const mapped: Barang[] = data.map((item) => ({
-        _id: item._id,
-        kode: item.kode_barang,
-        nama: item.nama_barang,
-        kategori: item.kategori,
-        hargaBeli: item.harga_beli,
-        hargaJual: item.harga_jual,
-        stok: item.stok,
-        stok_awal: item.stok_awal,
-        stokMinimal: item.stok_minimal || lowStockAlert,
-        hargaFinal: item.hargaFinal,
-        gambarUrl: item.gambar_url,
-        status: item.status, // Gunakan status dari backend
-        useDiscount: typeof item.use_discount !== 'undefined' ? item.use_discount : true,
-        margin: item.margin,
-        bahanBaku: item.bahan_baku || []
-      }));
-      
-      setDataBarang(mapped);
-    } catch (err) {
-      console.error("Gagal ambil data:", err);
-      setServerError(true);
-      SweetAlert.error("Gagal mengambil data barang");
-    } finally {
-      setLoading(false);
-      setInitialLoad(false);
-    }
-  }, [setDataBarang, lowStockAlert]);
+  }, [setDataBarang, lowStockAlert, settingsLoaded, fetchBarang]);
 
   useEffect(() => {
     fetchSettings();
@@ -520,7 +519,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       payload.append("stok_minimal", lowStockAlert.toString());
       payload.append("use_discount", formData.useDiscount ? "true" : "false");
       
-      // Tambahkan bahan baku jika ada
       if (formData.bahanBaku && formData.bahanBaku.length > 0) {
         payload.append("bahan_baku", JSON.stringify(formData.bahanBaku));
       }
@@ -554,7 +552,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       setShowModal(false);
       await SweetAlert.success(isEditing ? "Barang berhasil diperbarui" : "Barang berhasil ditambahkan");
       
-      // Refresh data untuk mendapatkan status yang sudah dihitung di backend
       fetchBarang();
     } catch (err: unknown) {
       console.error("Gagal submit:", err);
