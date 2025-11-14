@@ -1,118 +1,409 @@
-  // src/admin/stok-barang/index.tsx
-  import React, { useState, useEffect, useCallback, useRef } from "react";
-  import BarangTable from "./BarangTable";
-  import ModalBarang, { type BahanBakuItem } from "./ModalBarang";
-  import ModalCategory from "./ModalCategory";
-  import type { BarangFormData } from "./ModalBarang";
-  import LoadingSpinner from "../../components/LoadingSpinner";
-  import { SweetAlert } from "../../components/SweetAlert";
-  import io, { Socket } from 'socket.io-client';
-  import { portbe } from "../../../../backend/ngrokbackend";
-  import { ChevronLeft, ChevronRight } from 'lucide-react';
-  const ipbe = import.meta.env.VITE_IPBE;
+// src/admin/stok-barang/index.tsx
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import BarangTable from "./BarangTable";
+import ModalBarang, { type BahanBakuItem } from "./ModalBarang";
+import ModalCategory from "./ModalCategory";
+import type { BarangFormData } from "./ModalBarang";
+import LoadingSpinner from "../../components/LoadingSpinner";
+import { SweetAlert } from "../../components/SweetAlert";
+import io, { Socket } from 'socket.io-client';
+import { portbe } from "../../../../backend/ngrokbackend";
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+const ipbe = import.meta.env.VITE_IPBE;
 
-  export interface BarangAPI {
-    _id: string;
-    kode_barang: string;
-    nama_barang: string;
-    kategori: string;
-    harga_beli: number;
-    harga_jual: number;
-    stok: number;
-    stok_awal: number;
-    stok_minimal?: number;
-    createdAt?: string;
-    updatedAt?: string;
-    __v?: number;
-    hargaFinal?: number;
-    gambar_url?: string;
-    status?: string;
-    use_discount?: boolean;
-    margin?: number;
-    bahan_baku?: Array<{
-      nama_produk: string;
-      bahan: Array<{
-        nama: string;
-        harga: number;
-        jumlah: number;
-      }>;
+export interface BarangAPI {
+  _id: string;
+  kode_barang: string;
+  nama_barang: string;
+  kategori: string;
+  harga_beli: number;
+  harga_jual: number;
+  stok: number;
+  stok_awal: number;
+  stok_minimal?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  __v?: number;
+  hargaFinal?: number;
+  gambar_url?: string;
+  status?: string;
+  use_discount?: boolean;
+  margin?: number;
+  bahan_baku?: Array<{
+    nama_produk: string;
+    bahan: Array<{
+      nama: string;
+      harga: number;
+      jumlah: number;
     }>;
-  }
+  }>;
+}
 
-  export interface Barang {
-    _id: string;
-    kode: string;
-    nama: string;
-    kategori: string;
-    hargaBeli: number;
-    hargaJual: number;
-    stok: number;
-    stok_awal: number
-    stokMinimal?: number;
-    hargaFinal?: number;
-    gambarUrl?: string;
-    status?: string;
-    useDiscount?: boolean;
-    margin?: number;
-    bahanBaku?: Array<{
-      nama_produk: string;
-      bahan: Array<{
-        nama: string;
-        harga: number;
-        jumlah: number;
-      }>;
+export interface Barang {
+  _id: string;
+  kode: string;
+  nama: string;
+  kategori: string;
+  hargaBeli: number;
+  hargaJual: number;
+  stok: number;
+  stok_awal: number
+  stokMinimal?: number;
+  hargaFinal?: number;
+  gambarUrl?: string;
+  status?: string;
+  useDiscount?: boolean;
+  margin?: number;
+  bahanBaku?: Array<{
+    nama_produk: string;
+    bahan: Array<{
+      nama: string;
+      harga: number;
+      jumlah: number;
     }>;
-  }
+  }>;
+}
 
-  interface KategoriAPI {
-    _id: string;
-    nama: string;
-    createdAt?: string;
-    updatedAt?: string;
-    __v?: number;
-  }
+interface KategoriAPI {
+  _id: string;
+  nama: string;
+  createdAt?: string;
+  updatedAt?: string;
+  __v?: number;
+}
 
-  interface ListBarangProps {
-    dataBarang: Barang[];
-    setDataBarang: React.Dispatch<React.SetStateAction<Barang[]>>;
-  }
+interface ListBarangProps {
+  dataBarang: Barang[];
+  setDataBarang: React.Dispatch<React.SetStateAction<Barang[]>>;
+}
 
-  interface SettingsUpdate {
-    lowStockAlert?: number
-  }
+interface SettingsUpdate {
+  lowStockAlert?: number
+}
 
-  const API_URL = `${ipbe}:${portbe}/api/admin/stok-barang`;
-  const KATEGORI_API_URL = `${ipbe}:${portbe}/api/admin/kategori`;
-  const SETTINGS_API_URL = `${ipbe}:${portbe}/api/admin/settings`;
-  const BAHAN_BAKU_API_URL = `${ipbe}:${portbe}/api/admin/modal-utama`;
+const API_URL = `${ipbe}:${portbe}/api/admin/stok-barang`;
+const KATEGORI_API_URL = `${ipbe}:${portbe}/api/admin/kategori`;
+const SETTINGS_API_URL = `${ipbe}:${portbe}/api/admin/settings`;
+const BAHAN_BAKU_API_URL = `${ipbe}:${portbe}/api/admin/modal-utama`;
 
-  interface ApiError extends Error {
-    message: string;
-  }
+interface ApiError extends Error {
+  message: string;
+}
 
-  const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang }) => {
-    const socketRef = useRef<Socket | null>(null);
-    const [showModal, setShowModal] = useState(false);
-    const [showCategoryModal, setShowCategoryModal] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
-    const [editId, setEditId] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [kategoriFilter, setKategoriFilter] = useState<string>("");
-    const [loading, setLoading] = useState(true);
-    const [initialLoad, setInitialLoad] = useState(true);
-    const [actionLoading, setActionLoading] = useState(false);
-    const [serverError, setServerError] = useState(false);
-    const [kategoriList, setKategoriList] = useState<string[]>([]);
-    const [lowStockAlert, setLowStockAlert] = useState(5);
-    const [settingsLoaded, setSettingsLoaded] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(10);
-    const [bahanBakuList, setBahanBakuList] = useState<BahanBakuItem[]>([]);
+const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang }) => {
+  const socketRef = useRef<Socket | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [kategoriFilter, setKategoriFilter] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [serverError, setServerError] = useState(false);
+  const [kategoriList, setKategoriList] = useState<string[]>([]);
+  const [lowStockAlert, setLowStockAlert] = useState(5);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [bahanBakuList, setBahanBakuList] = useState<BahanBakuItem[]>([]);
+  
+  const [formData, setFormData] = useState<BarangFormData>({
+    kode: "",
+    nama: "",
+    kategori: "",
+    hargaBeli: "",
+    hargaJual: "",
+    stok: "",
+    gambarUrl: "",
+    gambar: null,
+    useDiscount: true,
+    bahanBaku: []
+  });
+
+  const generateRandomCode = () => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 9; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+  };
+
+  const fetchBahanBaku = useCallback(async () => {
+    try {
+      const response = await fetch(BAHAN_BAKU_API_URL);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      
+      const bahanBakuData: BahanBakuItem[] = [];
+      if (data.bahan_baku && Array.isArray(data.bahan_baku)) {
+        data.bahan_baku.forEach((produk: any) => {
+          if (produk.nama_produk && produk.bahan && Array.isArray(produk.bahan)) {
+            bahanBakuData.push({
+              nama_produk: produk.nama_produk,
+              total_porsi: produk.total_porsi || 0,
+              modal_per_porsi: produk.modal_per_porsi || 0,
+              bahan: produk.bahan.map((b: any) => ({
+                nama: b.nama,
+                harga: b.harga,
+                jumlah: b.jumlah
+              }))
+            });
+          }
+        });
+      }
+      
+      setBahanBakuList(bahanBakuData);
+      console.log("Bahan baku data:", bahanBakuData);
+    } catch (err) {
+      console.error("Gagal mengambil data bahan baku:", err);
+    }
+  }, []);
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      console.log("Fetching settings...");
+      const token = localStorage.getItem('token');
+      const res = await fetch(SETTINGS_API_URL, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const settings = await res.json();
+      console.log("Settings fetched:", settings);
+      
+      if (settings.lowStockAlert !== undefined) {
+        setLowStockAlert(settings.lowStockAlert);
+        console.log("Low stock alert set to:", settings.lowStockAlert);
+        setSettingsLoaded(true);
+        
+        // Tidak melakukan perhitungan status di frontend, hanya mengatur lowStockAlert
+        // Status akan dihitung di backend
+      }
+    } catch (err) {
+      console.error("Gagal mengambil pengaturan:", err);
+      setLowStockAlert(10);
+      setSettingsLoaded(true);
+    }
+  }, []);
+
+  const fetchKategori = useCallback(async () => {
+    try {
+      console.log("Fetching kategori...");
+      const res = await fetch(KATEGORI_API_URL);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const data: KategoriAPI[] = await res.json();
+      
+      const kategoriNames = data.map((item: KategoriAPI) => item.nama);
+      console.log("Kategori fetched:", kategoriNames);
+      setKategoriList(kategoriNames);
+      
+      if (kategoriNames.length > 0 && !formData.kategori) {
+        setFormData(prev => ({
+          ...prev,
+          kategori: kategoriNames[0]
+        }));
+      }
+    } catch (err) {
+      console.error("Gagal ambil data kategori:", err);
+      setKategoriList(["Makanan", "Minuman", "Cemilan", "Signature"]);
+      if (!formData.kategori) {
+        setFormData(prev => ({
+          ...prev,
+          kategori: "Makanan"
+        }));
+      }
+    }
+  }, [formData.kategori]);
+
+  useEffect(() => {
+    if (!settingsLoaded) return;
     
-    const [formData, setFormData] = useState<BarangFormData>({
+    socketRef.current = io(`${ipbe}:${portbe}`);
+    
+    socketRef.current.on('barang:created', (newBarang: BarangAPI) => {
+      // Langsung gunakan data dari backend tanpa perhitungan tambahan
+      const mappedBarang: Barang = {
+        _id: newBarang._id,
+        kode: newBarang.kode_barang,
+        nama: newBarang.nama_barang,
+        kategori: newBarang.kategori,
+        hargaBeli: newBarang.harga_beli,
+        hargaJual: newBarang.harga_jual,
+        stok: newBarang.stok,
+        stok_awal: newBarang.stok_awal,
+        stokMinimal: newBarang.stok_minimal || lowStockAlert,
+        hargaFinal: newBarang.hargaFinal,
+        gambarUrl: newBarang.gambar_url,
+        status: newBarang.status, // Gunakan status dari backend
+        useDiscount: typeof newBarang.use_discount !== 'undefined' ? newBarang.use_discount : true,
+        margin: newBarang.margin,
+        bahanBaku: newBarang.bahan_baku || []
+      };
+      
+      setDataBarang(prevData => [...prevData, mappedBarang]);
+    });
+
+    socketRef.current.on('barang:updated', (updatedBarang: BarangAPI) => {
+      // Langsung gunakan data dari backend tanpa perhitungan tambahan
+      const mappedBarang: Barang = {
+        _id: updatedBarang._id,
+        kode: updatedBarang.kode_barang,
+        nama: updatedBarang.nama_barang,
+        kategori: updatedBarang.kategori,
+        hargaBeli: updatedBarang.harga_beli,
+        hargaJual: updatedBarang.harga_jual,
+        stok: updatedBarang.stok,
+        stok_awal: updatedBarang.stok_awal,
+        stokMinimal: updatedBarang.stok_minimal || lowStockAlert,
+        hargaFinal: updatedBarang.hargaFinal,
+        gambarUrl: updatedBarang.gambar_url,
+        status: updatedBarang.status, // Gunakan status dari backend
+        useDiscount: typeof updatedBarang.use_discount !== 'undefined' ? updatedBarang.use_discount : true,
+        margin: updatedBarang.margin,
+        bahanBaku: updatedBarang.bahan_baku || []
+      };
+      
+      setDataBarang(prevData => 
+        prevData.map(item => item._id === updatedBarang._id ? mappedBarang : item)
+      );
+    });
+
+    socketRef.current.on('barang:deleted', (payload: { id: string; nama?: string }) => {
+      const { id, nama } = payload;
+      setDataBarang(prevData => {
+        const found = prevData.find(item => item._id === id);
+        const nameToShow = nama ?? found?.nama ?? 'Tanpa Nama';
+        console.info(`Barang dihapus: ${nameToShow}`);
+        return prevData.filter(item => item._id !== id);
+      });
+    });
+
+    socketRef.current.on('stockUpdated', (data: { id: string; stok: number; status?: string }) => {
+      // Gunakan status dari backend jika tersedia
+      setDataBarang(prevData => 
+        prevData.map(item => {
+          if (item._id === data.id) {
+            return { 
+              ...item, 
+              stok: data.stok,
+              status: data.status || item.status // Gunakan status dari backend jika ada
+            };
+          }
+          return item;
+        })
+      );
+    });
+
+    socketRef.current.on('settings:updated', (updatedSettings: SettingsUpdate) => {
+      console.log('Received settings:updated event:', updatedSettings);
+      
+      if (updatedSettings.lowStockAlert !== undefined) {
+        const newLowStockAlert = updatedSettings.lowStockAlert;
+        setLowStockAlert(newLowStockAlert);
+        console.log("Low stock alert updated to:", newLowStockAlert);
+        
+        // Tidak melakukan perhitungan status di frontend
+        // Backend akan mengirimkan update status melalui socket atau API
+        // Refresh data untuk mendapatkan status yang sudah dihitung di backend
+        fetchBarang();
+      }
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.off('barang:created');
+        socketRef.current.off('barang:updated');
+        socketRef.current.off('barang:deleted');
+        socketRef.current.off('stockUpdated');
+        socketRef.current.off('settings:updated');
+        socketRef.current.disconnect();
+      }
+    };
+  }, [setDataBarang, lowStockAlert, settingsLoaded]);
+
+  const fetchBarang = useCallback(async () => {
+    setLoading(true);
+    setServerError(false);
+    try {
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const data: BarangAPI[] = await res.json();
+      
+      // Langsung gunakan data dari backend tanpa perhitungan tambahan
+      const mapped: Barang[] = data.map((item) => ({
+        _id: item._id,
+        kode: item.kode_barang,
+        nama: item.nama_barang,
+        kategori: item.kategori,
+        hargaBeli: item.harga_beli,
+        hargaJual: item.harga_jual,
+        stok: item.stok,
+        stok_awal: item.stok_awal,
+        stokMinimal: item.stok_minimal || lowStockAlert,
+        hargaFinal: item.hargaFinal,
+        gambarUrl: item.gambar_url,
+        status: item.status, // Gunakan status dari backend
+        useDiscount: typeof item.use_discount !== 'undefined' ? item.use_discount : true,
+        margin: item.margin,
+        bahanBaku: item.bahan_baku || []
+      }));
+      
+      setDataBarang(mapped);
+    } catch (err) {
+      console.error("Gagal ambil data:", err);
+      setServerError(true);
+      SweetAlert.error("Gagal mengambil data barang");
+    } finally {
+      setLoading(false);
+      setInitialLoad(false);
+    }
+  }, [setDataBarang, lowStockAlert]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  useEffect(() => {
+    if (settingsLoaded) {
+      fetchBarang();
+      fetchKategori();
+      fetchBahanBaku();
+    }
+  }, [fetchBarang, fetchKategori, fetchBahanBaku, settingsLoaded]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, kategoriFilter]);
+
+  const filteredBarang = dataBarang.filter(
+    (item) =>
+      (item.nama ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.kode ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.kategori ?? "").toLowerCase().includes(searchTerm.toLowerCase())
+  ).filter(
+    (item) => kategoriFilter === "" || item.kategori === kategoriFilter
+  );
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredBarang.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredBarang.length / itemsPerPage);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+
+  const resetForm = () => {
+    setFormData({
       kode: "",
       nama: "",
-      kategori: "",
+      kategori: kategoriList.length > 0 ? kategoriList[0] : "",
       hargaBeli: "",
       hargaJual: "",
       stok: "",
@@ -121,642 +412,351 @@
       useDiscount: true,
       bahanBaku: []
     });
-
-    const generateRandomCode = () => {
-      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      let result = '';
-      for (let i = 0; i < 9; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-      }
-      return result;
-    };
-
-    const fetchBahanBaku = useCallback(async () => {
-      try {
-        const response = await fetch(BAHAN_BAKU_API_URL);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        
-        const bahanBakuData: BahanBakuItem[] = [];
-        if (data.bahan_baku && Array.isArray(data.bahan_baku)) {
-          data.bahan_baku.forEach((produk: any) => {
-            if (produk.nama_produk && produk.bahan && Array.isArray(produk.bahan)) {
-              bahanBakuData.push({
-                nama_produk: produk.nama_produk,
-                total_porsi: produk.total_porsi || 0,
-                modal_per_porsi: produk.modal_per_porsi || 0,
-                bahan: produk.bahan.map((b: any) => ({
-                  nama: b.nama,
-                  harga: b.harga,
-                  jumlah: b.jumlah
-                }))
-              });
-            }
-          });
-        }
-        
-        setBahanBakuList(bahanBakuData);
-        console.log("Bahan baku data:", bahanBakuData);
-      } catch (err) {
-        console.error("Gagal mengambil data bahan baku:", err);
-      }
-    }, []);
-
-    const fetchSettings = useCallback(async () => {
-      try {
-        console.log("Fetching settings...");
-        const token = localStorage.getItem('token');
-        const res = await fetch(SETTINGS_API_URL, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const settings = await res.json();
-        console.log("Settings fetched:", settings);
-        
-        if (settings.lowStockAlert !== undefined) {
-          setLowStockAlert(settings.lowStockAlert);
-          console.log("Low stock alert set to:", settings.lowStockAlert);
-          setSettingsLoaded(true);
-          
-          // Tidak melakukan perhitungan status di frontend, hanya mengatur lowStockAlert
-          // Status akan dihitung di backend
-        }
-      } catch (err) {
-        console.error("Gagal mengambil pengaturan:", err);
-        setLowStockAlert(10);
-        setSettingsLoaded(true);
-      }
-    }, []);
-
-    const fetchKategori = useCallback(async () => {
-      try {
-        console.log("Fetching kategori...");
-        const res = await fetch(KATEGORI_API_URL);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const data: KategoriAPI[] = await res.json();
-        
-        const kategoriNames = data.map((item: KategoriAPI) => item.nama);
-        console.log("Kategori fetched:", kategoriNames);
-        setKategoriList(kategoriNames);
-        
-        if (kategoriNames.length > 0 && !formData.kategori) {
-          setFormData(prev => ({
-            ...prev,
-            kategori: kategoriNames[0]
-          }));
-        }
-      } catch (err) {
-        console.error("Gagal ambil data kategori:", err);
-        setKategoriList(["Makanan", "Minuman", "Cemilan", "Signature"]);
-        if (!formData.kategori) {
-          setFormData(prev => ({
-            ...prev,
-            kategori: "Makanan"
-          }));
-        }
-      }
-    }, [formData.kategori]);
-
-    useEffect(() => {
-      if (!settingsLoaded) return;
-      
-      socketRef.current = io(`${ipbe}:${portbe}`);
-      
-      socketRef.current.on('barang:created', (newBarang: BarangAPI) => {
-        // Langsung gunakan data dari backend tanpa perhitungan tambahan
-        const mappedBarang: Barang = {
-          _id: newBarang._id,
-          kode: newBarang.kode_barang,
-          nama: newBarang.nama_barang,
-          kategori: newBarang.kategori,
-          hargaBeli: newBarang.harga_beli,
-          hargaJual: newBarang.harga_jual,
-          stok: newBarang.stok,
-          stok_awal: newBarang.stok_awal,
-          stokMinimal: newBarang.stok_minimal || lowStockAlert,
-          hargaFinal: newBarang.hargaFinal,
-          gambarUrl: newBarang.gambar_url,
-          status: newBarang.status, // Gunakan status dari backend
-          useDiscount: typeof newBarang.use_discount !== 'undefined' ? newBarang.use_discount : true,
-          margin: newBarang.margin,
-          bahanBaku: newBarang.bahan_baku || []
-        };
-        
-        setDataBarang(prevData => [...prevData, mappedBarang]);
-      });
-
-      socketRef.current.on('barang:updated', (updatedBarang: BarangAPI) => {
-        // Langsung gunakan data dari backend tanpa perhitungan tambahan
-        const mappedBarang: Barang = {
-          _id: updatedBarang._id,
-          kode: updatedBarang.kode_barang,
-          nama: updatedBarang.nama_barang,
-          kategori: updatedBarang.kategori,
-          hargaBeli: updatedBarang.harga_beli,
-          hargaJual: updatedBarang.harga_jual,
-          stok: updatedBarang.stok,
-          stok_awal: updatedBarang.stok_awal,
-          stokMinimal: updatedBarang.stok_minimal || lowStockAlert,
-          hargaFinal: updatedBarang.hargaFinal,
-          gambarUrl: updatedBarang.gambar_url,
-          status: updatedBarang.status, // Gunakan status dari backend
-          useDiscount: typeof updatedBarang.use_discount !== 'undefined' ? updatedBarang.use_discount : true,
-          margin: updatedBarang.margin,
-          bahanBaku: updatedBarang.bahan_baku || []
-        };
-        
-        setDataBarang(prevData => 
-          prevData.map(item => item._id === updatedBarang._id ? mappedBarang : item)
-        );
-      });
-
-      socketRef.current.on('barang:deleted', (payload: { id: string; nama?: string }) => {
-        const { id, nama } = payload;
-        setDataBarang(prevData => {
-          const found = prevData.find(item => item._id === id);
-          const nameToShow = nama ?? found?.nama ?? 'Tanpa Nama';
-          console.info(`Barang dihapus: ${nameToShow}`);
-          return prevData.filter(item => item._id !== id);
-        });
-      });
-
-      socketRef.current.on('stockUpdated', (data: { id: string; stok: number; status?: string }) => {
-        // Gunakan status dari backend jika tersedia
-        setDataBarang(prevData => 
-          prevData.map(item => {
-            if (item._id === data.id) {
-              return { 
-                ...item, 
-                stok: data.stok,
-                status: data.status || item.status // Gunakan status dari backend jika ada
-              };
-            }
-            return item;
-          })
-        );
-      });
-
-      socketRef.current.on('settings:updated', (updatedSettings: SettingsUpdate) => {
-        console.log('Received settings:updated event:', updatedSettings);
-        
-        if (updatedSettings.lowStockAlert !== undefined) {
-          const newLowStockAlert = updatedSettings.lowStockAlert;
-          setLowStockAlert(newLowStockAlert);
-          console.log("Low stock alert updated to:", newLowStockAlert);
-          
-          // Tidak melakukan perhitungan status di frontend
-          // Backend akan mengirimkan update status melalui socket atau API
-          // Refresh data untuk mendapatkan status yang sudah dihitung di backend
-          fetchBarang();
-        }
-      });
-
-      return () => {
-        if (socketRef.current) {
-          socketRef.current.off('barang:created');
-          socketRef.current.off('barang:updated');
-          socketRef.current.off('barang:deleted');
-          socketRef.current.off('stockUpdated');
-          socketRef.current.off('settings:updated');
-          socketRef.current.disconnect();
-        }
-      };
-    }, [setDataBarang, lowStockAlert, settingsLoaded]);
-
-    const fetchBarang = useCallback(async () => {
-      setLoading(true);
-      setServerError(false);
-      try {
-        const res = await fetch(API_URL);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const data: BarangAPI[] = await res.json();
-        
-        // Langsung gunakan data dari backend tanpa perhitungan tambahan
-        const mapped: Barang[] = data.map((item) => ({
-          _id: item._id,
-          kode: item.kode_barang,
-          nama: item.nama_barang,
-          kategori: item.kategori,
-          hargaBeli: item.harga_beli,
-          hargaJual: item.harga_jual,
-          stok: item.stok,
-          stok_awal: item.stok_awal,
-          stokMinimal: item.stok_minimal || lowStockAlert,
-          hargaFinal: item.hargaFinal,
-          gambarUrl: item.gambar_url,
-          status: item.status, // Gunakan status dari backend
-          useDiscount: typeof item.use_discount !== 'undefined' ? item.use_discount : true,
-          margin: item.margin,
-          bahanBaku: item.bahan_baku || []
-        }));
-        
-        setDataBarang(mapped);
-      } catch (err) {
-        console.error("Gagal ambil data:", err);
-        setServerError(true);
-        SweetAlert.error("Gagal mengambil data barang");
-      } finally {
-        setLoading(false);
-        setInitialLoad(false);
-      }
-    }, [setDataBarang, lowStockAlert]);
-
-    useEffect(() => {
-      fetchSettings();
-    }, [fetchSettings]);
-
-    useEffect(() => {
-      if (settingsLoaded) {
-        fetchBarang();
-        fetchKategori();
-        fetchBahanBaku();
-      }
-    }, [fetchBarang, fetchKategori, fetchBahanBaku, settingsLoaded]);
-
-    useEffect(() => {
-      setCurrentPage(1);
-    }, [searchTerm, kategoriFilter]);
-
-    const filteredBarang = dataBarang.filter(
-      (item) =>
-        (item.nama ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.kode ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.kategori ?? "").toLowerCase().includes(searchTerm.toLowerCase())
-    ).filter(
-      (item) => kategoriFilter === "" || item.kategori === kategoriFilter
-    );
-
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentItems = filteredBarang.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(filteredBarang.length / itemsPerPage);
-
-    const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
-    const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
-    const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
-
-    const resetForm = () => {
-      setFormData({
-        kode: "",
-        nama: "",
-        kategori: kategoriList.length > 0 ? kategoriList[0] : "",
-        hargaBeli: "",
-        hargaJual: "",
-        stok: "",
-        gambarUrl: "",
-        gambar: null,
-        useDiscount: true,
-        bahanBaku: []
-      });
-      setIsEditing(false);
-      setEditId(null);
-    };
-
-    const handleInputChange = (field: keyof BarangFormData, value: string | File | null | boolean | any[]) => {
-      setFormData((prev: BarangFormData) => ({
-        ...prev,
-        [field]: value
-      }));
-    };
-
-    const handleEdit = (id: string) => {
-      const barang = dataBarang.find((item) => item._id === id);
-      if (barang) {
-        setFormData({
-          kode: barang.kode || "",
-          nama: barang.nama || "",
-          kategori: barang.kategori || (kategoriList.length > 0 ? kategoriList[0] : ""),
-          hargaBeli: barang.hargaBeli?.toString() || "",
-          hargaJual: barang.hargaJual?.toString() || "",
-          stok: barang.stok?.toString() || "",
-          gambarUrl: barang.gambarUrl || "",
-          gambar: null,
-          useDiscount: typeof barang.useDiscount !== 'undefined' ? barang.useDiscount : true,
-          bahanBaku: barang.bahanBaku || []
-        });
-        setIsEditing(true);
-        setEditId(id);
-        setShowModal(true);
-      }
-    };
-
-    const handleDelete = async (id: string) => {
-      try {
-        const result = await SweetAlert.confirmDelete();
-        
-        if (result.isConfirmed) {
-          await SweetAlert.loading("Menghapus barang...");
-          
-          const res = await fetch(`${API_URL}/${id}`, {
-            method: "DELETE"
-          });
-          
-          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-          
-          SweetAlert.close();
-          setDataBarang(prevData => prevData.filter(item => item._id !== id));
-          await SweetAlert.success("Barang berhasil dihapus");
-        }
-      } catch (err) {
-        console.error("Gagal hapus:", err);
-        SweetAlert.close();
-        SweetAlert.error("Gagal menghapus barang");
-      }
-    };
-
-    const validateForm = () => {
-      if (!formData.kode.trim()) {
-        SweetAlert.error("Kode barang harus diisi");
-        return false;
-      }
-      if (!formData.nama.trim()) {
-        SweetAlert.error("Nama barang harus diisi");
-        return false;
-      }
-      if (!formData.kategori) {
-        SweetAlert.error("Kategori harus dipilih");
-        return false;
-      }
-      if (!formData.hargaBeli || isNaN(Number(formData.hargaBeli)) || Number(formData.hargaBeli) <= 0) {
-        SweetAlert.error("Harga beli harus berupa angka yang valid");
-        return false;
-      }
-      if (!formData.hargaJual || isNaN(Number(formData.hargaJual)) || Number(formData.hargaJual) <= 0) {
-        SweetAlert.error("Harga jual harus berupa angka yang valid");
-        return false;
-      }
-      if (!formData.stok || isNaN(Number(formData.stok)) || Number(formData.stok) < 0) {
-        SweetAlert.error("Stok harus berupa angka yang valid");
-        return false;
-      }
-      if (!isEditing && !formData.gambar) {
-        SweetAlert.error("Gambar barang harus diunggah untuk barang baru");
-        return false;
-      }
-      return true;
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      
-      if (!validateForm()) {
-        return;
-      }
-      
-      setActionLoading(true);
-      
-      try {
-        const payload = new FormData();
-        payload.append("kode_barang", formData.kode.trim());
-        payload.append("nama_barang", formData.nama.trim());
-        payload.append("kategori", formData.kategori.trim());
-        payload.append("harga_beli", formData.hargaBeli);
-        payload.append("harga_jual", formData.hargaJual);
-        payload.append("stok", formData.stok);
-        payload.append("stok_minimal", lowStockAlert.toString());
-        payload.append("use_discount", formData.useDiscount ? "true" : "false");
-        
-        // Tambahkan bahan baku jika ada
-        if (formData.bahanBaku && formData.bahanBaku.length > 0) {
-          payload.append("bahan_baku", JSON.stringify(formData.bahanBaku));
-        }
-
-        if (formData.gambar) {
-          payload.append("gambar", formData.gambar);
-        }
-
-        await SweetAlert.loading(isEditing ? "Mengupdate barang..." : "Menambahkan barang...");
-
-        let res: Response;
-        if (isEditing && editId) {
-          res = await fetch(`${API_URL}/${editId}`, {
-            method: "PUT",
-            body: payload,
-          });
-        } else {
-          res = await fetch(API_URL, {
-            method: "POST",
-            body: payload,
-          });
-        }
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`HTTP error! status: ${res.status}, message: ${errorText}`);
-        }
-
-        SweetAlert.close();
-        resetForm();
-        setShowModal(false);
-        await SweetAlert.success(isEditing ? "Barang berhasil diperbarui" : "Barang berhasil ditambahkan");
-        
-        // Refresh data untuk mendapatkan status yang sudah dihitung di backend
-        fetchBarang();
-      } catch (err: unknown) {
-        console.error("Gagal submit:", err);
-        const error = err as ApiError;
-        SweetAlert.close();
-        SweetAlert.error(error.message || "Gagal menyimpan barang");
-      } finally {
-        setActionLoading(false);
-      }
-    };
-
-    return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        {actionLoading && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <LoadingSpinner />
-          </div>
-        )}
-
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">Daftar Barang</h1>
-                <p className="text-gray-500 mt-1">Kelola inventaris barang Anda</p>
-              </div>
-              <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-3">
-                <div className="flex gap-2">
-                  <select
-                    className="pl-3 pr-4 py-2 border border-gray-300 rounded-lg w-full"
-                    value={kategoriFilter}
-                    onChange={(e) => setKategoriFilter(e.target.value)}
-                    disabled={actionLoading}
-                  >
-                    <option value="">Semua Kategori</option>
-                    {kategoriList.map((kategori) => (
-                      <option key={kategori} value={kategori}>
-                        {kategori}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="Cari barang..."
-                    className="pl-3 pr-4 py-2 border border-gray-300 rounded-lg w-full"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    disabled={actionLoading}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowCategoryModal(true)}
-                    className="px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center"
-                    disabled={actionLoading}
-                  >
-                    Kategori
-                  </button>
-                  <button
-                    onClick={() => setShowModal(true)}
-                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                    disabled={actionLoading}
-                  >
-                    Tambah Barang
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {serverError ? (
-              <div className="text-center py-8">
-                <div className="flex justify-center mb-4">
-                  <img 
-                    src="/images/nostokbarang.jpg" 
-                    alt="Server Error" 
-                    className="w-64 h-64 object-cover rounded-lg shadow-lg"
-                  />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">Server Tidak Dapat Dihubungi</h3>
-                <p className="text-gray-500 mb-4">Tidak dapat mengambil data barang. Silakan periksa koneksi server atau coba lagi nanti.</p>
-                <button
-                  onClick={fetchBarang}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Coba Lagi
-                </button>
-              </div>
-            ) : loading && initialLoad ? (
-              <div className="text-center py-8">
-                <LoadingSpinner />
-                <p className="mt-4">Memuat data awal...</p>
-              </div>
-            ) : loading ? (
-              <div className="text-center py-8">
-                <LoadingSpinner />
-                <p className="mt-4">Mengupdate data...</p>
-              </div>
-            ) : (
-              <>
-                <BarangTable
-                  data={currentItems}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  bahanBakuList={bahanBakuList}
-                />
-                
-                {totalPages > 1 && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-6">
-                    <div className="text-sm text-gray-600">
-                      Menampilkan <span className="font-semibold text-gray-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredBarang.length)}</span> dari{' '}
-                      <span className="font-semibold text-gray-900">{filteredBarang.length}</span> barang
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={prevPage}
-                        disabled={currentPage === 1}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
-                          currentPage === 1 
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                            : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
-                        }`}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        <span className="hidden sm:inline">Sebelumnya</span>
-                      </button>
-                      
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                          let pageNum;
-                          if (totalPages <= 5) {
-                            pageNum = i + 1;
-                          } else if (currentPage <= 3) {
-                            pageNum = i + 1;
-                          } else if (currentPage >= totalPages - 2) {
-                            pageNum = totalPages - 4 + i;
-                          } else {
-                            pageNum = currentPage - 2 + i;
-                          }
-                          
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => paginate(pageNum)}
-                              className={`w-10 h-10 rounded-lg font-medium transition-all ${
-                                currentPage === pageNum 
-                                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md scale-105' 
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              }`}
-                            >
-                              {pageNum}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      
-                      <button
-                        onClick={nextPage}
-                        disabled={currentPage === totalPages}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
-                          currentPage === totalPages 
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                            : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
-                        }`}
-                      >
-                        <span className="hidden sm:inline">Selanjutnya</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        <ModalBarang
-          visible={showModal}
-          isEditing={isEditing}
-          formData={formData}
-          onInputChange={handleInputChange}
-          onSubmit={handleSubmit}
-          onClose={() => {
-            setShowModal(false);
-            resetForm();
-          }}
-          loading={actionLoading}
-          kategoriOptions={kategoriList}
-          bahanBakuList={bahanBakuList}
-          onGenerateCode={() => handleInputChange("kode", generateRandomCode())}
-        />
-
-        <ModalCategory
-          visible={showCategoryModal}
-          onClose={() => {
-            setShowCategoryModal(false);
-            fetchKategori();
-          }}
-          onKategoriChange={fetchKategori}
-        />
-      </div>
-    );
+    setIsEditing(false);
+    setEditId(null);
   };
 
-  export default StokBarangAdmin;
+  const handleInputChange = (field: keyof BarangFormData, value: string | File | null | boolean | any[]) => {
+    setFormData((prev: BarangFormData) => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleEdit = (id: string) => {
+    const barang = dataBarang.find((item) => item._id === id);
+    if (barang) {
+      setFormData({
+        kode: barang.kode || "",
+        nama: barang.nama || "",
+        kategori: barang.kategori || (kategoriList.length > 0 ? kategoriList[0] : ""),
+        hargaBeli: barang.hargaBeli?.toString() || "",
+        hargaJual: barang.hargaJual?.toString() || "",
+        stok: barang.stok?.toString() || "",
+        gambarUrl: barang.gambarUrl || "",
+        gambar: null,
+        useDiscount: typeof barang.useDiscount !== 'undefined' ? barang.useDiscount : true,
+        bahanBaku: barang.bahanBaku || []
+      });
+      setIsEditing(true);
+      setEditId(id);
+      setShowModal(true);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const result = await SweetAlert.confirmDelete();
+      
+      if (result.isConfirmed) {
+        await SweetAlert.loading("Menghapus barang...");
+        
+        const res = await fetch(`${API_URL}/${id}`, {
+          method: "DELETE"
+        });
+        
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        
+        SweetAlert.close();
+        setDataBarang(prevData => prevData.filter(item => item._id !== id));
+        await SweetAlert.success("Barang berhasil dihapus");
+      }
+    } catch (err) {
+      console.error("Gagal hapus:", err);
+      SweetAlert.close();
+      SweetAlert.error("Gagal menghapus barang");
+    }
+  };
+
+  const validateForm = () => {
+    if (!formData.kode.trim()) {
+      SweetAlert.error("Kode barang harus diisi");
+      return false;
+    }
+    if (!formData.nama.trim()) {
+      SweetAlert.error("Nama barang harus diisi");
+      return false;
+    }
+    if (!formData.kategori) {
+      SweetAlert.error("Kategori harus dipilih");
+      return false;
+    }
+    if (!formData.hargaBeli || isNaN(Number(formData.hargaBeli)) || Number(formData.hargaBeli) <= 0) {
+      SweetAlert.error("Harga beli harus berupa angka yang valid");
+      return false;
+    }
+    if (!formData.hargaJual || isNaN(Number(formData.hargaJual)) || Number(formData.hargaJual) <= 0) {
+      SweetAlert.error("Harga jual harus berupa angka yang valid");
+      return false;
+    }
+    if (!formData.stok || isNaN(Number(formData.stok)) || Number(formData.stok) < 0) {
+      SweetAlert.error("Stok harus berupa angka yang valid");
+      return false;
+    }
+    if (!isEditing && !formData.gambar) {
+      SweetAlert.error("Gambar barang harus diunggah untuk barang baru");
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    setActionLoading(true);
+    
+    try {
+      const payload = new FormData();
+      payload.append("kode_barang", formData.kode.trim());
+      payload.append("nama_barang", formData.nama.trim());
+      payload.append("kategori", formData.kategori.trim());
+      payload.append("harga_beli", formData.hargaBeli);
+      payload.append("harga_jual", formData.hargaJual);
+      payload.append("stok", formData.stok);
+      payload.append("stok_minimal", lowStockAlert.toString());
+      payload.append("use_discount", formData.useDiscount ? "true" : "false");
+      
+      // Tambahkan bahan baku jika ada
+      if (formData.bahanBaku && formData.bahanBaku.length > 0) {
+        payload.append("bahan_baku", JSON.stringify(formData.bahanBaku));
+      }
+
+      if (formData.gambar) {
+        payload.append("gambar", formData.gambar);
+      }
+
+      await SweetAlert.loading(isEditing ? "Mengupdate barang..." : "Menambahkan barang...");
+
+      let res: Response;
+      if (isEditing && editId) {
+        res = await fetch(`${API_URL}/${editId}`, {
+          method: "PUT",
+          body: payload,
+        });
+      } else {
+        res = await fetch(API_URL, {
+          method: "POST",
+          body: payload,
+        });
+      }
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`HTTP error! status: ${res.status}, message: ${errorText}`);
+      }
+
+      SweetAlert.close();
+      resetForm();
+      setShowModal(false);
+      await SweetAlert.success(isEditing ? "Barang berhasil diperbarui" : "Barang berhasil ditambahkan");
+      
+      // Refresh data untuk mendapatkan status yang sudah dihitung di backend
+      fetchBarang();
+    } catch (err: unknown) {
+      console.error("Gagal submit:", err);
+      const error = err as ApiError;
+      SweetAlert.close();
+      SweetAlert.error(error.message || "Gagal menyimpan barang");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  return (
+    <div className="p-6 bg-gray-50 min-h-screen">
+      {actionLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <LoadingSpinner />
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Daftar Barang</h1>
+              <p className="text-gray-500 mt-1">Kelola inventaris barang Anda</p>
+            </div>
+            <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-3">
+              <div className="flex gap-2">
+                <select
+                  className="pl-3 pr-4 py-2 border border-gray-300 rounded-lg w-full"
+                  value={kategoriFilter}
+                  onChange={(e) => setKategoriFilter(e.target.value)}
+                  disabled={actionLoading}
+                >
+                  <option value="">Semua Kategori</option>
+                  {kategoriList.map((kategori) => (
+                    <option key={kategori} value={kategori}>
+                      {kategori}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Cari barang..."
+                  className="pl-3 pr-4 py-2 border border-gray-300 rounded-lg w-full"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  disabled={actionLoading}
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowCategoryModal(true)}
+                  className="px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center"
+                  disabled={actionLoading}
+                >
+                  Kategori
+                </button>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  disabled={actionLoading}
+                >
+                  Tambah Barang
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {serverError ? (
+            <div className="text-center py-8">
+              <div className="flex justify-center mb-4">
+                <img 
+                  src="/images/nostokbarang.jpg" 
+                  alt="Server Error" 
+                  className="w-64 h-64 object-cover rounded-lg shadow-lg"
+                />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">Server Tidak Dapat Dihubungi</h3>
+              <p className="text-gray-500 mb-4">Tidak dapat mengambil data barang. Silakan periksa koneksi server atau coba lagi nanti.</p>
+              <button
+                onClick={fetchBarang}
+                className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Coba Lagi
+              </button>
+            </div>
+          ) : loading && initialLoad ? (
+            <div className="text-center py-8">
+              <LoadingSpinner />
+              <p className="mt-4">Memuat data awal...</p>
+            </div>
+          ) : loading ? (
+            <div className="text-center py-8">
+              <LoadingSpinner />
+              <p className="mt-4">Mengupdate data...</p>
+            </div>
+          ) : (
+            <>
+              <BarangTable
+                data={currentItems}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                bahanBakuList={bahanBakuList}
+              />
+              
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-6">
+                  <div className="text-sm text-gray-600">
+                    Menampilkan <span className="font-semibold text-gray-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredBarang.length)}</span> dari{' '}
+                    <span className="font-semibold text-gray-900">{filteredBarang.length}</span> barang
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={prevPage}
+                      disabled={currentPage === 1}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                        currentPage === 1 
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                          : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                      }`}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Sebelumnya</span>
+                    </button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => paginate(pageNum)}
+                            className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                              currentPage === pageNum 
+                                ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md scale-105' 
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={nextPage}
+                      disabled={currentPage === totalPages}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                        currentPage === totalPages 
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                          : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                      }`}
+                    >
+                      <span className="hidden sm:inline">Selanjutnya</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      <ModalBarang
+        visible={showModal}
+        isEditing={isEditing}
+        formData={formData}
+        onInputChange={handleInputChange}
+        onSubmit={handleSubmit}
+        onClose={() => {
+          setShowModal(false);
+          resetForm();
+        }}
+        loading={actionLoading}
+        kategoriOptions={kategoriList}
+        bahanBakuList={bahanBakuList}
+        onGenerateCode={() => handleInputChange("kode", generateRandomCode())}
+      />
+
+      <ModalCategory
+        visible={showCategoryModal}
+        onClose={() => {
+          setShowCategoryModal(false);
+          fetchKategori();
+        }}
+        onKategoriChange={fetchKategori}
+      />
+    </div>
+  );
+};
+
+export default StokBarangAdmin;
