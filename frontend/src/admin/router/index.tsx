@@ -9,6 +9,7 @@ import OmzetPage from '../dashboard/omzet';
 import StatusPesanan from '../dashboard/status-pesanan';
 import TopBarang from '../dashboard/top-barang';
 import Transaksi from '../dashboard/transaksi';
+import InputPenjualan from '../dashboard/input-penjualan'; // Tambahkan import ini
 import ModalPenjualan from '../biaya/modal-penjualan'; 
 import BiayaLayanan from '../biaya/biaya-layanan'; 
 import ModalBahanBaku from '../biaya/modal-bahanbaku/'; 
@@ -38,19 +39,19 @@ const AdminRouter: React.FC<AdminRouterProps> = ({ dataBarang, setDataBarang }) 
           <Route path="laporan-penjualan" element={<LaporanPenjualan />} />
           <Route path="breakdown-pembayaran" element={<BreakdownPembayaran />} />
           <Route path="transaksi" element={<Transaksi />} />
+          <Route path="input-penjualan" element={<InputPenjualan />} /> {/* Tambahkan route ini */}
         </Route>
         
         {/* Biaya Routes */}
         <Route path="biaya">
           <Route path="modal-penjualan" element={<ModalPenjualan />} />
           <Route path="biaya-layanan" element={<BiayaLayanan />} />
-          {/* Modal Bahan Baku dihapus dari sini */}
         </Route>
         
         {/* Stok Barang Route */}
         <Route path="stok-barang" element={<StokBarangAdmin dataBarang={dataBarang} setDataBarang={setDataBarang} />} />
         
-        {/* Modal Bahan Baku Route - Ditambahkan sebagai rute terpisah */}
+        {/* Modal Bahan Baku Route */}
         <Route path="modal-bahanbaku" element={<ModalBahanBaku />} />
         
         {/* Status Pesanan Route */}

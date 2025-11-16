@@ -120,7 +120,7 @@ const AdminDashboard: React.FC = () => {
         ] = await Promise.all([
           fetch(`${ipbe}:${portbe}/api/admin/users`),
           fetch(`${ipbe}:${portbe}/api/admin/dashboard/top-barang?filter=bulan`),
-          fetch(`${ipbe}:${portbe}/api/manager/laporan`),
+          fetch(`${ipbe}:${portbe}/api/admin/laporan`),
           fetch(`${ipbe}:${portbe}/api/admin/dashboard/transaksi/terakhir`),
           fetch(`${ipbe}:${portbe}/api/admin/settings`)
         ]);
