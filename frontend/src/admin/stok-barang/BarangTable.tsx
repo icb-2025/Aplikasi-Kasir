@@ -81,17 +81,17 @@ const BarangTable: React.FC<BarangTableProps> = ({
 
   const getBahanBakuInfo = (barang: Barang): BahanBakuItem | null => {
     // Cek apakah barang memiliki data bahan baku langsung
-    if (barang.bahanBaku && barang.bahanBaku.length > 0) {
+   if (barang.bahanBaku && barang.bahanBaku.length > 0) {
       return {
         nama_produk: barang.nama,
         total_porsi: barang.bahanBaku.reduce((sum, produk) => 
           sum + (produk.bahan?.reduce((bahanSum, bahan) => bahanSum + (bahan.jumlah || 0), 0) || 0), 0
         ),
-        modal_per_porsi: barang.hargaBeli || 0, // Gunakan harga beli dari backend
+        // Perbaikan: Gunakan harga beli yang sudah modal per porsi
+        modal_per_porsi: barang.hargaBeli || 0,
         bahan: barang.bahanBaku.flatMap(produk => produk.bahan || [])
       };
     }
-    
     // Cari di daftar bahan baku global
     if (bahanBakuList.length === 0) return null;
     
@@ -100,6 +100,22 @@ const BarangTable: React.FC<BarangTableProps> = ({
     );
     
     return matchingBahan || null;
+  };
+
+  const getMarginColor = (margin?: number): string => {
+    if (!margin) return "text-gray-600";
+    if (margin < 20) return "text-red-600";
+    if (margin < 30) return "text-yellow-600";
+    if (margin < 50) return "text-green-600";
+    return "text-blue-600";
+  };
+
+  const getMarginBadge = (margin?: number): string => {
+    if (!margin) return "bg-gray-100 text-gray-600";
+    if (margin < 20) return "bg-red-100 text-red-700";
+    if (margin < 30) return "bg-yellow-100 text-yellow-700";
+    if (margin < 50) return "bg-green-100 text-green-700";
+    return "bg-blue-100 text-blue-700";
   };
 
   return (
@@ -124,10 +140,10 @@ const BarangTable: React.FC<BarangTableProps> = ({
                 Harga Beli
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                Harga Jual
+                Margin
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                Margin
+                Harga Jual
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
                 Harga Final
@@ -227,14 +243,23 @@ const BarangTable: React.FC<BarangTableProps> = ({
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600 font-medium">
-                        {formatCurrency(safeValue(item.hargaJual, 0))}
+                      <div className="flex flex-col">
+                        <div className={`text-sm font-medium ${getMarginColor(item.margin)}`}>
+                          {item.margin !== undefined ? `${item.margin}%` : '-'}
+                        </div>
+                        {item.margin && (
+                          <div className={`text-xs px-2 py-0.5 rounded-full inline-block mt-1 ${getMarginBadge(item.margin)}`}>
+                            {item.margin < 20 ? 'Rendah' : 
+                             item.margin < 30 ? 'Normal' : 
+                             item.margin < 50 ? 'Bagus' : 'Tinggi'}
+                          </div>
+                        )}
                       </div>
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {item.margin !== undefined ? `${item.margin}%` : '-'}
+                      <div className="text-sm text-gray-600 font-medium">
+                        {formatCurrency(safeValue(item.hargaJual, 0))}
                       </div>
                     </td>
 

@@ -1,3 +1,4 @@
+// src/admin/stok-barang/index.tsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import BarangTable from "./BarangTable";
 import ModalBarang, { type BahanBakuItem } from "./ModalBarang";
@@ -129,7 +130,8 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     gambarUrl: "",
     gambar: null,
     useDiscount: true,
-    bahanBaku: []
+    bahanBaku: [],
+    margin: 30 // Default 30%
   });
 
   const generateRandomCode = () => {
@@ -172,32 +174,62 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     }
   }, []);
 
-  const fetchSettings = useCallback(async () => {
-    try {
-      console.log("Fetching settings...");
-      const token = localStorage.getItem('token');
-      const res = await fetch(SETTINGS_API_URL, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const settings = await res.json();
-      console.log("Settings fetched:", settings);
-      
-      if (settings.lowStockAlert !== undefined) {
-        setLowStockAlert(settings.lowStockAlert);
-        console.log("Low stock alert set to:", settings.lowStockAlert);
-        setSettingsLoaded(true);
+const [settings, setSettings] = useState({
+  globalDiscount: 0,
+  taxRate: 0,
+  serviceCharge: 0
+});
+
+
+// Tambahkan console.log untuk debugging
+// Tambahkan console.log untuk debugging
+const fetchSettings = useCallback(async () => {
+  try {
+    console.log("Mengambil data settings...");
+    const token = localStorage.getItem('token');
+    const res = await fetch(SETTINGS_API_URL, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
-    } catch (err) {
-      console.error("Gagal mengambil pengaturan:", err);
-      setLowStockAlert(10);
-      setSettingsLoaded(true);
-    }
-  }, []);
+    });
+    
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const settingsData = await res.json();
+    
+    console.log("Data settings yang diterima:", settingsData);
+    
+    setSettings({
+      globalDiscount: settingsData.globalDiscount || 10,
+      taxRate: settingsData.taxRate || 6,
+      serviceCharge: settingsData.serviceCharge || 5.26
+    });
+    
+    console.log("Settings state set to:", {
+      globalDiscount: settingsData.globalDiscount || 10,
+      taxRate: settingsData.taxRate || 6,
+      serviceCharge: settingsData.serviceCharge || 5.26
+    });
+    
+    // Set settingsLoaded ke true setelah berhasil mengambil data
+    setSettingsLoaded(true);
+  } catch (err) {
+    console.error("Gagal mengambil pengaturan:", err);
+    // Tetapkan nilai default jika gagal
+    setSettings({
+      globalDiscount: 10,
+      taxRate: 6,
+      serviceCharge: 5.26
+    });
+    
+    // Tetap set settingsLoaded ke true meskipun gagal
+    setSettingsLoaded(true);
+  }
+}, []);
+
+  useEffect(() => {
+  fetchSettings();
+}, [fetchSettings]);
 
   const fetchKategori = useCallback(async () => {
     try {
@@ -365,10 +397,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
   }, [setDataBarang, lowStockAlert, settingsLoaded, fetchBarang]);
 
   useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
-
-  useEffect(() => {
     if (settingsLoaded) {
       fetchBarang();
       fetchKategori();
@@ -409,39 +437,41 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       gambarUrl: "",
       gambar: null,
       useDiscount: true,
-      bahanBaku: []
+      bahanBaku: [],
+      margin: 30 // Reset margin ke default
     });
     setIsEditing(false);
     setEditId(null);
   };
 
-  const handleInputChange = (field: keyof BarangFormData, value: string | File | null | boolean | any[]) => {
+  const handleInputChange = (field: keyof BarangFormData, value: string | File | null | boolean | BahanBakuFormData[] | number) => {
     setFormData((prev: BarangFormData) => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleEdit = (id: string) => {
-    const barang = dataBarang.find((item) => item._id === id);
-    if (barang) {
-      setFormData({
-        kode: barang.kode || "",
-        nama: barang.nama || "",
-        kategori: barang.kategori || (kategoriList.length > 0 ? kategoriList[0] : ""),
-        hargaBeli: barang.hargaBeli?.toString() || "",
-        hargaJual: barang.hargaJual?.toString() || "",
-        stok: barang.stok?.toString() || "",
-        gambarUrl: barang.gambarUrl || "",
-        gambar: null,
-        useDiscount: typeof barang.useDiscount !== 'undefined' ? barang.useDiscount : true,
-        bahanBaku: barang.bahanBaku || []
-      });
-      setIsEditing(true);
-      setEditId(id);
-      setShowModal(true);
-    }
-  };
+const handleEdit = (id: string) => {
+  const barang = dataBarang.find((item) => item._id === id);
+  if (barang) {
+    setFormData({
+      kode: barang.kode || "",
+      nama: barang.nama || "",
+      kategori: barang.kategori || (kategoriList.length > 0 ? kategoriList[0] : ""),
+      hargaBeli: barang.hargaBeli?.toString() || "",
+      hargaJual: barang.hargaJual?.toString() || "",
+      stok: barang.stok?.toString() || "",
+      gambarUrl: barang.gambarUrl || "",
+      gambar: null,
+      useDiscount: typeof barang.useDiscount !== 'undefined' ? barang.useDiscount : true,
+      bahanBaku: barang.bahanBaku || [], // Pastikan bahanBaku dimuat
+      margin: barang.margin || 30 // Gunakan margin dari data barang
+    });
+    setIsEditing(true);
+    setEditId(id);
+    setShowModal(true);
+  }
+};
 
   const handleDelete = async (id: string) => {
     try {
@@ -499,69 +529,75 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!validateForm()) {
+    return;
+  }
+  
+  setActionLoading(true);
+  
+  try {
+    const payload = new FormData();
+    payload.append("kode_barang", formData.kode.trim());
+    payload.append("nama_barang", formData.nama.trim());
+    payload.append("kategori", formData.kategori.trim());
+    payload.append("harga_beli", formData.hargaBeli);
+    payload.append("harga_jual", formData.hargaJual);
+    payload.append("stok", formData.stok);
+    payload.append("stok_minimal", lowStockAlert.toString());
+    payload.append("use_discount", formData.useDiscount ? "true" : "false"); // Pastikan ini dikirim
     
-    if (!validateForm()) {
-      return;
+    // Tambahkan margin ke payload
+    if (formData.margin !== undefined) {
+      payload.append("margin", formData.margin.toString());
     }
     
-    setActionLoading(true);
-    
-    try {
-      const payload = new FormData();
-      payload.append("kode_barang", formData.kode.trim());
-      payload.append("nama_barang", formData.nama.trim());
-      payload.append("kategori", formData.kategori.trim());
-      payload.append("harga_beli", formData.hargaBeli);
-      payload.append("harga_jual", formData.hargaJual);
-      payload.append("stok", formData.stok);
-      payload.append("stok_minimal", lowStockAlert.toString());
-      payload.append("use_discount", formData.useDiscount ? "true" : "false");
-      
-      if (formData.bahanBaku && formData.bahanBaku.length > 0) {
-        payload.append("bahan_baku", JSON.stringify(formData.bahanBaku));
-      }
-
-      if (formData.gambar) {
-        payload.append("gambar", formData.gambar);
-      }
-
-      await SweetAlert.loading(isEditing ? "Mengupdate barang..." : "Menambahkan barang...");
-
-      let res: Response;
-      if (isEditing && editId) {
-        res = await fetch(`${API_URL}/${editId}`, {
-          method: "PUT",
-          body: payload,
-        });
-      } else {
-        res = await fetch(API_URL, {
-          method: "POST",
-          body: payload,
-        });
-      }
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`HTTP error! status: ${res.status}, message: ${errorText}`);
-      }
-
-      SweetAlert.close();
-      resetForm();
-      setShowModal(false);
-      await SweetAlert.success(isEditing ? "Barang berhasil diperbarui" : "Barang berhasil ditambahkan");
-      
-      fetchBarang();
-    } catch (err: unknown) {
-      console.error("Gagal submit:", err);
-      const error = err as ApiError;
-      SweetAlert.close();
-      SweetAlert.error(error.message || "Gagal menyimpan barang");
-    } finally {
-      setActionLoading(false);
+    // Perbaikan: Selalu kirim bahan_baku jika ada, bahkan saat update
+    if (formData.bahanBaku && formData.bahanBaku.length > 0) {
+      payload.append("bahan_baku", JSON.stringify(formData.bahanBaku));
     }
-  };
+
+    if (formData.gambar) {
+      payload.append("gambar", formData.gambar);
+    }
+
+    await SweetAlert.loading(isEditing ? "Mengupdate barang..." : "Menambahkan barang...");
+
+    let res: Response;
+    if (isEditing && editId) {
+      res = await fetch(`${API_URL}/${editId}`, {
+        method: "PUT",
+        body: payload,
+      });
+    } else {
+      res = await fetch(API_URL, {
+        method: "POST",
+        body: payload,
+      });
+    }
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`HTTP error! status: ${res.status}, message: ${errorText}`);
+    }
+
+    SweetAlert.close();
+    resetForm();
+    setShowModal(false);
+    await SweetAlert.success(isEditing ? "Barang berhasil diperbarui" : "Barang berhasil ditambahkan");
+    
+    fetchBarang();
+  } catch (err: unknown) {
+    console.error("Gagal submit:", err);
+    const error = err as ApiError;
+    SweetAlert.close();
+    SweetAlert.error(error.message || "Gagal menyimpan barang");
+  } finally {
+    setActionLoading(false);
+  }
+};
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -742,6 +778,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
         kategoriOptions={kategoriList}
         bahanBakuList={bahanBakuList}
         onGenerateCode={() => handleInputChange("kode", generateRandomCode())}
+        globalDiscount={settings.globalDiscount}
       />
 
       <ModalCategory

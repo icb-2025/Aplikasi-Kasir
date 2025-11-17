@@ -34,7 +34,6 @@ const BiayaLayanan: React.FC = () => {
 
   const fetchSettings = useCallback(async () => {
     try {
-      setLoading(true);
       const token = getToken();
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
@@ -70,6 +69,16 @@ const BiayaLayanan: React.FC = () => {
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
+
+  // Auto refresh setiap 3 detik
+useEffect(() => {
+  const interval = setInterval(() => {
+    fetchSettings();
+  }, 3000);
+
+  return () => clearInterval(interval);
+}, [fetchSettings]);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;

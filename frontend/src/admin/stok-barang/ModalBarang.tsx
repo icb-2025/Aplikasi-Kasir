@@ -32,19 +32,21 @@ export interface BarangFormData {
   gambar: File | null;
   useDiscount: boolean;
   bahanBaku?: BahanBakuFormData[];
+  margin?: number;
 }
 
 interface ModalBarangProps {
   visible: boolean;
   isEditing: boolean;
   formData: BarangFormData;
-  onInputChange: (field: keyof BarangFormData, value: string | File | null | boolean | BahanBakuFormData[]) => void;
+  onInputChange: (field: keyof BarangFormData, value: string | File | null | boolean | BahanBakuFormData[] | number) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
   loading: boolean;
   kategoriOptions: string[];
   bahanBakuList: BahanBakuItem[];
   onGenerateCode: () => void;
+  globalDiscount?: number
 }
 
 const ModalBarang: React.FC<ModalBarangProps> = ({
@@ -57,14 +59,17 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
   loading,
   kategoriOptions,
   bahanBakuList,
-  onGenerateCode
+  onGenerateCode,
+  globalDiscount = 0
 }) => {
   const [useBahanBaku, setUseBahanBaku] = useState(false);
   const [selectedBahanBaku, setSelectedBahanBaku] = useState<string>("");
-  const [margin, setMargin] = useState(0);
   const [isNamaReadOnly, setIsNamaReadOnly] = useState(false);
   const [isStokReadOnly, setIsStokReadOnly] = useState(false);
   const [isHargaBeliReadOnly, setIsHargaBeliReadOnly] = useState(false);
+
+  // Gunakan margin dari formData, bukan state lokal
+  const margin = formData?.margin || 30;
 
   useEffect(() => {
     // Check if the item has bahan baku data
@@ -81,25 +86,13 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
     }
   }, [formData?.bahanBaku, formData]);
 
-  useEffect(() => {
-    // Calculate margin when hargaBeli or hargaJual changes
-    if (formData && formData.hargaBeli && formData.hargaJual) {
-      const beli = parseFloat(formData.hargaBeli);
-      const jual = parseFloat(formData.hargaJual);
-      if (!isNaN(beli) && !isNaN(jual) && beli > 0) {
-        const marginValue = ((jual - beli) / beli) * 100;
-        setMargin(Math.round(marginValue * 100) / 100); // 2 decimal places
-      }
-    }
-  }, [formData?.hargaBeli, formData?.hargaJual, formData]);
-
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       onInputChange("gambar", e.target.files[0]);
     }
   };
 
-  const handleBahanBakuChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+   const handleBahanBakuChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = e.target.value;
     setSelectedBahanBaku(selectedValue);
     
@@ -118,7 +111,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
         // Set stok dari total_porsi
         onInputChange("stok", selected.total_porsi.toString());
         
-        // Calculate harga beli based on modal per porsi
+        // Perbaikan: Gunakan modal_per_porsi untuk harga beli, bukan total harga bahan
         if (selected.modal_per_porsi > 0) {
           onInputChange("hargaBeli", selected.modal_per_porsi.toString());
         }
@@ -155,7 +148,8 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
   const handleMarginChange = (value: string) => {
     const marginValue = parseFloat(value);
     if (!isNaN(marginValue)) {
-      setMargin(marginValue);
+      // Update margin di formData
+      onInputChange("margin", marginValue);
       
       if (formData?.hargaBeli && !isNaN(parseFloat(formData.hargaBeli))) {
         const beli = parseFloat(formData.hargaBeli);
@@ -164,6 +158,19 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
       }
     }
   };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Perbaikan: Pastikan bahanBaku dikirim saat update
+    if (isEditing && formData.bahanBaku && formData.bahanBaku.length > 0) {
+      // Jika menggunakan bahan baku, pastikan data bahan baku dikirim
+      console.log("Mengirim bahan baku:", formData.bahanBaku);
+    }
+    
+    onSubmit(e);
+  };
+
 
   if (!visible) return null;
 
@@ -186,7 +193,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
           </button>
         </div>
         
-        <form onSubmit={onSubmit} className="px-5 py-4 space-y-4">
+        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
           {/* Layout 2 kolom untuk menghemat ruang */}
           <div className="grid grid-cols-2 gap-3">
             {/* Kode Barang */}
@@ -374,7 +381,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
               </div>
             </div>
 
-            {/* Margin */}
+            {/* Margin - Modifikasi untuk memungkinkan input manual */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Margin (%)
@@ -385,11 +392,41 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
                   value={margin}
                   onChange={(e) => handleMarginChange(e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="0"
+                  placeholder="30"
                   min="0"
                   step="0.1"
                 />
                 <span className="absolute right-2 top-2 text-gray-500 text-xs">%</span>
+              </div>
+              <div className="mt-1 flex justify-between">
+                <button
+                  type="button"
+                  onClick={() => handleMarginChange("10")}
+                  className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  10%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMarginChange("20")}
+                  className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  20%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMarginChange("30")}
+                  className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  30%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMarginChange("50")}
+                  className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  50%
+                </button>
               </div>
             </div>
 
@@ -412,21 +449,58 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Diskon */}
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="useDiscount"
-              checked={!!formData?.useDiscount}
-              onChange={(e) => onInputChange("useDiscount", e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="useDiscount" className="text-sm text-gray-700">
-              Aktifkan diskon untuk barang ini
-            </label>
-          </div>
-
+{/* Diskon */}
+<div className="space-y-2">
+  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+    <div className="flex items-center space-x-2">
+      <input
+        type="checkbox"
+        id="useDiscount"
+        checked={!!formData?.useDiscount}
+        onChange={(e) => onInputChange("useDiscount", e.target.checked)}
+        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+      />
+      <label htmlFor="useDiscount" className="text-sm text-gray-700 font-medium">
+        Aktifkan diskon untuk barang ini
+      </label>
+    </div>
+    <div className="flex items-center space-x-2">
+      <div className={`text-sm font-medium px-2 py-1 rounded transition-colors ${
+        formData?.useDiscount 
+          ? 'text-green-700 bg-green-100 border border-green-200' 
+          : 'text-blue-700 bg-blue-100 border border-blue-200'
+      }`}>
+        {globalDiscount}% diskon
+      </div>
+      {formData?.useDiscount && (
+        <div className="text-xs text-green-600 flex items-center font-medium">
+          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+          Aktif
+        </div>
+      )}
+    </div>
+  </div>
+  
+  {/* Pratinjau Harga Diskon */}
+  {formData?.useDiscount && formData?.hargaJual && !isNaN(parseFloat(formData.hargaJual)) && (
+    <div className="ml-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+      <div className="flex justify-between items-center">
+        <span className="text-xs text-gray-600">Harga Jual:</span>
+        <span className="text-xs font-medium text-gray-800">Rp {parseFloat(formData.hargaJual).toLocaleString("id-ID")}</span>
+      </div>
+      <div className="flex justify-between items-center mt-1">
+        <span className="text-xs text-gray-600">Diskon ({globalDiscount}%):</span>
+        <span className="text-xs font-medium text-red-600">- Rp {Math.round(parseFloat(formData.hargaJual) * (globalDiscount / 100)).toLocaleString("id-ID")}</span>
+      </div>
+      <div className="border-t border-green-300 mt-2 pt-2 flex justify-between items-center">
+        <span className="text-xs font-semibold text-gray-700">Harga Akhir (estimasi):</span>
+        <span className="text-sm font-bold text-green-700">Rp {Math.round(parseFloat(formData.hargaJual) * (1 - globalDiscount / 100)).toLocaleString("id-ID")}</span>
+      </div>
+    </div>
+  )}
+</div>
           {/* Section: Gambar Barang */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

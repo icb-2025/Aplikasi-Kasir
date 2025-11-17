@@ -55,6 +55,7 @@ export const getAllBarang = async (req, res) => {
         stok,
         status,
         hargaFinal: Math.round(item.hargaFinal),
+        use_discount: item.use_discount, // Pastikan use_discount dikembalikan
       };
     });
 
@@ -74,12 +75,18 @@ export const createBarang = async (req, res) => {
       stok = 1,
       stok_minimal = 0,
       bahan_baku,
-      margin = 30, // Ubah default margin dari 0 menjadi 30%
+      margin,
+      use_discount,
     } = req.body;
 
     if (!kategori) {
       return res.status(400).json({ message: "Kategori wajib diisi." });
     }
+
+    // Perbaikan: Gunakan 35% hanya jika margin tidak diberikan
+    const finalMargin = margin !== undefined && !isNaN(parseFloat(margin))
+      ? parseFloat(margin)
+      : 35; // Default 35% jika tidak ada margin
 
     // Parse bahan_baku (kalau dikirim dalam bentuk stringified JSON)
     let bahanParsed = [];
@@ -108,11 +115,11 @@ export const createBarang = async (req, res) => {
     // Hitung modal per porsi
     const modalPerPorsi = totalPorsi > 0 ? totalHargaBahan / totalPorsi : totalHargaBahan;
 
-    // Harga beli = modal per porsi
+    // Harga beli = modal per porsi (ini sudah benar)
     const hargaBeli = modalPerPorsi;
 
     // Hitung harga jual berdasarkan margin (dalam persen)
-    const hargaJual = hargaBeli + (hargaBeli * (margin / 100));
+    const hargaJual = hargaBeli + (hargaBeli * (finalMargin / 100));
 
     // Ambil pengaturan pajak, diskon, dan biaya layanan dari Settings
     const settings = await Settings.findOne();
@@ -120,6 +127,7 @@ export const createBarang = async (req, res) => {
     const globalDiscount = settings?.globalDiscount ?? 0;
     const serviceCharge = settings?.serviceCharge ?? 0;
     const lowStockAlert = settings?.lowStockAlert ?? 5;
+    const discountRate = use_discount === "true" || use_discount === true ? globalDiscount : 0;
 
     // Hitung harga final (harga jual + pajak + biaya - diskon)
     const hargaSetelahDiskon = hargaJual - (hargaJual * globalDiscount / 100);
@@ -146,13 +154,14 @@ export const createBarang = async (req, res) => {
       stok,
       stok_minimal,
       bahan_baku: bahanParsed,
-      margin,
-      harga_beli: Math.round(hargaBeli),
+      margin: finalMargin, // Gunakan finalMargin
+      harga_beli: Math.round(hargaBeli), // Ini sudah modal per porsi
       harga_jual: Math.round(hargaJual),
       hargaFinal: Math.round(hargaFinal),
-      total_harga_beli: Math.round(totalHargaBahan),
+      total_harga_beli: Math.round(totalHargaBahan), // Ini total harga bahan
       gambar_url: gambarUrl,
       status, // Simpan status yang sudah dihitung
+      use_discount: use_discount === "true" || use_discount === true
     });
 
     await barang.save();
@@ -194,7 +203,7 @@ export const createBarang = async (req, res) => {
         totalPorsi,
         modalPerPorsi,
         hargaBeli,
-        margin: `${margin}%`,
+        margin: `${finalMargin}%`, // Gunakan finalMargin
         hargaJual,
         pajak: `${taxRate}%`,
         diskon: `${globalDiscount}%`,
@@ -218,13 +227,19 @@ export const updateBarang = async (req, res) => {
       stok,
       stok_minimal,
       bahan_baku,
-      margin = 30, // Ubah default margin dari 0 menjadi 30%
+      margin,
+      use_discount
     } = req.body;
 
     // Ambil barang yang mau diperbarui
     const barang = await Barang.findById(req.params.id);
     if (!barang) return res.status(404).json({ message: "Barang tidak ditemukan" });
 
+    // Perbaikan: Gunakan margin yang ada jika tidak ada margin baru
+    const finalMargin = margin !== undefined && !isNaN(parseFloat(margin))
+      ? parseFloat(margin)
+      : barang.margin || 35; // Gunakan margin yang ada atau default 35%
+  
     // Parse bahan_baku (kalau dikirim string JSON)
     let bahanParsed = [];
     try {
@@ -234,29 +249,26 @@ export const updateBarang = async (req, res) => {
       bahanParsed = [];
     }
 
-    // Hitung ulang total harga bahan & porsi
-    let totalHargaBahan = 0;
-    let totalPorsi = 0;
-
-    if (Array.isArray(bahanParsed)) {
-      bahanParsed.forEach((produk) => {
-        if (Array.isArray(produk.bahan)) {
-          produk.bahan.forEach((b) => {
-            totalHargaBahan += b.harga || 0;
-            totalPorsi += b.jumlah || 0;
-          });
-        }
-      });
+    // Perbaikan: Gunakan bahan_baku yang ada jika tidak ada bahan_baku baru
+    if (!bahanParsed || bahanParsed.length === 0) {
+      bahanParsed = barang.bahan_baku || [];
     }
 
-    // Modal per porsi
-    const modalPerPorsi = totalPorsi > 0 ? totalHargaBahan / totalPorsi : totalHargaBahan;
-
-    // Harga beli = modal per porsi
-    const hargaBeli = modalPerPorsi;
+    // Perbaikan: Gunakan modal_per_porsi yang sudah ada di database
+    // Jangan hitung ulang dari total harga bahan
+    let hargaBeli;
+    
+    // Jika barang memiliki bahan baku, gunakan modal_per_porsi yang sudah ada
+    if (barang.bahan_baku && barang.bahan_baku.length > 0) {
+      // Gunakan harga_beli yang sudah ada (ini adalah modal_per_porsi)
+      hargaBeli = barang.harga_beli;
+    } else {
+      // Jika tidak ada bahan baku, gunakan harga beli yang ada
+      hargaBeli = barang.harga_beli;
+    }
 
     // Harga jual = harga beli + margin%
-    const hargaJual = hargaBeli + (hargaBeli * (margin / 100));
+    const hargaJual = hargaBeli + (hargaBeli * (finalMargin / 100));
 
     // Ambil setting global (pajak, diskon, service)
     const settings = await Settings.findOne();
@@ -264,9 +276,12 @@ export const updateBarang = async (req, res) => {
     const globalDiscount = settings?.globalDiscount ?? 0;
     const serviceCharge = settings?.serviceCharge ?? 0;
     const lowStockAlert = settings?.lowStockAlert ?? 5;
+    
+    // Perbaikan: Gunakan discountRate yang sudah memperhitungkan use_discount
+    const discountRate = use_discount === "true" || use_discount === true ? globalDiscount : 0;
 
-    // Hitung harga final
-    const hargaSetelahDiskon = hargaJual - (hargaJual * globalDiscount / 100);
+    // Perbaikan: Gunakan discountRate, bukan globalDiscount
+    const hargaSetelahDiskon = hargaJual - (hargaJual * discountRate / 100);
     const hargaSetelahPajak = hargaSetelahDiskon + (hargaSetelahDiskon * taxRate / 100);
     const hargaFinal = hargaSetelahPajak + (hargaSetelahPajak * serviceCharge / 100);
 
@@ -291,13 +306,14 @@ export const updateBarang = async (req, res) => {
     barang.stok = stok !== undefined ? stok : barang.stok;
     barang.stok_minimal = stok_minimal !== undefined ? stok_minimal : barang.stok_minimal;
     barang.bahan_baku = bahanParsed.length ? bahanParsed : barang.bahan_baku;
-    barang.margin = margin;
-    barang.harga_beli = Math.round(hargaBeli);
+    barang.margin = finalMargin; // Gunakan finalMargin
+    barang.harga_beli = Math.round(hargaBeli); // Gunakan hargaBeli yang sudah ada di database
     barang.harga_jual = Math.round(hargaJual);
     barang.hargaFinal = Math.round(hargaFinal);
-    barang.total_harga_beli = Math.round(totalHargaBahan);
+    // Tidak perlu update total_harga_beli
     barang.gambar_url = gambarUrl;
     barang.status = status; // Update status yang sudah dihitung
+    barang.use_discount = use_discount === "true" || use_discount === true
 
     await barang.save();
 
@@ -329,14 +345,11 @@ export const updateBarang = async (req, res) => {
       message: "Barang berhasil diperbarui!",
       data: barang,
       perhitungan: {
-        totalHargaBahan,
-        totalPorsi,
-        modalPerPorsi,
         hargaBeli,
-        margin: `${margin}%`,
+        margin: `${finalMargin}%`, // Gunakan finalMargin
         hargaJual,
         pajak: `${taxRate}%`,
-        diskon: `${globalDiscount}%`,
+        diskon: `${discountRate}%`, // Gunakan discountRate, bukan globalDiscount
         biayaLayanan: `${serviceCharge}%`,
         hargaFinal,
         status,
@@ -347,7 +360,6 @@ export const updateBarang = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
-
 // Hapus barang
 export const deleteBarang = async (req, res) => {
   try {
