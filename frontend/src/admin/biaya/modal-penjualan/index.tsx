@@ -1,6 +1,8 @@
 // src/admin/penjualan/index.tsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { portbe } from '../../../../../backend/ngrokbackend';
+const ipbe = import.meta.env.VITE_IPBE;
 
 interface BahanBaku {
   _id: string;
@@ -58,7 +60,7 @@ const PenjualanPage: React.FC = () => {
   useEffect(() => {
     const fetchModalData = async () => {
       try {
-        const response = await axios.get<ModalUtama>('http://192.168.110.16:5000/api/admin/modal-utama');
+        const response = await axios.get<ModalUtama>(`${ipbe}:${portbe}/api/admin/modal-utama`);
         setModalData(response.data);
       } catch (err) {
         setError('Gagal memuat data modal');
@@ -89,7 +91,7 @@ const PenjualanPage: React.FC = () => {
 
     try {
       const response = await axios.post<AddModalResponse>(
-        'http://192.168.110.16:5000/api/admin/modal-utama/tambah-modal',
+        `${ipbe}:${portbe}/api/admin/modal-utama/tambah-modal`,
         {
           jumlah: Number(formData.jumlah),
           keterangan: formData.keterangan,

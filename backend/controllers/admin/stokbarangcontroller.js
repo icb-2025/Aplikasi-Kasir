@@ -74,19 +74,8 @@ export const createBarang = async (req, res) => {
       stok = 1,
       stok_minimal = 0,
       bahan_baku,
-      margin, // Hapus nilai default, biarkan pengguna yang menentukan
+      margin = 30, // Ubah default margin dari 0 menjadi 30%
     } = req.body;
-
-    // Validasi margin wajib diisi
-    if (margin === undefined || margin === null || margin === '') {
-      return res.status(400).json({ message: "Margin wajib diisi." });
-    }
-
-    // Pastikan margin adalah angka yang valid
-    const marginValue = parseFloat(margin);
-    if (isNaN(marginValue) || marginValue < 0) {
-      return res.status(400).json({ message: "Margin harus berupa angka positif." });
-    }
 
     if (!kategori) {
       return res.status(400).json({ message: "Kategori wajib diisi." });
@@ -123,7 +112,7 @@ export const createBarang = async (req, res) => {
     const hargaBeli = modalPerPorsi;
 
     // Hitung harga jual berdasarkan margin (dalam persen)
-    const hargaJual = hargaBeli + (hargaBeli * (marginValue / 100));
+    const hargaJual = hargaBeli + (hargaBeli * (margin / 100));
 
     // Ambil pengaturan pajak, diskon, dan biaya layanan dari Settings
     const settings = await Settings.findOne();
@@ -157,7 +146,7 @@ export const createBarang = async (req, res) => {
       stok,
       stok_minimal,
       bahan_baku: bahanParsed,
-      margin: marginValue, // Gunakan margin yang sudah divalidasi
+      margin,
       harga_beli: Math.round(hargaBeli),
       harga_jual: Math.round(hargaJual),
       hargaFinal: Math.round(hargaFinal),
@@ -205,7 +194,7 @@ export const createBarang = async (req, res) => {
         totalPorsi,
         modalPerPorsi,
         hargaBeli,
-        margin: `${marginValue}%`,
+        margin: `${margin}%`,
         hargaJual,
         pajak: `${taxRate}%`,
         diskon: `${globalDiscount}%`,
@@ -229,23 +218,12 @@ export const updateBarang = async (req, res) => {
       stok,
       stok_minimal,
       bahan_baku,
-      margin, // Hapus nilai default, biarkan pengguna yang menentukan
+      margin = 30, // Ubah default margin dari 0 menjadi 30%
     } = req.body;
 
     // Ambil barang yang mau diperbarui
     const barang = await Barang.findById(req.params.id);
     if (!barang) return res.status(404).json({ message: "Barang tidak ditemukan" });
-
-    // Validasi margin wajib diisi
-    if (margin === undefined || margin === null || margin === '') {
-      return res.status(400).json({ message: "Margin wajib diisi." });
-    }
-
-    // Pastikan margin adalah angka yang valid
-    const marginValue = parseFloat(margin);
-    if (isNaN(marginValue) || marginValue < 0) {
-      return res.status(400).json({ message: "Margin harus berupa angka positif." });
-    }
 
     // Parse bahan_baku (kalau dikirim string JSON)
     let bahanParsed = [];
@@ -278,7 +256,7 @@ export const updateBarang = async (req, res) => {
     const hargaBeli = modalPerPorsi;
 
     // Harga jual = harga beli + margin%
-    const hargaJual = hargaBeli + (hargaBeli * (marginValue / 100));
+    const hargaJual = hargaBeli + (hargaBeli * (margin / 100));
 
     // Ambil setting global (pajak, diskon, service)
     const settings = await Settings.findOne();
@@ -313,7 +291,7 @@ export const updateBarang = async (req, res) => {
     barang.stok = stok !== undefined ? stok : barang.stok;
     barang.stok_minimal = stok_minimal !== undefined ? stok_minimal : barang.stok_minimal;
     barang.bahan_baku = bahanParsed.length ? bahanParsed : barang.bahan_baku;
-    barang.margin = marginValue; // Gunakan margin yang sudah divalidasi
+    barang.margin = margin;
     barang.harga_beli = Math.round(hargaBeli);
     barang.harga_jual = Math.round(hargaJual);
     barang.hargaFinal = Math.round(hargaFinal);
@@ -355,7 +333,7 @@ export const updateBarang = async (req, res) => {
         totalPorsi,
         modalPerPorsi,
         hargaBeli,
-        margin: `${marginValue}%`,
+        margin: `${margin}%`,
         hargaJual,
         pajak: `${taxRate}%`,
         diskon: `${globalDiscount}%`,

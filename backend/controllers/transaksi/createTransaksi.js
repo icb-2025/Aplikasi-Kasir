@@ -8,6 +8,106 @@ import Settings from "./../../models/settings.js";
 import { v4 as uuidv4 } from "uuid";
 import { pilihKasirRoundRobin } from "./helpers/kasirHelper.js";
 import { addTransaksiToLaporan } from "./helpers/laporanHelper.js";
+import ModalUtama from "../../models/modalutama.js";
+import HppHarian from "../../models/hpptotal.js";
+import BiayaLayanan from "../../models/biayalayanan.js";
+import BiayaOperasional from "../../models/biayaoperasional.js";
+
+const updateHppOtomatis = async (barang_dibeli) => {
+  const today = new Date().toISOString().slice(0, 10);
+  console.log(`[HPP] Memulai proses update HPP untuk ${barang_dibeli.length} item.`);
+
+  // Ambil SEMUA data yang dibutuhkan di awal
+  const modalUtama = await ModalUtama.findOne();
+  const biayaLayanan = await BiayaLayanan.findOne();
+  const biayaOperasional = await BiayaOperasional.findOne();
+
+  if (!modalUtama) {
+    console.error("[HPP] ERROR: Data modal utama tidak ditemukan.");
+    throw new Error("Data modal utama tidak ditemukan.");
+  }
+  if (!biayaLayanan || !biayaOperasional) {
+    console.error("[HPP] ERROR: Data biaya tidak lengkap.");
+    throw new Error("Data biaya layanan atau operasional tidak ditemukan.");
+  }
+
+  let hppHarian = await HppHarian.findOne({ tanggal: today });
+  if (!hppHarian) {
+    hppHarian = new HppHarian({
+      tanggal: today,
+      produk: [],
+      total_hpp: 0,
+      total_pendapatan: 0,
+      total_laba_kotor: 0,
+      total_beban: 0, // Inisialisasi
+      laba_bersih: 0  // Inisialisasi
+    });
+    console.log(`[HPP] Membuat dokumen HPP baru untuk tanggal ${today}.`);
+  }
+
+  for (const item of barang_dibeli) {
+    // ... (logika perulangan untuk memproses item tetap sama) ...
+    const produk = modalUtama.bahan_baku.find(
+      (p) => p.nama_produk.toLowerCase().trim() === item.nama_barang.toLowerCase().trim()
+    );
+
+    if (!produk) {
+      console.warn(`[HPP] SKIP: Produk "${item.nama_barang}" tidak ditemukan.`);
+      continue;
+    }
+
+    const jumlah = Number(item.jumlah);
+    const hpp_per_porsi = Number(produk.modal_per_porsi);
+    const harga_jual = Number(item.harga_satuan);
+
+    const hpp_total = hpp_per_porsi * jumlah;
+    const pendapatan = harga_jual * jumlah;
+    const laba_kotor = pendapatan - hpp_total;
+
+    const existing = hppHarian.produk.find(
+      (p) => p.nama_produk.toLowerCase().trim() === item.nama_barang.toLowerCase().trim()
+    );
+
+    if (existing) {
+      existing.jumlah_terjual += jumlah;
+      existing.hpp_total += hpp_total;
+      existing.pendapatan += pendapatan;
+      existing.laba_kotor += laba_kotor;
+    } else {
+      hppHarian.produk.push({
+        nama_produk: item.nama_barang,
+        jumlah_terjual: jumlah,
+        hpp_per_porsi,
+        hpp_total,
+        pendapatan,
+        laba_kotor,
+      });
+    }
+
+    hppHarian.total_hpp += hpp_total;
+    hppHarian.total_pendapatan += pendapatan;
+    hppHarian.total_laba_kotor += laba_kotor;
+  }
+
+  // --- TAMBAHKAN LOGIKA INI DI AKHIR SEBELUM SAVE ---
+  // Hitung total beban dan laba bersih berdasarkan total yang sudah terakumulasi
+  const biayaLayananHariIni = (biayaLayanan.persen / 100) * hppHarian.total_pendapatan;
+  const totalBebanHariIni = biayaLayananHariIni + biayaOperasional.total;
+  const labaBersihHariIni = hppHarian.total_laba_kotor - totalBebanHariIni;
+
+  hppHarian.total_beban = totalBebanHariIni;
+  hppHarian.laba_bersih = labaBersihHariIni;
+  // --- SELESAI LOGIKA TAMBAHAN ---
+
+  try {
+    await hppHarian.save();
+    console.log(`[HPP] SUKSES: HPP Harian berhasil diperbarui (${today})`);
+  } catch (error) {
+    console.error("[HPP] ERROR: Gagal menyimpan HPP Harian:", error);
+  }
+
+  return hppHarian;
+};
 
 export const createTransaksi = async (req, res) => {
   try {
@@ -122,6 +222,8 @@ export const createTransaksi = async (req, res) => {
     });
 
     await transaksi.save();
+    await updateHppOtomatis(barangFinal);
+
 
     if (transaksi.status === "selesai") {
       await addTransaksiToLaporan(transaksi)

@@ -43,7 +43,6 @@ const transaksiSchema = new Schema({
     default: "pending" 
   },
 
-  // 🔹 simpan username saja biar ringan
   kasir_id: { 
     type: String, 
     required: true

@@ -28,12 +28,12 @@ import adminUsers from "./routes/admin/user.js";
 import adminbiayaoperasional from "./routes/admin/biayaoperasional.js";
 import adminbiayalayanan from "./routes/admin/biayalayanan.js"
 import adminmodalutama from "./routes/admin/modalutama.js"
+import adminhpptotal from "./routes/admin/hpptotal.js"
 import userAuth from "./middleware/user.js";
 import session from "express-session";
 import passport from "./config/passportGoogle.js";
 import googleAuthRoutes from "./routes/googleAuthRoutes.js";
 import { debugTokenLogger } from "./middleware/debugTokenLogger.js"; //debug all for frontend
-import modalutama from "./models/modalutama.js";
 
 dotenv.config();
 const app = express();
@@ -50,7 +50,6 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(debugTokenLogger); 
-
 
 
 app.use(express.json());
@@ -87,6 +86,7 @@ app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/admin/biaya-operasional", adminbiayaoperasional);
 app.use("/api/admin/biaya-layanan", adminbiayalayanan)
 app.use("/api/admin/modal-utama", adminmodalutama)
+app.use("/api/admin/hpp-total", adminhpptotal)
 
 app.use(cors())
 app.get("/", (req, res) => {
