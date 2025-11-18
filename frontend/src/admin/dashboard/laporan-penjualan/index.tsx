@@ -131,6 +131,7 @@ const LaporanPenjualan: React.FC = () => {
   const [totalHpp, setTotalHpp] = useState<number>(0);
   const [totalBeban, setTotalBeban] = useState<number>(0);
   const [totalBebanPerhari, setTotalBebanPerhari] = useState<number>(0); // State untuk total beban perhari
+  const [totalBebanPerbulan, setTotalBebanPerbulan] = useState<number>(0); // State untuk total beban perbulan
   const [pieData, setPieData] = useState<PieData[]>([]);
   
   // State untuk pagination
@@ -253,12 +254,27 @@ const LaporanPenjualan: React.FC = () => {
         setTotalHpp(result.summary.total_hpp || 0);
         setTotalBeban(result.summary.total_beban || 0);
         
-        // PERBAIKAN: Hitung total beban perhari
+        // PERBAIKAN: Ambil total beban perhari dari data hari ini
         if (result.data && result.data.length > 0) {
-          // Hitung total beban perhari dari data harian
-          const totalBebanHarian = result.data.reduce((sum, item) => sum + (item.total_beban || 0), 0);
-          const rataRataBebanPerhari = result.data.length > 0 ? totalBebanHarian / result.data.length : 0;
-          setTotalBebanPerhari(rataRataBebanPerhari);
+          // PERBAIKAN: Ambil data hari ini
+          const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+          const todayData = result.data.find(item => item.tanggal === today);
+          
+          // PERBAIKAN: Gunakan total_beban dari hari ini
+          if (todayData) {
+            setTotalBebanPerhari(todayData.total_beban || 0);
+            console.log('Total beban perhari (hari ini):', todayData.total_beban);
+          } else {
+            // Jika tidak ada data untuk hari ini, gunakan data terakhir
+            const lastData = result.data[result.data.length - 1];
+            setTotalBebanPerhari(lastData.total_beban || 0);
+            console.log('Total beban perhari (data terakhir):', lastData.total_beban);
+          }
+          
+          // PERBAIKAN: Hitung total beban perbulan dengan menjumlahkan semua total_beban harian
+          const totalBebanBulanan = result.data.reduce((sum, item) => sum + (item.total_beban || 0), 0);
+          setTotalBebanPerbulan(totalBebanBulanan);
+          console.log('Total beban perbulan (dijumlah dari harian):', totalBebanBulanan);
           
           // Ambil semua produk dari semua data
           const semuaProduk: ProdukApi[] = [];
@@ -287,9 +303,6 @@ const LaporanPenjualan: React.FC = () => {
           setProdukTerlaris(produkTerlarisData);
           
           // PERBAIKAN: Ambil produk terlaris hanya untuk hari ini
-          const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
-          const todayData = result.data.find(item => item.tanggal === today);
-          
           if (todayData && todayData.produk) {
             // Konversi data produk hari ini ke format ProdukTerlaris
             const produkHariIniData: ProdukTerlaris[] = todayData.produk.map(item => ({
@@ -320,6 +333,7 @@ const LaporanPenjualan: React.FC = () => {
           setProdukTerlarisHariIni([]);
           setTotalBarangTerjualHariIni(0);
           setTotalBebanPerhari(0);
+          setTotalBebanPerbulan(0);
         }
         
         // PERBAIKAN: Gunakan data dari summary untuk pie chart
@@ -335,13 +349,13 @@ const LaporanPenjualan: React.FC = () => {
         // PERBAIKAN: Gunakan data dari summary untuk biaya operasional
         setBiayaOperasional({
           rincian_biaya: [
-            { nama: 'Listrik', jumlah: result.summary.total_beban * 0.3 },
-            { nama: 'Air', jumlah: result.summary.total_beban * 0.1 },
-            { nama: 'Internet', jumlah: result.summary.total_beban * 0.1 },
-            { nama: 'Sewa Tempat', jumlah: result.summary.total_beban * 0.3 },
-            { nama: 'Gaji Karyawan', jumlah: result.summary.total_beban * 0.2 }
+            { nama: 'Listrik', jumlah: totalBebanPerbulan * 0.3 }, // Gunakan total beban perbulan
+            { nama: 'Air', jumlah: totalBebanPerbulan * 0.1 },
+            { nama: 'Internet', jumlah: totalBebanPerbulan * 0.1 },
+            { nama: 'Sewa Tempat', jumlah: totalBebanPerbulan * 0.3 },
+            { nama: 'Gaji Karyawan', jumlah: totalBebanPerbulan * 0.2 }
           ],
-          total: result.summary.total_beban || 0
+          total: totalBebanPerbulan || 0 // Gunakan total beban perbulan
         });
         setLoadingBiayaOperasional(false);
         
@@ -451,7 +465,8 @@ const LaporanPenjualan: React.FC = () => {
       totalBarangTerjual: totalBarangTerjualHariIni, // Gunakan total barang terjual hari ini
       total_hpp: totalHpp,
       total_beban: totalBeban,
-      total_beban_perhari: totalBebanPerhari, // Tambahkan total beban perhari ke export data
+      total_beban_perhari: totalBebanPerhari, // Gunakan total beban perhari dari hari ini
+      total_beban_perbulan: totalBebanPerbulan, // Tambahkan total beban perbulan ke export data
       biaya_operasional: biayaOperasionalExport
     };
     
@@ -651,15 +666,16 @@ const LaporanPenjualan: React.FC = () => {
               <p className="text-xs text-gray-500">periode terpilih</p>
             </div>
             <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Total Beban (Perhari)</h3>
-              {/* PERBAIKAN: Gunakan totalBebanPerhari */}
+              <h3 className="text-sm font-medium text-gray-500">Total Beban (Hari Ini)</h3>
+              {/* PERBAIKAN: Gunakan totalBebanPerhari dari hari ini */}
               <p className="text-2xl font-bold text-red-600">{formatRupiah(totalBebanPerhari)}</p>
-              <p className="text-xs text-gray-500">rata-rata per hari</p>
+              <p className="text-xs text-gray-500">hari ini</p>
             </div>
             <div className="bg-white p-4 rounded-lg shadow">
               <h3 className="text-sm font-medium text-gray-500">Total Beban (Perbulan)</h3>
-              <p className="text-2xl font-bold text-red-600">{formatRupiah(biayaOperasional.total)}</p>
-              <p className="text-xs text-gray-500">periode terpilih</p>
+              {/* PERBAIKAN: Gunakan totalBebanPerbulan */}
+              <p className="text-2xl font-bold text-red-600">{formatRupiah(totalBebanPerbulan)}</p>
+              <p className="text-xs text-gray-500">jumlah semua hari</p>
             </div>
           </div>
 
