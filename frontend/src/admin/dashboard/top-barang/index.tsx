@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
-import { Crown, Medal, Award, Star } from 'lucide-react';
+import { Crown, Medal, Award, Star, TrendingUp, Package, DollarSign, BarChart3, PieChart } from 'lucide-react';
 import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
@@ -63,6 +63,7 @@ const TopBarang: React.FC = () => {
   const [loadingProduk, setLoadingProduk] = useState<boolean>(true); // State untuk loading produk
   const [totalPenjualan, setTotalPenjualan] = useState<number>(0); // State untuk total penjualan
   const [totalPendapatan, setTotalPendapatan] = useState<number>(0); // State untuk total pendapatan dari API
+  const [selectedProduct, setSelectedProduct] = useState<ProdukApi | null>(null); // State untuk produk yang dipilih
 
   useEffect(() => {
     const fetchData = async () => {
@@ -103,6 +104,11 @@ const TopBarang: React.FC = () => {
           const sortedProduk = [...semuaProduk].sort((a, b) => b.pendapatan - a.pendapatan);
           
           setData(sortedProduk);
+          
+          // Set produk pertama sebagai produk yang dipilih
+          if (sortedProduk.length > 0) {
+            setSelectedProduct(sortedProduk[0]);
+          }
           
           // Hitung total penjualan
           const total = semuaProduk.reduce((sum, item) => sum + item.jumlah_terjual, 0);
@@ -172,6 +178,32 @@ const TopBarang: React.FC = () => {
     );
   };
 
+  // Komponen Mini Chart
+  const MiniChart: React.FC<{ 
+    data: number[]; 
+    color: string;
+    height?: number;
+  }> = ({ data, color, height = 40 }) => {
+    const maxValue = Math.max(...data);
+    const minValue = Math.min(...data, 0);
+    const range = maxValue - minValue;
+    
+    return (
+      <div className="flex items-end space-x-1 h-full" style={{ height: `${height}px` }}>
+        {data.map((value, index) => {
+          const normalizedValue = range > 0 ? ((value - minValue) / range) * 100 : 50;
+          return (
+            <div 
+              key={index}
+              className={`w-2 ${color} rounded-t`}
+              style={{ height: `${normalizedValue}%` }}
+            ></div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // Warna untuk progress bar
   const getProgressColor = (index: number): string => {
     const colors = [
@@ -200,6 +232,18 @@ const TopBarang: React.FC = () => {
   const getProdukImage = (namaBarang: string) => {
     const produk = produkList.find(p => p.nama_barang === namaBarang);
     return produk ? produk.gambar_url : null;
+  };
+
+  // Fungsi untuk mendapatkan kategori produk
+  const getProdukKategori = (namaBarang: string) => {
+    const produk = produkList.find(p => p.nama_barang === namaBarang);
+    return produk ? produk.kategori : 'Tidak diketahui';
+  };
+
+  // Fungsi untuk mendapatkan harga jual produk
+  const getProdukHargaJual = (namaBarang: string) => {
+    const produk = produkList.find(p => p.nama_barang === namaBarang);
+    return produk ? produk.harga_jual : 0;
   };
 
   if (loading || loadingProduk) {
@@ -249,7 +293,6 @@ const TopBarang: React.FC = () => {
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Total Pendapatan</h3>
           <p className="text-2xl font-bold text-purple-600">
-            {/* PERBAIKAN: Gunakan totalPendapatan dari API */}
             {formatRupiah(totalPendapatan)}
           </p>
           <p className="text-xs text-gray-500 mt-1">Periode: saat ini</p>
@@ -257,8 +300,8 @@ const TopBarang: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Daftar Barang Terlaris */}
-        <div className="bg-white rounded-lg shadow">
+        {/* Daftar Barang Terlaris - Diperluas ke kanan */}
+        <div className="bg-white rounded-lg shadow lg:col-span-2">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-800">Ranking Barang Terlaris</h2>
             <p className="text-sm text-gray-500">Berdasarkan pendapatan tertinggi</p>
@@ -267,98 +310,167 @@ const TopBarang: React.FC = () => {
             {data.length === 0 ? (
               <p className="text-gray-500 text-center">Tidak ada data barang untuk periode ini</p>
             ) : (
-              <div className="space-y-4">
-                {data.map((barang, index) => {
-                  const totalPendapatanProduk = data.reduce((sum, item) => sum + item.pendapatan, 0);
-                  const percentage = totalPendapatanProduk > 0 ? (barang.pendapatan / totalPendapatanProduk) * 100 : 0;
-                  const color = getProgressColor(index);
-                  const gambarUrl = getProdukImage(barang.nama_produk);
-                  
-                  return (
-                    <div key={barang.nama_produk} className="flex items-center">
-                      <div className="mr-3">
-                        {getRankingIcon(index)}
-                      </div>
-                      {gambarUrl ? (
-                        <img 
-                          src={gambarUrl} 
-                          alt={barang.nama_produk}
-                          className="h-10 w-10 rounded-full object-cover mr-3"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                          <span className="text-xs text-gray-500">No Img</span>
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Kolom Kiri - Daftar Ranking */}
+                <div className="lg:w-1/2">
+                  <div className="space-y-4">
+                    {data.map((barang, index) => {
+                      const totalPendapatanProduk = data.reduce((sum, item) => sum + item.pendapatan, 0);
+                      const percentage = totalPendapatanProduk > 0 ? (barang.pendapatan / totalPendapatanProduk) * 100 : 0;
+                      const color = getProgressColor(index);
+                      const gambarUrl = getProdukImage(barang.nama_produk);
+                      const isSelected = selectedProduct?._id === barang._id;
+                      
+                      return (
+                        <div 
+                          key={barang.nama_produk} 
+                          className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
+                            isSelected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
+                          }`}
+                          onClick={() => setSelectedProduct(barang)}
+                        >
+                          <div className="mr-3">
+                            {getRankingIcon(index)}
+                          </div>
+                          {gambarUrl ? (
+                            <img 
+                              src={gambarUrl} 
+                              alt={barang.nama_produk}
+                              className="h-10 w-10 rounded-full object-cover mr-3"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                              <span className="text-xs text-gray-500">No Img</span>
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <div className="flex items-center mb-1">
+                              <span className="text-sm font-medium text-gray-900 mr-2">
+                                {barang.nama_produk}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                ({formatAngka(barang.jumlah_terjual)} terjual)
+                              </span>
+                            </div>
+                            <ProgressBar percentage={percentage} color={color} />
+                          </div>
+                          <div className="ml-4 text-right">
+                            <span className="text-sm font-medium text-gray-900">
+                              {formatRupiah(barang.pendapatan)}
+                            </span>
+                            <div className="text-xs text-gray-500">
+                              {percentage.toFixed(1)}%
+                            </div>
+                          </div>
                         </div>
-                      )}
-                      <div className="flex-1">
-                        <div className="flex items-center mb-1">
-                          <span className="text-sm font-medium text-gray-900 mr-2">
-                            {barang.nama_produk}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            ({formatAngka(barang.jumlah_terjual)} terjual)
-                          </span>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                {/* Kolom Kanan - Detail Produk Terpilih */}
+                <div className="lg:w-1/2">
+                  {selectedProduct ? (
+                    <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                      <div className="flex items-start mb-4">
+                        {getProdukImage(selectedProduct.nama_produk) ? (
+                          <img 
+                            src={getProdukImage(selectedProduct.nama_produk) || ''} 
+                            alt={selectedProduct.nama_produk}
+                            className="h-16 w-16 rounded-lg object-cover mr-4"
+                          />
+                        ) : (
+                          <div className="h-16 w-16 rounded-lg bg-gray-200 flex items-center justify-center mr-4">
+                            <span className="text-xs text-gray-500">No Img</span>
+                          </div>
+                        )}
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{selectedProduct.nama_produk}</h3>
+                          <p className="text-sm text-gray-500">Kategori: {getProdukKategori(selectedProduct.nama_produk)}</p>
+                          <div className="flex items-center mt-1">
+                            {getRankingIcon(data.findIndex(p => p._id === selectedProduct._id))}
+                            <span className="ml-2 text-sm font-medium text-gray-700">
+                              Peringkat #{data.findIndex(p => p._id === selectedProduct._id) + 1}
+                            </span>
+                          </div>
                         </div>
-                        <ProgressBar percentage={percentage} color={color} />
                       </div>
-                      <div className="ml-4 text-right">
-                        <span className="text-sm font-medium text-gray-900">
-                          {formatRupiah(barang.pendapatan)}
-                        </span>
-                        <div className="text-xs text-gray-500">
-                          {percentage.toFixed(1)}%
+                      
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="bg-white p-3 rounded-lg shadow-sm">
+                          <div className="flex items-center text-blue-600 mb-1">
+                            <Package className="h-4 w-4 mr-1" />
+                            <span className="text-xs font-medium">Jumlah Terjual</span>
+                          </div>
+                          <p className="text-lg font-bold text-gray-900">{formatAngka(selectedProduct.jumlah_terjual)} unit</p>
+                        </div>
+                        <div className="bg-white p-3 rounded-lg shadow-sm">
+                          <div className="flex items-center text-purple-600 mb-1">
+                            <DollarSign className="h-4 w-4 mr-1" />
+                            <span className="text-xs font-medium">Harga Jual</span>
+                          </div>
+                          <p className="text-lg font-bold text-gray-900">
+                            {formatRupiah(getProdukHargaJual(selectedProduct.nama_produk))}
+                          </p>
+                        </div>
+                        <div className="bg-white p-3 rounded-lg shadow-sm">
+                          <div className="flex items-center text-green-600 mb-1">
+                            <TrendingUp className="h-4 w-4 mr-1" />
+                            <span className="text-xs font-medium">Pendapatan</span>
+                          </div>
+                          <p className="text-lg font-bold text-gray-900">
+                            {formatRupiah(selectedProduct.pendapatan)}
+                          </p>
+                        </div>
+                        <div className={`bg-white p-3 rounded-lg shadow-sm ${
+                          selectedProduct.laba_kotor >= 0 ? 'border-l-4 border-green-500' : 'border-l-4 border-red-500'
+                        }`}>
+                          <div className={`flex items-center mb-1 ${
+                            selectedProduct.laba_kotor >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            <BarChart3 className="h-4 w-4 mr-1" />
+                            <span className="text-xs font-medium">Laba Kotor</span>
+                          </div>
+                          <p className={`text-lg font-bold ${
+                            selectedProduct.laba_kotor >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {formatRupiah(selectedProduct.laba_kotor)}
+                          </p>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+                      
+                      <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Analisis HPP</h4>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">HPP per Porsi</span>
+                            <span className="font-medium">{formatRupiah(selectedProduct.hpp_per_porsi)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Total HPP</span>
+                            <span className="font-medium">{formatRupiah(selectedProduct.hpp_total)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Margin</span>
+                            <span className={`font-medium ${
+                              selectedProduct.laba_kotor >= 0 ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {selectedProduct.pendapatan > 0 
+                                ? `${((selectedProduct.laba_kotor / selectedProduct.pendapatan) * 100).toFixed(1)}%` 
+                                : '0%'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
 
-        {/* Chart Visualisasi */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-800">Distribusi Pendapatan</h2>
-            <p className="text-sm text-gray-500">Berdasarkan pendapatan tertinggi</p>
-          </div>
-          <div className="p-6">
-            {data.length === 0 ? (
-              <p className="text-gray-500 text-center">Tidak ada data untuk ditampilkan pada periode ini</p>
-            ) : (
-              <div className="space-y-3">
-                {data.map((barang, index) => {
-                  const totalPendapatanProduk = data.reduce((sum, item) => sum + item.pendapatan, 0);
-                  const percentage = totalPendapatanProduk > 0 ? (barang.pendapatan / totalPendapatanProduk) * 100 : 0;
-                  const color = getProgressColor(index);
-                  
-                  return (
-                    <div key={barang.nama_produk} className="flex items-center">
-                      <div className="mr-3">
-                        {getRankingIcon(index)}
-                      </div>
-                      <span className="text-sm text-gray-700 w-32 truncate">
-                        {barang.nama_produk}
-                      </span>
-                      <div className="flex-1 mx-2">
-                        <div className="flex items-center">
-                          <div 
-                            className={`h-4 ${color} rounded-l`}
-                            style={{ width: `${percentage}%` }}
-                          ></div>
-                          <div 
-                            className="h-4 bg-gray-200 rounded-r"
-                            style={{ width: `${100 - percentage}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-900 w-16 text-right">
-                        {formatAngka(barang.jumlah_terjual)}
-                      </span>
                     </div>
-                  );
-                })}
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-8 text-center border border-gray-200">
+                      <PieChart className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-500">Pilih produk untuk melihat detail analisis</p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -393,16 +505,10 @@ const TopBarang: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Laba Kotor
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trend
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {data.map((barang, index) => {
-                const totalPendapatanProduk = data.reduce((sum, item) => sum + item.pendapatan, 0);
-                const percentage = totalPendapatanProduk > 0 ? (barang.pendapatan / totalPendapatanProduk) * 100 : 0;
-                const color = getProgressColor(index);
+              {data.map((barang, index) => {                 
                 const gambarUrl = getProdukImage(barang.nama_produk);
                 
                 return (
@@ -450,19 +556,6 @@ const TopBarang: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className={`text-sm font-medium ${barang.laba_kotor >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {formatRupiah(barang.laba_kotor)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="w-16 h-2 bg-gray-200 rounded-full mr-2">
-                          <div 
-                            className={`h-2 rounded-full ${color}`}
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {percentage.toFixed(1)}%
-                        </span>
                       </div>
                     </td>
                   </tr>

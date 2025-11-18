@@ -2,6 +2,26 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { portbe } from "../../../../backend/ngrokbackend";
+import {
+  LayoutDashboard,
+  Package,
+  Calculator,
+  ClipboardList,
+  DollarSign,
+  Users,
+  User,
+  Settings,
+  Home,
+  Star,
+  TrendingUp,
+  BarChart3,
+  CreditCard,
+  ShoppingCart,
+  Store,
+  Wrench,
+  ChevronDown,
+  Circle
+} from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -11,7 +31,7 @@ interface SidebarProps {
 
 interface MenuItem {
   name: string;
-  icon: string;
+  icon: React.ReactNode;
   path?: string;
   submenu?: SubMenuItem[];
 }
@@ -19,13 +39,16 @@ interface MenuItem {
 interface SubMenuItem {
   name: string;
   path: string;
+  icon: React.ReactNode;
 }
 
 interface SettingsResponse {
   storeLogo: string;
 }
+
 const ipbe = import.meta.env.VITE_IPBE;
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [marqueeKey, setMarqueeKey] = useState(0);
   const [storeLogo, setStoreLogo] = useState<string | null>(null);
@@ -87,62 +110,64 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
   const menuItems: MenuItem[] = [
     {
       name: 'Dashboard',
-      icon: '📊',
+      icon: <LayoutDashboard size={20} />,
       submenu: [
-        { name: 'Dashboard Utama', path: '/admin/dashboard' },
-        { name: 'Top Barang', path: '/admin/dashboard/top-barang' },
-        { name: 'Omzet', path: '/admin/dashboard/omzet' },
-        { name: 'Laporan Penjualan', path: '/admin/dashboard/laporan-penjualan' },
-        { name: 'Breakdown Pembayaran', path: '/admin/dashboard/breakdown-pembayaran' },
-        { name: 'Transaksi', path: '/admin/dashboard/transaksi' },
-        { name: 'Input Penjualan', path: '/admin/dashboard/input-penjualan' }, // Tambahkan menu ini
+        { name: 'Dashboard Utama', path: '/admin/dashboard', icon: <Home size={16} /> },
+        { name: 'Top Barang', path: '/admin/dashboard/top-barang', icon: <Star size={16} /> },
+        { name: 'Omzet', path: '/admin/dashboard/omzet', icon: <DollarSign size={16} /> },
+        { name: 'Laporan Penjualan', path: '/admin/dashboard/laporan-penjualan', icon: <BarChart3 size={16} /> },
+        { name: 'Breakdown Pembayaran', path: '/admin/dashboard/breakdown-pembayaran', icon: <CreditCard size={16} /> },
+        { name: 'Transaksi', path: '/admin/dashboard/transaksi', icon: <ShoppingCart size={16} /> },
+
       ],
     },
-    // Menu Stok Barang
+     {
+      name: 'Biaya',
+      icon: <DollarSign size={20} />,
+      submenu: [
+        { name: 'Modal Utama', path: '/admin/biaya/modal-penjualan', icon: <Store size={16} /> },
+        { name: 'Biaya Layanan', path: '/admin/biaya/biaya-layanan', icon: <Wrench size={16} /> },
+      ],
+    },
     {
       name: 'Stok Barang',
-      icon: '📦',
+      icon: <Package size={20} />,
       path: '/admin/stok-barang',
     },
-    // Menu Modal Bahan Baku
     {
-      name: 'Modal Bahan Baku',
-      icon: '📋',
+      name: 'Bahan Baku',
+      icon: <Calculator size={20} />,
       path: '/admin/modal-bahanbaku',
     },
-    // Menu Status Pesanan
     {
       name: 'Status Pesanan',
-      icon: '📋',
+      icon: <ClipboardList size={20} />,
       path: '/admin/status-pesanan',
     },
-    // Menu Biaya
-    {
-      name: 'Biaya',
-      icon: '💰',
-      submenu: [
-        { name: 'Modal Penjualan', path: '/admin/biaya/modal-penjualan' }, 
-        { name: 'Biaya Layanan', path: '/admin/biaya/biaya-layanan' }, 
-      ],
-    },
-    // Menu User
     {
       name: 'User',
-      icon: '👥',
+      icon: <Users size={20} />,
       path: '/admin/users',
     },
-    // Menu Profile
     {
       name: 'Profile',
-      icon: '👤',
+      icon: <User size={20} />,
       path: '/admin/profile',
     },
     {
       name: 'Settings',
-      icon: '⚙️',
+      icon: <Settings size={20} />,
       path: '/admin/settings',
     },
   ];
+
+  // Icon untuk dropdown arrow
+  const DropdownArrow = ({ isOpen }: { isOpen: boolean }) => (
+    <ChevronDown 
+      size={16} 
+      className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} 
+    />
+  );
 
   return (
     <>
@@ -156,21 +181,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
 
       {/* Sidebar */}
       <div className={`bg-gradient-to-b from-orange-600 to-yellow-500 text-white w-64 fixed inset-y-0 left-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-30 shadow-xl flex flex-col`}>
-        {/* Logo dengan animasi */}
-        <div className="text-white flex items-center px-4 py-5 flex-shrink-0">
-          <div className="flex items-center space-x-2">
+        
+        {/* Header dengan Logo */}
+        <div className="text-white flex items-center px-4 py-5 flex-shrink-0 border-b border-orange-500/30">
+          <div className="flex items-center space-x-3">
             {storeLogo && !logoError ? (
-              <div className="bg-white p-1 rounded-lg shadow-md">
+              <div className="bg-white p-1.5 rounded-lg shadow-md">
                 <img 
                   src={storeLogo} 
                   alt="Store Logo" 
-                  className="h-8 w-8 object-contain"
+                  className="h-10 w-10 object-contain"
                   onError={() => setLogoError(true)}
                 />
               </div>
             ) : (
-              <div className="bg-white p-1.5 rounded-lg shadow-md">
-                <span className="text-orange-600 text-xl font-bold">K+</span>
+              <div className="bg-white p-2 rounded-lg shadow-md">
+                <span className="text-orange-600 text-2xl font-bold">K+</span>
               </div>
             )}
             <div className="overflow-hidden">
@@ -179,76 +205,84 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
                   KasirPlus
                 </span>
               </h1>
-              <div className="text-xs text-orange-100 mt-0.5">
+              <div className="text-xs text-orange-100 mt-0.5 flex items-center">
+                <Circle size={8} className="text-green-400 mr-1.5 fill-current" />
                 Admin Dashboard
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tombol Toggle Sidebar untuk Mobile - di dalam sidebar */}
-        <div className="md:hidden px-4 py-3 flex-shrink-0">
-         
-        </div>
-
-        {/* Judul Bergerak di Sidebar dengan Animasi yang Diperbaiki */}
-        <div className="px-4 py-3 bg-orange-700/30 rounded-lg mx-2 mb-4 overflow-hidden flex-shrink-0 relative">
+        {/* Marquee Section */}
+        <div className="px-4 py-3 bg-orange-700/30 rounded-lg mx-2 my-4 overflow-hidden flex-shrink-0 relative border border-orange-500/30">
           <div 
             key={marqueeKey}
-            className="text-sm text-orange-100 whitespace-nowrap animate-marquee-smooth"
+            className="text-sm text-orange-100 whitespace-nowrap animate-marquee-smooth flex items-center"
           >
-            🚀 Selamat datang di Panel Admin KasirPlus - Kelola bisnis Anda dengan mudah!
+            <TrendingUp size={14} className="mr-2 text-yellow-300" />
+            Selamat datang di Panel Admin KasirPlus - Kelola bisnis Anda dengan mudah!
           </div>
         </div>
 
-        {/* Navigation - Area yang bisa di-scroll */}
-        <nav className="flex-1 overflow-y-auto px-2 pb-4">
+        {/* Navigation Menu */}
+        <nav className="flex-1 overflow-y-auto px-2 pb-4 space-y-1">
           {menuItems.map((item) => (
-            <div key={item.name} className="mb-2">
+            <div key={item.name} className="mb-1">
               {item.submenu ? (
                 <div>
                   <button
                     onClick={(e) => toggleDropdown(item.name, e)}
-                    className={`w-full flex justify-between items-center py-3 px-4 rounded-lg transition-all duration-200 hover:bg-orange-700/60 hover:shadow-md ${isMenuActive(item) ? 'bg-orange-700/60 shadow-md' : ''}`}
+                    className={`w-full flex justify-between items-center py-3 px-4 rounded-lg transition-all duration-200 hover:bg-orange-700/60 hover:shadow-md hover:scale-[1.02] group ${
+                      isMenuActive(item) ? 'bg-orange-700/60 shadow-md border border-orange-400/30' : ''
+                    }`}
                   >
                     <div className="flex items-center">
-                      <span className="mr-3 text-lg">{item.icon}</span>
-                      <span className="font-medium">{item.name}</span>
+                      <div className={`mr-3 transition-colors duration-200 group-hover:text-yellow-300 ${
+                        isMenuActive(item) ? 'text-yellow-300' : 'text-orange-100'
+                      }`}>
+                        {item.icon}
+                      </div>
+                      <span className="font-medium text-orange-50 group-hover:text-white">
+                        {item.name}
+                      </span>
                     </div>
-                    <div className="flex items-center">
-                      <svg 
-                        className={`w-4 h-4 transition-transform duration-300 ${activeDropdown === item.name ? 'rotate-180' : ''}`} 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24" 
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path>
-                      </svg>
+                    <div className={`transition-colors duration-200 group-hover:text-yellow-300 ${
+                      isMenuActive(item) ? 'text-yellow-300' : 'text-orange-200'
+                    }`}>
+                      <DropdownArrow isOpen={activeDropdown === item.name} />
                     </div>
                   </button>
+                  
                   <div 
-                    className={`overflow-hidden transition-all duration-300 ease-in-out ${activeDropdown === item.name ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      activeDropdown === item.name ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                    }`}
                     style={{ transitionProperty: 'max-height, opacity' }}
-                    onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="pl-10 py-2 space-y-1">
+                    <div className="pl-4 py-2 space-y-1">
                       {item.submenu.map((subItem) => (
                         <Link
                           key={subItem.name}
                           to={subItem.path}
-                          className={`block py-2 px-4 rounded-lg transition-all duration-200 hover:bg-orange-700/40 hover:shadow-md ${location.pathname === subItem.path ? 'bg-orange-700/40 shadow-md' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          className={`flex items-center py-2.5 px-4 rounded-lg transition-all duration-200 hover:bg-orange-700/40 hover:shadow-md hover:translate-x-1 group ${
+                            location.pathname === subItem.path ? 'bg-orange-700/40 border border-orange-400/30' : ''
+                          }`}
+                          onClick={() => {
                             if (window.innerWidth < 768) {
                               onClose();
                             }
                           }}
                         >
-                          <div className="flex items-center">
-                            <div className="w-1.5 h-1.5 rounded-full bg-orange-200 mr-3"></div>
-                            <span className="text-sm">{subItem.name}</span>
+                          <div className={`mr-3 transition-colors duration-200 group-hover:text-yellow-300 ${
+                            location.pathname === subItem.path ? 'text-yellow-300' : 'text-orange-200'
+                          }`}>
+                            {subItem.icon}
                           </div>
+                          <span className={`text-sm font-medium transition-colors duration-200 group-hover:text-white ${
+                            location.pathname === subItem.path ? 'text-yellow-300' : 'text-orange-100'
+                          }`}>
+                            {subItem.name}
+                          </span>
                         </Link>
                       ))}
                     </div>
@@ -257,23 +291,46 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
               ) : (
                 <Link
                   to={item.path!}
-                  className={`flex items-center py-3 px-4 rounded-lg transition-all duration-200 hover:bg-orange-700/60 hover:shadow-md ${location.pathname === item.path ? 'bg-orange-700/60 shadow-md' : ''}`}
+                  className={`flex items-center py-3 px-4 rounded-lg transition-all duration-200 hover:bg-orange-700/60 hover:shadow-md hover:scale-[1.02] group ${
+                    location.pathname === item.path ? 'bg-orange-700/60 shadow-md border border-orange-400/30' : ''
+                  }`}
                   onClick={() => {
                     if (window.innerWidth < 768) {
                       onClose();
                     }
                   }}
                 >
-                  <span className="mr-3 text-lg">{item.icon}</span>
-                  <span className="font-medium">{item.name}</span>
+                  <div className={`mr-3 transition-colors duration-200 group-hover:text-yellow-300 ${
+                    location.pathname === item.path ? 'text-yellow-300' : 'text-orange-100'
+                  }`}>
+                    {item.icon}
+                  </div>
+                  <span className={`font-medium transition-colors duration-200 group-hover:text-white ${
+                    location.pathname === item.path ? 'text-yellow-300' : 'text-orange-50'
+                  }`}>
+                    {item.name}
+                  </span>
                 </Link>
               )}
             </div>
           ))}
-        </nav>       
+        </nav>
+
+        {/* Footer Section */}
+        <div className="p-4 border-t border-orange-500/30 mt-auto">
+          <div className="flex items-center justify-between text-orange-100 text-sm">
+            <div className="flex items-center">
+              <Circle size={8} className="text-green-400 mr-2 fill-current" />
+              <span className="text-orange-50">Online</span>
+            </div>
+            <div className="text-xs text-orange-200">
+              v1.0.0
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Tambahkan style untuk animasi marquee yang smooth */}
+      {/* CSS Styles */}
       <style>{`
         @keyframes marquee-smooth {
           0% {
@@ -298,16 +355,33 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, }) => {
           padding-left: 100%;
         }
 
-        /* Untuk mobile, kurangi durasi animasi */
         @media (max-width: 768px) {
           .animate-marquee-smooth {
             animation-duration: 12s;
           }
         }
 
-        /* Efek hover pause */
         .bg-orange-700\\/30:hover .animate-marquee-smooth {
           animation-play-state: paused;
+        }
+
+        /* Custom scrollbar untuk sidebar */
+        .overflow-y-auto::-webkit-scrollbar {
+          width: 4px;
+        }
+
+        .overflow-y-auto::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+        }
+
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.3);
+          border-radius: 10px;
+        }
+
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.5);
         }
       `}</style>
     </>

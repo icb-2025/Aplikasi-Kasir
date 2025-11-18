@@ -5,6 +5,7 @@ import BahanBakuTable from './components/BahanBakuTable';
 import TambahBahanBakuForm from './components/TambahBahanBakuForm';
 import EditProdukForm from './components/EditProdukForm';
 import EditBahanBakuForm from './components/EditBahanBakuForm';
+import { Plus } from 'lucide-react'; // Hanya Plus yang digunakan di sini
 import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
@@ -277,8 +278,9 @@ const ModalBahanBaku: React.FC = () => {
         <h1 className="text-2xl font-bold">Modal Bahan Baku</h1>
         <button 
           onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition"
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition flex items-center"
         >
+          <Plus className="h-5 w-5 mr-2" />
           {showAddForm ? 'Batal' : 'Tambah Bahan Baku'}
         </button>
       </div>

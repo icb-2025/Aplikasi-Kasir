@@ -29,7 +29,6 @@ interface PaymentDetailTableProps {
 const PaymentDetailTable: React.FC<PaymentDetailTableProps> = ({ 
   data, 
   colors, 
-  total, 
   formatRupiah, 
   getPaymentIcon 
 }) => {
@@ -48,9 +47,6 @@ const PaymentDetailTable: React.FC<PaymentDetailTableProps> = ({
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Persentase
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Progress
               </th>
             </tr>
           </thead>
@@ -75,35 +71,8 @@ const PaymentDetailTable: React.FC<PaymentDetailTableProps> = ({
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {item.percentage.toFixed(1)}%
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="h-2 rounded-full" 
-                      style={{ 
-                        width: `${item.percentage}%`,
-                        backgroundColor: colors[index % colors.length]
-                      }}
-                    ></div>
-                  </div>
-                </td>
               </tr>
             ))}
-            <tr className="bg-gray-50 font-semibold">
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                Total
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {formatRupiah(total)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                100%
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="h-2 rounded-full bg-gray-500" style={{ width: '100%' }}></div>
-                </div>
-              </td>
-            </tr>
           </tbody>
         </table>
       </div>

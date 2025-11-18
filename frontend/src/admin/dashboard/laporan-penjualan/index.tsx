@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, type PieLabel } from 'recharts';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { exportPdf, exportExcel } from './utils';
-import { Landmark, Wallet, TrendingUp, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Landmark, Wallet, TrendingUp, CreditCard, ChevronLeft, ChevronRight, Package, DollarSign, ShoppingCart, TrendingDown } from 'lucide-react';
 import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
@@ -58,7 +58,6 @@ interface ProdukTerlaris {
   labaPerItem: number;
   jumlahTerjual: number;
   totalLaba: number;
-  gambar_url?: string;
 }
 
 export interface BiayaOperasionalItem {
@@ -75,13 +74,14 @@ export interface BiayaOperasionalData {
   __v?: number;
 }
 
-interface BiayaOperasional {
+// PERBAIKAN: Tambahkan interface BiayaOperasional untuk export
+interface BiayaOperasionalExport {
   _id: string;
-  listrik: number;
-  air: number;
-  internet: number;
-  sewa_tempat: number;
-  gaji_karyawan: number;
+  rincian_biaya: Array<{
+    nama: string;
+    jumlah: number;
+    _id: string;
+  }>;
   total: number;
   createdAt: string;
   __v: number;
@@ -293,29 +293,18 @@ const LaporanPenjualan: React.FC = () => {
   const handleExport = useCallback((type: 'pdf' | 'excel') => {
     if (!data) return;
     
-    const biayaOperasionalExport: BiayaOperasional = {
-      _id: biayaOperasional._id || '',
-      listrik: 0,
-      air: 0,
-      internet: 0,
-      sewa_tempat: 0,
-      gaji_karyawan: 0,
+    // PERBAIKAN: Buat objek biayaOperasional dengan struktur yang benar untuk export
+    const biayaOperasionalExport: BiayaOperasionalExport = {
+      _id: biayaOperasional._id || new Date().toISOString(), // Pastikan _id selalu string
+      rincian_biaya: biayaOperasional.rincian_biaya.map(item => ({
+        nama: item.nama,
+        jumlah: item.jumlah,
+        _id: item._id || new Date().toISOString() // Pastikan _id selalu string
+      })),
       total: biayaOperasional.total || 0,
       createdAt: biayaOperasional.createdAt || new Date().toISOString(),
       __v: biayaOperasional.__v || 0
     };
-    
-    biayaOperasional.rincian_biaya?.forEach(item => {
-      switch (item.nama.toLowerCase()) {
-        case 'listrik': biayaOperasionalExport.listrik = item.jumlah || 0; break;
-        case 'air': biayaOperasionalExport.air = item.jumlah || 0; break;
-        case 'internet': biayaOperasionalExport.internet = item.jumlah || 0; break;
-        case 'sewa tempat':
-        case 'sewa': biayaOperasionalExport.sewa_tempat = item.jumlah || 0; break;
-        case 'gaji karyawan':
-        case 'gaji': biayaOperasionalExport.gaji_karyawan = item.jumlah || 0; break;
-      }
-    });
     
     const metodePembayaran: MetodePembayaran[] = pieData.map(item => ({
       metode: item.name,
@@ -346,7 +335,8 @@ const LaporanPenjualan: React.FC = () => {
       total_hpp: totalHpp,
       total_beban: totalBebanPerbulan,
       total_beban_perhari: totalBebanPerhari,
-      biaya_operasional: biayaOperasionalExport
+      biaya_operasional: biayaOperasionalExport,
+      pengeluaran: totalHpp + totalBebanPerbulan
     };
     
     if (type === 'pdf') {
@@ -435,21 +425,21 @@ const LaporanPenjualan: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex justify-between items-center">
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Laporan Penjualan</h1>
-          <p className="text-gray-600">Periode: {selectedBulanName}</p>
+          <h1 className="text-3xl font-bold text-gray-800">Laporan Penjualan</h1>
+          <p className="text-gray-600 mt-1">Periode: {selectedBulanName}</p>
         </div>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center">
-            <label htmlFor="bulan" className="block text-sm font-medium text-black-700 mr-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
+          <div className="flex items-center w-full sm:w-auto">
+            <label htmlFor="bulan" className="block text-sm font-medium text-gray-700 mr-3 whitespace-nowrap">
               Pilih Bulan:
             </label>
             <select
               id="bulan"
               name="bulan"
-              className="block w-full md:w-48 pl-3 pr-10 py-2 text-base border-black-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+              className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm"
               value={selectedBulan}
               onChange={handleBulanChange}
             >
@@ -461,10 +451,10 @@ const LaporanPenjualan: React.FC = () => {
             </select>
           </div>
           
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 w-full sm:w-auto">
             <button 
               onClick={() => handleExport('pdf')}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+              className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-md hover:from-red-600 hover:to-red-700 transition-all shadow-md flex items-center justify-center w-full sm:w-auto"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
@@ -473,7 +463,7 @@ const LaporanPenjualan: React.FC = () => {
             </button>
             <button 
               onClick={() => handleExport('excel')}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center"
+              className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-md hover:from-green-600 hover:to-green-700 transition-all shadow-md flex items-center justify-center w-full sm:w-auto"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -489,77 +479,157 @@ const LaporanPenjualan: React.FC = () => {
           <LoadingSpinner />
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-md shadow">
           <div className="flex">
-            <div className="text-red-700">
-              <p className="font-medium">Error</p>
-              <p className="text-sm">Gagal memuat data: {error}</p>
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>Gagal memuat data: {error}</p>
+              </div>
             </div>
           </div>
         </div>
       ) : !data ? (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-md shadow">
           <div className="flex">
-            <div className="text-yellow-700">
-              <p className="font-medium">Data Tidak Tersedia</p>
-              <p className="text-sm">Tidak ada data laporan penjualan yang dapat ditampilkan.</p>
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-yellow-800">Data Tidak Tersedia</h3>
+              <div className="mt-2 text-sm text-yellow-700">
+                <p>Tidak ada data laporan penjualan yang dapat ditampilkan.</p>
+              </div>
             </div>
           </div>
         </div>
       ) : (
         <>
           {/* Statistik Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Total Laba Kotor</h3>
-              <p className={`text-2xl font-bold ${totalLabaKotor >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatRupiah(totalLabaKotor)}
-              </p>
-              <p className="text-xs text-gray-500">periode terpilih</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-md p-6 border border-blue-100 hover:shadow-lg transition-all">
+              <div className="flex items-center">
+                <div className="rounded-full bg-blue-100 p-3 mr-4">
+                  <TrendingUp className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-blue-800">Total Laba Kotor</h3>
+                  <p className={`text-2xl font-bold ${totalLabaKotor >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                    {formatRupiah(totalLabaKotor)}
+                  </p>
+                  <p className="text-xs text-blue-600">periode terpilih</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Total Pendapatan</h3>
-              <p className="text-2xl font-bold text-blue-600">{formatRupiah(totalPendapatan)}</p>
-              <p className="text-xs text-gray-500">periode terpilih</p>
+            
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-6 border border-green-100 hover:shadow-lg transition-all">
+              <div className="flex items-center">
+                <div className="rounded-full bg-green-100 p-3 mr-4">
+                  <DollarSign className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-green-800">Total Pendapatan</h3>
+                  <p className="text-2xl font-bold text-green-700">{formatRupiah(totalPendapatan)}</p>
+                  <p className="text-xs text-green-600">periode terpilih</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Total Barang Terjual (Hari Ini)</h3>
-              <p className="text-2xl font-bold text-orange-600">{totalBarangTerjualHariIni}</p>
-              <p className="text-xs text-gray-500">hari ini</p>
+            
+            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl shadow-md p-6 border border-amber-100 hover:shadow-lg transition-all">
+              <div className="flex items-center">
+                <div className="rounded-full bg-amber-100 p-3 mr-4">
+                  <ShoppingCart className="h-6 w-6 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-amber-800">Total Barang Terjual</h3>
+                  <p className="text-2xl font-bold text-amber-700">{totalBarangTerjualHariIni}</p>
+                  <p className="text-xs text-amber-600">hari ini</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Laba Bersih</h3>
-              <p className={`text-2xl font-bold ${labaBersih >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatRupiah(labaBersih)}
-              </p>
-              <p className="text-xs text-gray-500">periode terpilih</p>
+            
+            {/* PERBAIKAN: Memperbesar kotak Laba Bersih dan menyesuaikan tampilan teks */}
+            <div className={`bg-gradient-to-br ${labaBersih >= 0 ? 'from-purple-50 to-purple-100' : 'from-red-50 to-red-100'} rounded-xl shadow-md p-6 border ${labaBersih >= 0 ? 'border-purple-100' : 'border-red-100'} hover:shadow-lg transition-all min-h-[120px]`}>
+              <div className="flex flex-col h-full">
+                <div className="flex items-center mb-2">
+                  <div className={`rounded-full ${labaBersih >= 0 ? 'bg-purple-100' : 'bg-red-100'} p-3 mr-4`}>
+                    {labaBersih >= 0 ? (
+                      <TrendingUp className="h-6 w-6 text-purple-600" />
+                    ) : (
+                      <TrendingDown className="h-6 w-6 text-red-600" />
+                    )}
+                  </div>
+                  <h3 className={`text-sm font-medium ${labaBersih >= 0 ? 'text-purple-800' : 'text-red-800'}`}>Laba Bersih</h3>
+                </div>
+                <div className="flex-1 flex items-center">
+                  <p className={`text-xl font-bold ${labaBersih >= 0 ? 'text-purple-700' : 'text-red-600'} break-words leading-tight`}>
+                    {formatRupiah(labaBersih)}
+                  </p>
+                </div>
+                <p className={`text-xs ${labaBersih >= 0 ? 'text-purple-600' : 'text-red-600'} mt-1`}>periode terpilih</p>
+              </div>
             </div>
           </div>
 
           {/* Baris kedua untuk statistik tambahan */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Total HPP</h3>
-              <p className="text-2xl font-bold text-purple-600">{formatRupiah(totalHpp)}</p>
-              <p className="text-xs text-gray-500">periode terpilih</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl shadow-md p-6 border border-indigo-100 hover:shadow-lg transition-all">
+              <div className="flex items-center">
+                <div className="rounded-full bg-indigo-100 p-3 mr-4">
+                  <Package className="h-6 w-6 text-indigo-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-indigo-800">Total HPP</h3>
+                  <p className="text-2xl font-bold text-indigo-700">{formatRupiah(totalHpp)}</p>
+                  <p className="text-xs text-indigo-600">periode terpilih</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Total Beban (Hari Ini)</h3>
-              <p className="text-2xl font-bold text-red-600">{formatRupiah(totalBebanPerhari)}</p>
-              <p className="text-xs text-gray-500">hari ini</p>
+            
+            <div className="bg-gradient-to-br from-rose-50 to-rose-100 rounded-xl shadow-md p-6 border border-rose-100 hover:shadow-lg transition-all">
+              <div className="flex items-center">
+                <div className="rounded-full bg-rose-100 p-3 mr-4">
+                  <TrendingDown className="h-6 w-6 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-rose-800">Total Beban (Hari Ini)</h3>
+                  <p className="text-2xl font-bold text-rose-700">{formatRupiah(totalBebanPerhari)}</p>
+                  <p className="text-xs text-rose-600">hari ini</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Total Beban (Perbulan)</h3>
-              <p className="text-2xl font-bold text-red-600">{formatRupiah(totalBebanPerbulan)}</p>
-              <p className="text-xs text-gray-500">jumlah semua hari</p>
+            
+            <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl shadow-md p-6 border border-red-100 hover:shadow-lg transition-all">
+              <div className="flex items-center">
+                <div className="rounded-full bg-red-100 p-3 mr-4">
+                  <TrendingDown className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-red-800">Total Beban (Perbulan)</h3>
+                  <p className="text-2xl font-bold text-red-700">{formatRupiah(totalBebanPerbulan)}</p>
+                  <p className="text-xs text-red-600">jumlah semua hari</p>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Detail Biaya Operasional */}
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-800">Detail Biaya Operasional (Per Bulan)</h2>
-              <p className="text-sm text-gray-600">Rincian biaya operasional periode ini</p>
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8 border border-gray-200">
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+                Detail Biaya Operasional (Per Bulan)
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">Rincian biaya operasional periode ini</p>
             </div>
             <div className="overflow-x-auto">
               {loadingBiayaOperasional ? (
@@ -568,7 +638,10 @@ const LaporanPenjualan: React.FC = () => {
                 </div>
               ) : biayaOperasional.rincian_biaya.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500">Tidak ada data biaya operasional</p>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-gray-500 mt-2">Tidak ada data biaya operasional</p>
                 </div>
               ) : (
                 <table className="min-w-full divide-y divide-gray-200">
@@ -587,7 +660,7 @@ const LaporanPenjualan: React.FC = () => {
                       <tr 
                         key={item._id || index} 
                         className={`transition-colors hover:bg-gray-50 ${
-                          index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                         }`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -613,10 +686,15 @@ const LaporanPenjualan: React.FC = () => {
           </div>
 
           {/* Tabel Produk Terlaris */}
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-800">Produk Terlaris (Hari Ini)</h2>
-              <p className="text-sm text-gray-600">Berdasarkan total laba hari ini</p>
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8 border border-gray-200">
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+                </svg>
+                Produk Terlaris (Hari Ini)
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">Berdasarkan total laba hari ini</p>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -624,9 +702,6 @@ const LaporanPenjualan: React.FC = () => {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Produk
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Gambar
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Harga Jual
@@ -649,7 +724,12 @@ const LaporanPenjualan: React.FC = () => {
                   {currentItems.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                        Tidak ada data produk untuk hari ini
+                        <div className="flex flex-col items-center justify-center py-4">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p className="mt-2">Tidak ada data produk untuk hari ini</p>
+                        </div>
                       </td>
                     </tr>
                   ) : (
@@ -657,31 +737,12 @@ const LaporanPenjualan: React.FC = () => {
                       <tr 
                         key={index} 
                         className={`transition-colors hover:bg-gray-50 ${
-                          index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                         }`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
                             {item.produk}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex justify-center">
-                            {item.gambar_url ? (
-                              <img 
-                                className="h-10 w-10 rounded-full object-cover" 
-                                src={item.gambar_url} 
-                                alt={item.produk}
-                              />
-                            ) : (
-                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                                <img
-                                  src="../../images/nostokbarang.jpg"
-                                  alt="No Stock"
-                                  className="h-full w-full object-cover"
-                                />
-                              </div>
-                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -779,9 +840,15 @@ const LaporanPenjualan: React.FC = () => {
           </div>
 
           {/* Grafik Metode Pembayaran */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Metode Pembayaran</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                  <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
+                </svg>
+                Metode Pembayaran
+              </h2>
               <div className="space-y-4">
                 {pieData.map((item, index) => {
                   const maxTotal = Math.max(...pieData.map(p => p.value));
@@ -796,9 +863,9 @@ const LaporanPenjualan: React.FC = () => {
                         </div>
                         <span className="text-sm font-medium text-gray-900">{formatRupiah(item.value)}</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
                         <div 
-                          className="h-2 rounded-full bg-blue-600"
+                          className="h-2.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600"
                           style={{ width: `${percentage}%` }}
                         ></div>
                       </div>
@@ -808,8 +875,13 @@ const LaporanPenjualan: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Distribusi Metode Pembayaran</h2>
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                </svg>
+                Distribusi Metode Pembayaran
+              </h2>
               <div className="h-80 w-full">
                 {pieData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">

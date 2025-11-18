@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import SweetAlert from '../../../../components/SweetAlert';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
+import { Pencil, Trash2, Plus } from 'lucide-react';
 import { portbe } from '../../../../../../backend/ngrokbackend';
 
 const ipbe = import.meta.env.VITE_IPBE;
@@ -253,9 +254,7 @@ const BiayaService: React.FC<BiayaServiceProps> = ({ refreshTrigger }) => {
               disabled={saving}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 flex items-center disabled:opacity-50"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-              </svg>
+              <Plus className="h-5 w-5 mr-2" />
               Tambah Biaya Layanan
             </button>
           </div>
@@ -314,17 +313,19 @@ const BiayaService: React.FC<BiayaServiceProps> = ({ refreshTrigger }) => {
                         type="button"
                         onClick={() => openEditModal(item)}
                         disabled={saving}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4 disabled:opacity-50"
+                        className="text-indigo-600 hover:text-indigo-900 mr-4 disabled:opacity-50 p-1 rounded-full hover:bg-indigo-50 transition-colors duration-200"
+                        title="Edit"
                       >
-                        Edit
+                        <Pencil className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteItem(item._id)}
                         disabled={saving}
-                        className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                        className="text-red-600 hover:text-red-900 disabled:opacity-50 p-1 rounded-full hover:bg-red-50 transition-colors duration-200"
+                        title="Hapus"
                       >
-                        Hapus
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </td>
                   </tr>
