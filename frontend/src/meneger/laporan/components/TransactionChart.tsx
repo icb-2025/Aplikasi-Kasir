@@ -13,19 +13,8 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import type { TooltipItem } from 'chart.js';
-import { formatMethodName } from './utils';
-import { 
-  Landmark, 
-  Wallet, 
-  TrendingUp, 
-  CreditCard,
-  Smartphone,
-  Building2,
-  University,
-  QrCode
-} from 'lucide-react';
+import { Package } from 'lucide-react';
 
-// Register ChartJS components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -35,47 +24,36 @@ ChartJS.register(
   Legend
 );
 
-// Define proper type for chart ref
 type ChartJSOrUndefined = ChartJS<'bar', (number | [number, number] | null)[], unknown> | undefined;
 
-interface TransactionChartProps {
-  rekapMetodePembayaran: Array<{
-    metode: string;
-    total: number;
-    _id: string;
-  }>;
-  labaDetail: Array<{
-    laba: number;
-    _id: string;
-  }>;
+interface ProdukItem {
+  nama_produk: string;
+  jumlah_terjual: number;
+  hpp_per_porsi: number;
+  hpp_total: number;
+  pendapatan: number;
+  laba_kotor: number;
+  _id: string;
 }
 
-// Dapatkan icon berdasarkan metode pembayaran
-const getPaymentIcon = (method: string): React.ReactNode => {
-  if (method.includes('Virtual Account')) return <Landmark className="h-5 w-5 text-blue-500" />;
-  if (method.includes('E-Wallet')) return <Wallet className="h-5 w-5 text-green-500" />;
-  if (method.includes('Tunai')) return <TrendingUp className="h-5 w-5 text-yellow-500" />;
-  if (method.includes('Kartu Kredit')) return <CreditCard className="h-5 w-5 text-purple-500" />;
-  if (method.includes('QRIS')) return <QrCode className="h-5 w-5 text-indigo-500" />;
-  if (method.includes('Gerai')) return <Building2 className="h-5 w-5 text-orange-500" />;
-  if (method.includes('Indomaret')) return <Smartphone className="h-5 w-5 text-red-500" />;
-  if (method.includes('Alfamart')) return <University className="h-5 w-5 text-blue-700" />;
-  return <CreditCard className="h-5 w-5 text-gray-500" />;
-};
+interface TransactionChartProps {
+  // accept both `produk` and `produkData` for compatibility with usages
+  produk?: ProdukItem[];
+  produkData?: ProdukItem[];
+}
 
 const TransactionChart: React.FC<TransactionChartProps> = ({
-  rekapMetodePembayaran,
-  labaDetail
+  produk, produkData
 }) => {
   const chartRef = useRef<ChartJSOrUndefined>(undefined);
+  const produkList = produk ?? produkData ?? [];
 
-  // Siapkan data untuk grafik transaksi
   const chartData: ChartData<'bar'> = {
-    labels: rekapMetodePembayaran?.map(item => formatMethodName(item.metode)) || [],
+    labels: produkList.map(item => item.nama_produk),
     datasets: [
       {
-        label: 'Total Penjualan',
-        data: rekapMetodePembayaran?.map(item => item.total) || [],
+        label: 'Pendapatan',
+        data: produkList.map(item => item.pendapatan),
         backgroundColor: 'rgba(54, 162, 235, 0.7)',
         borderColor: 'rgb(54, 162, 235)',
         borderWidth: 2,
@@ -84,8 +62,18 @@ const TransactionChart: React.FC<TransactionChartProps> = ({
         categoryPercentage: 0.7,
       },
       {
-        label: 'Total Laba',
-        data: labaDetail?.map(item => item.laba) || [],
+        label: 'HPP Total',
+        data: produkList.map(item => item.hpp_total),
+        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+        borderColor: 'rgb(255, 99, 132)',
+        borderWidth: 2,
+        borderRadius: 5,
+        barPercentage: 0.6,
+        categoryPercentage: 0.7,
+      },
+      {
+        label: 'Laba Kotor',
+        data: produkList.map(item => item.laba_kotor),
         backgroundColor: 'rgba(75, 192, 192, 0.7)',
         borderColor: 'rgb(75, 192, 192)',
         borderWidth: 2,
@@ -96,7 +84,6 @@ const TransactionChart: React.FC<TransactionChartProps> = ({
     ],
   };
 
-  // Opsi grafik
   const chartOptions: ChartOptions<'bar'> = {
     maintainAspectRatio: false,
     responsive: true,
@@ -114,7 +101,7 @@ const TransactionChart: React.FC<TransactionChartProps> = ({
       },
       title: {
         display: true,
-        text: 'Perbandingan Total Penjualan dan Total Laba per Metode Pembayaran',
+        text: 'Perbandingan Pendapatan, HPP, dan Laba per Produk',
         font: {
           size: 16,
           weight: 'bold'
@@ -141,16 +128,16 @@ const TransactionChart: React.FC<TransactionChartProps> = ({
             return `${label}: Rp ${value.toLocaleString('id-ID')}`;
           },
           afterLabel: function(context: TooltipItem<'bar'>) {
-            if (context.datasetIndex === 1) return undefined;
+            if (context.datasetIndex === 2) return undefined;
             
             const salesValue = context.chart.data.datasets[0].data[context.dataIndex] as number;
-            const profitValue = context.chart.data.datasets[1].data[context.dataIndex] as number;
+            const profitValue = context.chart.data.datasets[2].data[context.dataIndex] as number;
             
             if (salesValue > 0) {
               const percentage = ((profitValue / salesValue) * 100).toFixed(2);
-              return `Persentase Laba: ${percentage}%`;
+              return `Margin Laba: ${percentage}%`;
             }
-            return 'Persentase Laba: 0%';
+            return 'Margin Laba: 0%';
           }
         }
       }
@@ -201,7 +188,7 @@ const TransactionChart: React.FC<TransactionChartProps> = ({
         },
         title: {
           display: true,
-          text: 'Metode Pembayaran',
+          text: 'Produk',
           font: {
             size: 12,
             weight: 600
@@ -227,7 +214,7 @@ const TransactionChart: React.FC<TransactionChartProps> = ({
     if (chartRef.current) {
       const chartInstance = chartRef.current;
       if (chartInstance) {
-        chartInstance.data.datasets.forEach((_, i: number) => { // Mengganti 'dataset' dengan '_'
+        chartInstance.data.datasets.forEach((_, i: number) => {
           if (i === 0) {
             chartInstance.setDatasetVisibility(i, true);
           } else {
@@ -242,7 +229,7 @@ const TransactionChart: React.FC<TransactionChartProps> = ({
   return (
     <div className="bg-white p-6 rounded-xl shadow-md mb-8">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">Grafik Transaksi per Metode Pembayaran</h3>
+        <h3 className="text-lg font-semibold text-gray-800">Grafik Pendapatan, HPP, dan Laba per Produk</h3>
         <div className="flex space-x-2">
           <button 
             className="text-xs px-3 py-1 rounded transition-colors bg-blue-500 text-white"
@@ -254,13 +241,13 @@ const TransactionChart: React.FC<TransactionChartProps> = ({
             className="text-xs px-3 py-1 rounded transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300"
             onClick={() => toggleDataVisibility(false)}
           >
-            Hanya Penjualan
+            Hanya Pendapatan
           </button>
         </div>
       </div>
       
       <div className="h-96 relative">
-        {rekapMetodePembayaran?.length ? (
+        {produkList.length > 0 ? (
           <Bar 
             ref={chartRef}
             data={chartData} 
@@ -268,42 +255,55 @@ const TransactionChart: React.FC<TransactionChartProps> = ({
           />
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
-            Tidak ada data transaksi
+            Tidak ada data produk
           </div>
         )}
       </div>
       
-      {rekapMetodePembayaran?.length && (
+      {produkList.length > 0 && (
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {rekapMetodePembayaran.map((payment, index) => {
-            const sales = payment.total;
-            const profit = labaDetail?.[index]?.laba || 0;
+          {produkList.map((produk) => {
+            const sales = produk.pendapatan;
+            const hpp = produk.hpp_total;
+            const profit = produk.laba_kotor;
             const percentage = sales > 0 ? ((profit / sales) * 100).toFixed(2) : '0';
             const percentageNum = parseFloat(percentage);
             
             return (
-              <div key={payment._id} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div key={produk._id} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <h4 className="font-medium text-gray-800 mb-2 flex items-center">
-                  {getPaymentIcon(payment.metode)}
-                  <span className="ml-2">{formatMethodName(payment.metode)}</span>
+                  <Package className="h-5 w-5 text-blue-500 mr-2" />
+                  {produk.nama_produk}
                 </h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <span className="text-gray-600">Penjualan: </span>
+                    <span className="text-gray-600">Terjual: </span>
+                    <span className="font-semibold">{produk.jumlah_terjual}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">HPP/Porsi: </span>
+                    <span className="font-semibold">Rp {produk.hpp_per_porsi.toLocaleString('id-ID')}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Pendapatan: </span>
                     <span className="font-semibold">Rp {sales.toLocaleString('id-ID')}</span>
                   </div>
                   <div>
-                    <span className="text-gray-600">Laba: </span>
+                    <span className="text-gray-600">HPP Total: </span>
+                    <span className="font-semibold">Rp {hpp.toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-600">Laba Kotor: </span>
                     <span className="font-semibold">Rp {profit.toLocaleString('id-ID')}</span>
                   </div>
                   <div className="col-span-2">
                     <span className="text-gray-600">Margin: </span>
-                    <span className={`font-semibold ${percentageNum >= 20 ? 'text-green-600' : percentageNum >= 10 ? 'text-yellow-600' : 'text-red-600'}`}>
+                    <span className={`font-semibold ${percentageNum >= 30 ? 'text-green-600' : percentageNum >= 15 ? 'text-yellow-600' : 'text-red-600'}`}>
                       {percentage}%
                     </span>
                     <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
                       <div 
-                        className={`h-2 rounded-full ${percentageNum >= 20 ? 'bg-green-500' : percentageNum >= 10 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                        className={`h-2 rounded-full ${percentageNum >= 30 ? 'bg-green-500' : percentageNum >= 15 ? 'bg-yellow-500' : 'bg-red-500'}`}
                         style={{ width: `${Math.min(percentageNum, 100)}%` }}
                       ></div>
                     </div>

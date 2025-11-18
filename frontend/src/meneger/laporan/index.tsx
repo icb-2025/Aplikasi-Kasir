@@ -5,52 +5,39 @@ import LoadingSpinner from "../../components/LoadingSpinner";
 import SummaryCards from './components/SummaryCards';
 import TransactionChart from './components/TransactionChart';
 import TransactionTable from './components/TransactionTable';
-import { formatMethodName } from './components/utils';
-import { portbe } from '../../../../backend/ngrokbackend';
-const ipbe = import.meta.env.VITE_IPBE;
 
-
-// Define types for our data
-interface HarianItem {
+interface ProdukItem {
+  nama_produk: string;
+  jumlah_terjual: number;
+  hpp_per_porsi: number;
+  hpp_total: number;
+  pendapatan: number;
+  laba_kotor: number;
   _id: string;
-  tanggal?: string;
-  total_penjualan?: number;
-  jumlah_transaksi?: number;
 }
 
 interface LaporanData {
   _id: string;
-  laporan_penjualan: {
-    harian: HarianItem[];
-    mingguan: unknown[];
-    bulanan: unknown[];
-  };
-  periode: {
-    start: string;
-    end: string;
-  };
-  laba: {
-    total_laba: number;
-    detail: Array<{
-      laba: number;
-      _id: string;
-    }>;
-  };
-  rekap_metode_pembayaran: Array<{
-    metode: string;
-    total: number;
-    _id: string;
-  }>;
-  pengeluaran: unknown[];
+  tanggal: string;
+  produk: ProdukItem[];
+  total_hpp: number;
+  total_pendapatan: number;
+  total_laba_kotor: number;
+  total_beban: number;
+  laba_bersih: number;
   createdAt: string;
   updatedAt: string;
   __v: number;
 }
 
-// Filter options
+interface ApiResponse {
+  success: boolean;
+  data: LaporanData[];
+}
+
 interface FilterOptions {
-  metodePembayaran: string;
-  sortBy: 'metode' | 'total' | 'laba' | 'tanggal';
+  produk: string;
+  sortBy: 'nama_produk' | 'jumlah_terjual' | 'hpp_total' | 'pendapatan' | 'laba_kotor';
   sortOrder: 'asc' | 'desc';
 }
 
@@ -59,23 +46,23 @@ const LaporanPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
-    metodePembayaran: 'semua',
-    sortBy: 'metode',
+    produk: 'semua',
+    sortBy: 'nama_produk',
     sortOrder: 'asc'
   });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`${ipbe}:${portbe}/api/manager/laporan`);
+        const response = await fetch('http://192.168.110.16:5000/api/admin/hpp-total');
         if (!response.ok) {
           throw new Error("Failed to fetch data");
         }
-        const result = await response.json();
-        if (Array.isArray(result) && result.length > 0) {
-          setData(result[0]);
+        const result: ApiResponse = await response.json();
+        if (result.success && result.data && result.data.length > 0) {
+          setData(result.data[0]);
         } else {
-          throw new Error("Data format is incorrect");
+          throw new Error("Data format is incorrect or empty");
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
@@ -87,37 +74,39 @@ const LaporanPage = () => {
     fetchData();
   }, []);
 
-  // Get unique payment methods for filter
-  const paymentMethods = data?.rekap_metode_pembayaran?.map(item => item.metode) || [];
-  const uniquePaymentMethods = ['semua', ...new Set(paymentMethods)];
+  const products = data?.produk?.map(item => item.nama_produk) || [];
+  const uniqueProducts = ['semua', ...new Set(products)];
 
-  // Data untuk tabel dengan filter dan sorting
-  const tableData = (data?.rekap_metode_pembayaran?.map((payment, index) => {
-    const correspondingProfit = data?.laba?.detail?.[index];
+  const tableData = (data?.produk?.map((produk) => {
     return {
-      id: payment._id,
-      metode: payment.metode,
-      total: payment.total,
-      laba: correspondingProfit?.laba || 0,
-      tanggal: data?.createdAt ? new Date(data.createdAt).toLocaleDateString('id-ID') : 'Tanggal tidak tersedia'
+      id: produk._id,
+      nama_produk: produk.nama_produk,
+      jumlah_terjual: produk.jumlah_terjual,
+      hpp_per_porsi: produk.hpp_per_porsi,
+      hpp_total: produk.hpp_total,
+      pendapatan: produk.pendapatan,
+      laba_kotor: produk.laba_kotor,
+      tanggal: data?.tanggal || 'Tanggal tidak tersedia'
     };
   }) || [])
   .filter(item => 
-    filterOptions.metodePembayaran === 'semua' || 
-    item.metode === filterOptions.metodePembayaran
+    filterOptions.produk === 'semua' || 
+    item.nama_produk === filterOptions.produk
   )
   .sort((a, b) => {
     const modifier = filterOptions.sortOrder === 'asc' ? 1 : -1;
     
     switch (filterOptions.sortBy) {
-      case 'metode':
-        return a.metode.localeCompare(b.metode) * modifier;
-      case 'total':
-        return (a.total - b.total) * modifier;
-      case 'laba':
-        return (a.laba - b.laba) * modifier;
-      case 'tanggal':
-        return modifier; // Since all dates are the same in this data structure
+      case 'nama_produk':
+        return a.nama_produk.localeCompare(b.nama_produk) * modifier;
+      case 'jumlah_terjual':
+        return (a.jumlah_terjual - b.jumlah_terjual) * modifier;
+      case 'hpp_total':
+        return (a.hpp_total - b.hpp_total) * modifier;
+      case 'pendapatan':
+        return (a.pendapatan - b.pendapatan) * modifier;
+      case 'laba_kotor':
+        return (a.laba_kotor - b.laba_kotor) * modifier;
       default:
         return 0;
     }
@@ -160,37 +149,34 @@ const LaporanPage = () => {
   return (
     <MenegerLayout>
       <div className="p-4">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">Laporan Penjualan</h1>
+        <h1 className="text-2xl font-bold mb-6 text-gray-800">Laporan HPP dan Laba</h1>
         
-        {/* Summary Cards */}
         <SummaryCards 
-          totalLaba={data?.laba?.total_laba || 0}
-          totalTransaksi={data?.rekap_metode_pembayaran?.reduce((acc, item) => acc + (item.total > 0 ? 1 : 0), 0) || 0}
-          periodeStart={data?.periode?.start}
-          periodeEnd={data?.periode?.end}
+          totalLaba={data?.laba_bersih || 0}
+          totalPendapatan={data?.total_pendapatan || 0}
+          totalBeban={data?.total_beban || 0}
+          totalLabaKotor={data?.total_laba_kotor || 0} // Tambahkan props ini
+          periode={data?.tanggal || ''}
         />
 
-        {/* Chart Section */}
         <TransactionChart 
-          rekapMetodePembayaran={data?.rekap_metode_pembayaran || []}
-          labaDetail={data?.laba?.detail || []}
+          produk={data?.produk || []}
         />
 
-        {/* Filter Section */}
         <div className="bg-white p-6 rounded-xl shadow-md mb-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Filter Data</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Metode Pembayaran</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Produk</label>
               <select
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                value={filterOptions.metodePembayaran}
-                onChange={(e) => handleFilterChange('metodePembayaran', e.target.value)}
+                value={filterOptions.produk}
+                onChange={(e) => handleFilterChange('produk', e.target.value)}
               >
-                <option value="semua">Semua Metode</option>
-                {uniquePaymentMethods.filter(m => m !== 'semua').map((method) => (
-                  <option key={method} value={method}>
-                    {formatMethodName(method)}
+                <option value="semua">Semua Produk</option>
+                {uniqueProducts.filter(p => p !== 'semua').map((product) => (
+                  <option key={product} value={product}>
+                    {product}
                   </option>
                 ))}
               </select>
@@ -202,10 +188,11 @@ const LaporanPage = () => {
                 value={filterOptions.sortBy}
                 onChange={(e) => handleFilterChange('sortBy', e.target.value as FilterOptions['sortBy'])}
               >
-                <option value="metode">Metode Pembayaran</option>
-                <option value="total">Total Penjualan</option>
-                <option value="laba">Laba</option>
-                <option value="tanggal">Tanggal</option>
+                <option value="nama_produk">Nama Produk</option>
+                <option value="jumlah_terjual">Jumlah Terjual</option>
+                <option value="hpp_total">HPP Total</option>
+                <option value="pendapatan">Pendapatan</option>
+                <option value="laba_kotor">Laba Kotor</option>
               </select>
             </div>
             <div>
@@ -222,7 +209,6 @@ const LaporanPage = () => {
           </div>
         </div>
 
-        {/* Table Section */}
         <TransactionTable tableData={tableData} />
       </div>
     </MenegerLayout>

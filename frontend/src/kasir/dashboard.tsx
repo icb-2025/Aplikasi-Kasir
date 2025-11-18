@@ -3,6 +3,8 @@ import MainLayout from "./layout";
 import { useState, useEffect, useRef, useCallback } from "react";
 import io, { Socket } from 'socket.io-client';
 import { portbe } from '../../../backend/ngrokbackend';
+import LoadingSpinner from "../components/LoadingSpinner";
+import { Search, Package, DollarSign, AlertTriangle, CheckCircle, XCircle, TrendingUp, TrendingDown, Minus, FileText, FolderOpen, Box, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const ipbe = import.meta.env.VITE_IPBE;
 const API_BASE_URL = `${ipbe}:${portbe}`;
@@ -28,6 +30,15 @@ interface SocketBarangData {
   status?: string;
   useDiscount?: boolean;
   use_discount?: boolean;
+  margin?: number;
+  bahan_baku?: Array<{
+    nama_produk: string;
+    bahan: Array<{
+      nama: string;
+      harga: number;
+      jumlah: number;
+    }>;
+  }>;
 }
 
 interface StockUpdateData {
@@ -40,7 +51,11 @@ interface DeletedBarangData {
   nama?: string;
 }
 
-// Komponen StokCard (dipindahkan dari bawah)
+interface SettingsUpdate {
+  lowStockAlert?: number;
+}
+
+// Komponen StokCard
 interface StokCardProps {
   item: Barang;
   onSelect: (item: Barang) => void;
@@ -49,64 +64,86 @@ interface StokCardProps {
 const StokCard = ({ item, onSelect }: StokCardProps) => {
   const getStockStatus = (stok: number, stokMinimal: number = 5) => {
     if (stok === 0)
-      return { text: "Stok Habis", color: "bg-red-100 text-red-800" };
+      return { 
+        text: "Stok Habis", 
+        color: "bg-red-100 text-red-800",
+        icon: <XCircle className="h-4 w-4" />
+      };
     if (stok <= stokMinimal)
-      return { text: "Stok Terbatas", color: "bg-yellow-100 text-yellow-800" };
-    return { text: "Stok Tersedia", color: "bg-green-100 text-green-800" };
+      return { 
+        text: "Stok Terbatas", 
+        color: "bg-yellow-100 text-yellow-800",
+        icon: <AlertTriangle className="h-4 w-4" />
+      };
+    return { 
+      text: "Stok Tersedia", 
+      color: "bg-green-100 text-green-800",
+      icon: <CheckCircle className="h-4 w-4" />
+    };
   };
 
   const stockStatus = getStockStatus(item.stok, item.stokMinimal);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-all flex flex-col">
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-all flex flex-col group">
       {/* Gambar Barang */}
-      <div className="h-48 overflow-hidden bg-gray-100">
+      <div className="h-48 overflow-hidden bg-gray-100 relative">
         {item.gambarUrl ? (
           <img
             src={item.gambarUrl}
             alt={item.nama}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
               e.currentTarget.src = "https://via.placeholder.com/300x200?text=No+Image";
             }}
           />
         ) : (
-          <img
-            src="https://via.placeholder.com/300x200?text=No+Image"
-            alt="Gambar tidak tersedia"
-            className="w-full h-full object-contain p-4"
-          />
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+            <Package className="h-16 w-16 text-gray-400" />
+          </div>
         )}
+        
+        {/* Status Badge Overlay */}
+        <div className="absolute top-3 right-3">
+          <span
+            className={`px-2 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${stockStatus.color}`}
+          >
+            {stockStatus.icon}
+            {stockStatus.text}
+          </span>
+        </div>
       </div>
       
       <div className="p-5 flex-1">
         <div className="flex justify-between items-start mb-3">
-          <span
-            className={`px-2 py-1 text-xs font-medium rounded-full ${stockStatus.color}`}
-          >
-            {stockStatus.text}
-          </span>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2">
+            {item.nama}
+          </h3>
           {item.kode && (
-            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded whitespace-nowrap">
               #{item.kode}
             </span>
           )}
         </div>
-
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">
-          {item.nama}
-        </h3>
-        <p className="text-sm text-gray-500 mb-3 capitalize">
-          Kategori: {item.kategori}
+        
+        <p className="text-sm text-gray-500 mb-3 capitalize flex items-center gap-1">
+          <FolderOpen className="h-3 w-3" />
+          {item.kategori}
         </p>
 
         <div className="flex justify-between items-center mb-3">
-          <div>
-            <p className="text-xs text-gray-500">Stok Tersedia</p>
-            <p className="text-lg font-bold">{item.stok} unit</p>
+          <div className="flex items-center gap-2">
+            <Box className="h-4 w-4 text-blue-500" />
+            <div>
+              <p className="text-xs text-gray-500">Stok</p>
+              <p className="text-lg font-bold">{item.stok} unit</p>
+            </div>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-500">Harga Final</p>
+            <p className="text-xs text-gray-500 flex items-center justify-end gap-1">
+              <DollarSign className="h-3 w-3" />
+              Harga
+            </p>
             <p className="text-lg font-bold text-blue-600">
               Rp {item.hargaFinal?.toLocaleString("id-ID")}
             </p>
@@ -116,7 +153,7 @@ const StokCard = ({ item, onSelect }: StokCardProps) => {
         {item.stok > 0 && (
           <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
             <div
-              className={`h-2 rounded-full ${
+              className={`h-2 rounded-full transition-all duration-500 ${
                 item.stok <= (item.stokMinimal || 5) ? "bg-yellow-500" : "bg-green-500"
               }`}
               style={{
@@ -130,22 +167,9 @@ const StokCard = ({ item, onSelect }: StokCardProps) => {
       <div className="px-5 pb-5">
         <button
           onClick={() => onSelect(item)}
-          className="w-full px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 flex items-center justify-center gap-2"
+          className="w-full px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 flex items-center justify-center gap-2 transition-colors group-hover:bg-blue-50 group-hover:text-blue-700"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
+          <FileText className="h-4 w-4" />
           Lihat Detail
         </button>
       </div>
@@ -153,7 +177,7 @@ const StokCard = ({ item, onSelect }: StokCardProps) => {
   );
 };
 
-// Komponen DetailModal (dipindahkan dari bawah)
+// Komponen DetailModal
 interface DetailModalProps {
   item: Barang | null;
   onClose: () => void;
@@ -164,10 +188,22 @@ const DetailModal = ({ item, onClose }: DetailModalProps) => {
 
   const getStockStatus = (stok: number, stokMinimal: number = 5) => {
     if (stok === 0)
-      return { text: "Stok Habis", color: "bg-red-100 text-red-800", emoji: "❌" };
+      return { 
+        text: "Stok Habis", 
+        color: "bg-red-100 text-red-800", 
+        icon: <XCircle className="h-5 w-5" />
+      };
     if (stok <= stokMinimal)
-      return { text: "Stok Terbatas", color: "bg-yellow-100 text-yellow-800", emoji: "⚠️" };
-    return { text: "Stok Tersedia", color: "bg-green-100 text-green-800", emoji: "✅" };
+      return { 
+        text: "Stok Terbatas", 
+        color: "bg-yellow-100 text-yellow-800", 
+        icon: <AlertTriangle className="h-5 w-5" />
+      };
+    return { 
+      text: "Stok Tersedia", 
+      color: "bg-green-100 text-green-800", 
+      icon: <CheckCircle className="h-5 w-5" />
+    };
   };
 
   const stockStatus = getStockStatus(item.stok, item.stokMinimal);
@@ -190,9 +226,21 @@ const DetailModal = ({ item, onClose }: DetailModalProps) => {
     const profit = hargaJual - hargaBeli;
     const profitPercentage = (profit / hargaBeli) * 100;
     
-    if (profitPercentage < 10) return { text: "Rendah", color: "text-red-600", emoji: "📉" };
-    if (profitPercentage < 30) return { text: "Sedang", color: "text-yellow-600", emoji: "📊" };
-    return { text: "Tinggi", color: "text-green-600", emoji: "📈" };
+    if (profitPercentage < 10) return { 
+      text: "Rendah", 
+      color: "text-red-600", 
+      icon: <TrendingDown className="h-4 w-4" />
+    };
+    if (profitPercentage < 30) return { 
+      text: "Sedang", 
+      color: "text-yellow-600", 
+      icon: <Minus className="h-4 w-4" />
+    };
+    return { 
+      text: "Tinggi", 
+      color: "text-green-600", 
+      icon: <TrendingUp className="h-4 w-4" />
+    };
   };
 
   const profitStatus = getProfitStatus(item.hargaBeli, item.hargaJual);
@@ -204,7 +252,7 @@ const DetailModal = ({ item, onClose }: DetailModalProps) => {
         <div className="p-4 md:p-6 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50 flex-shrink-0">
           <div className="flex items-center">
             <div className={`p-2 rounded-lg mr-3 ${stockStatus.color} text-2xl`}>
-              {stockStatus.emoji}
+              {stockStatus.icon}
             </div>
             <div>
               <h3 className="text-xl font-bold text-gray-800">Detail Barang</h3>
@@ -228,18 +276,16 @@ const DetailModal = ({ item, onClose }: DetailModalProps) => {
                   }}
                 />
                 <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-2 shadow-lg text-xl">
-                  {stockStatus.emoji}
+                  {stockStatus.icon}
                 </div>
               </div>
             ) : (
               <div className="relative max-w-xs w-full">
-                <img
-                  src="https://via.placeholder.com/600x400?text=No+Image"
-                  alt="Gambar tidak tersedia"
-                  className="w-full h-48 md:h-64 object-contain rounded-lg shadow-lg"
-                />
+                <div className="w-full h-48 md:h-64 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg shadow-lg">
+                  <Package className="h-24 w-24 text-gray-400" />
+                </div>
                 <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-2 shadow-lg text-xl">
-                  {stockStatus.emoji}
+                  {stockStatus.icon}
                 </div>
               </div>
             )}
@@ -257,9 +303,9 @@ const DetailModal = ({ item, onClose }: DetailModalProps) => {
                 )}
               </div>
               <span
-                className={`px-3 py-1 text-sm font-semibold rounded-full ${stockStatus.color} flex items-center`}
+                className={`px-3 py-1 text-sm font-semibold rounded-full ${stockStatus.color} flex items-center gap-1`}
               >
-                <span className="mr-1">{stockStatus.emoji}</span>
+                {stockStatus.icon}
                 {stockStatus.text}
               </span>
             </div>
@@ -268,7 +314,7 @@ const DetailModal = ({ item, onClose }: DetailModalProps) => {
             <div className="mb-6">
               <p className="text-sm text-gray-500 mb-1">Kategori</p>
               <div className="flex items-center">
-                <span className="text-xl mr-2">📁</span>
+                <FolderOpen className="h-5 w-5 mr-2 text-gray-600" />
                 <p className="text-base md:text-lg font-medium capitalize bg-gray-50 px-3 py-1.5 rounded-lg inline-block">
                   {item.kategori}
                 </p>
@@ -278,16 +324,16 @@ const DetailModal = ({ item, onClose }: DetailModalProps) => {
             {/* Informasi Stok */}
             <div className="mb-6 md:mb-8">
               <h5 className="text-base md:text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <span className="text-xl mr-2">📦</span>
+                <Box className="h-5 w-5 mr-2 text-blue-600" />
                 Informasi Stok
               </h5>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                <div className="bg-blue-50 p-4 rounded-xl">
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                   <p className="text-sm text-gray-600 mb-1">Stok Tersedia</p>
                   <p className="text-xl md:text-2xl font-bold text-blue-700">{item.stok} unit</p>
                 </div>
-                <div className="bg-purple-50 p-4 rounded-xl">
+                <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
                   <p className="text-sm text-gray-600 mb-1">Stok Minimal</p>
                   <p className="text-xl md:text-2xl font-bold text-purple-700">{item.stokMinimal || 5} unit</p>
                 </div>
@@ -313,7 +359,7 @@ const DetailModal = ({ item, onClose }: DetailModalProps) => {
             {/* Informasi Harga */}
             <div className="mb-6 md:mb-8">
               <h5 className="text-base md:text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <span className="text-xl mr-2">💰</span>
+                <DollarSign className="h-5 w-5 mr-2 text-green-600" />
                 Informasi Harga
               </h5>
               
@@ -334,11 +380,11 @@ const DetailModal = ({ item, onClose }: DetailModalProps) => {
                   <div>
                     <p className="text-sm text-gray-600">Margin Keuntungan</p>
                     <p className="text-lg md:text-xl font-bold text-yellow-700">
-                      Rp {(item.hargaBeli - item.hargaJual).toLocaleString("id-ID")}
+                      Rp {(item.hargaJual - item.hargaBeli).toLocaleString("id-ID")}
                     </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${profitStatus.color} flex items-center`}>
-                    <span className="mr-1">{profitStatus.emoji}</span>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${profitStatus.color} flex items-center gap-1`}>
+                    {profitStatus.icon}
                     {profitStatus.text}
                   </span>
                 </div>
@@ -350,8 +396,9 @@ const DetailModal = ({ item, onClose }: DetailModalProps) => {
               <p className="text-sm text-gray-600 mb-1">Status</p>
               <div className="flex items-center">
                 <span className="text-xl mr-2">
-                  {item.stok === 0 ? "❌" : 
-                  item.stok <= (item.stokMinimal || 5) ? "⚠️" : "✅"}
+                  {item.stok === 0 ? <XCircle className="h-5 w-5 text-red-500" /> : 
+                  item.stok <= (item.stokMinimal || 5) ? <AlertTriangle className="h-5 w-5 text-yellow-500" /> : 
+                  <CheckCircle className="h-5 w-5 text-green-500" />}
                 </span>
                 <p className="text-gray-800 capitalize">
                   {item.status || (item.stok === 0 
@@ -369,9 +416,9 @@ const DetailModal = ({ item, onClose }: DetailModalProps) => {
         <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors flex items-center"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors flex items-center gap-2"
           >
-            <span className="mr-1">❌</span>
+            <XCircle className="h-4 w-4" />
             Tutup
           </button>
         </div>
@@ -392,10 +439,15 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
   const [selectedItem, setSelectedItem] = useState<Barang | null>(null);
   const [isLoading, setIsLoading] = useState(!initialDataBarang || initialDataBarang.length === 0);
   const [error, setError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState(false);
+  const [lowStockAlert, setLowStockAlert] = useState(5);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12);
   const socketRef = useRef<Socket | null>(null);
 
   // Fungsi untuk normalisasi data
-  const normalizeBarangData = (barang: SocketBarangData): Barang => {
+  const normalizeBarangData = useCallback((barang: SocketBarangData): Barang => {
     return {
       _id: barang._id || '',
       kode: barang.kode || barang.kode_barang || '',
@@ -405,13 +457,46 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
       hargaJual: barang.hargaJual || barang.harga_jual || 0,
       stok: barang.stok || 0,
       stok_awal: barang.stok || 0,
-      stokMinimal: barang.stokMinimal || barang.stok_minimal || 5,
+      stokMinimal: barang.stokMinimal || barang.stok_minimal || lowStockAlert,
       hargaFinal: barang.hargaFinal || 0,
       gambarUrl: barang.gambarUrl || barang.gambar_url || '',
       status: barang.status || 'aman',
-      useDiscount: barang.useDiscount || barang.use_discount || true
+      useDiscount: barang.useDiscount || barang.use_discount || true,
+      margin: barang.margin || 30,
+      bahanBaku: barang.bahan_baku || []
     };
-  };
+  }, [lowStockAlert]);
+
+  // Fetch settings
+  const fetchSettings = useCallback(async () => {
+    try {
+      console.log("Mengambil data settings...");
+      const token = localStorage.getItem('token');
+      const SETTINGS_API_URL = `${API_BASE_URL}/api/admin/settings`;
+      const res = await fetch(SETTINGS_API_URL, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const settingsData = await res.json();
+      
+      console.log("Data settings yang diterima:", settingsData);
+      
+      if (settingsData.lowStockAlert !== undefined) {
+        setLowStockAlert(settingsData.lowStockAlert);
+        console.log("Low stock alert set to:", settingsData.lowStockAlert);
+      }
+      
+      setSettingsLoaded(true);
+    } catch (err) {
+      console.error("Gagal mengambil pengaturan:", err);
+      setLowStockAlert(5);
+      setSettingsLoaded(true);
+    }
+  }, []);
 
   const initializeSocket = useCallback(() => {
     try {
@@ -457,7 +542,7 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
               const newStok = data.stok;
               const status = newStok <= 0 
                 ? "habis" 
-                : newStok <= (item.stokMinimal || 5) 
+                : newStok <= (item.stokMinimal || lowStockAlert) 
                   ? "hampir habis" 
                   : "aman";
               return { 
@@ -482,15 +567,33 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
         setDataBarang(prevList => prevList.filter(item => item._id !== payload.id));
       });
       
+      socketRef.current.on('settings:updated', (updatedSettings: SettingsUpdate) => {
+        console.log('Received settings:updated event:', updatedSettings);
+        
+        if (updatedSettings.lowStockAlert !== undefined) {
+          const newLowStockAlert = updatedSettings.lowStockAlert;
+          setLowStockAlert(newLowStockAlert);
+          console.log("Low stock alert updated to:", newLowStockAlert);
+          
+          setDataBarang(prevData => 
+            prevData.map(item => ({
+              ...item,
+              stokMinimal: newLowStockAlert
+            }))
+          );
+        }
+      });
+      
     } catch (socketError) {
       console.error('Error initializing socket:', socketError);
     }
-  }, []);
+  }, [lowStockAlert, normalizeBarangData]);
 
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
+      setServerError(false);
       
       const token = localStorage.getItem('token');
       console.log('Fetching data from:', `${API_BASE_URL}/api/admin/stok-barang`);
@@ -518,42 +621,58 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
     } catch (error) {
       console.error('Error fetching data:', error);
       setError('Gagal memuat data barang. Silakan coba lagi.');
+      setServerError(true);
       setIsLoading(false);
       
       if (initialDataBarang && initialDataBarang.length > 0) {
         setDataBarang(initialDataBarang);
       }
     }
-  }, [initializeSocket, initialDataBarang]);
+  }, [initializeSocket, initialDataBarang, normalizeBarangData]);
 
   useEffect(() => {
-    if (initialDataBarang && initialDataBarang.length > 0) {
-      setIsLoading(false);
-      initializeSocket();
-      return;
-    }
-    
-    fetchData();
-    
-    const interval = setInterval(fetchData, 30000);
-    
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.off('barang:created');
-        socketRef.current.off('barang:updated');
-        socketRef.current.off('barang:deleted');
-        socketRef.current.off('stockUpdated');
-        socketRef.current.disconnect();
+    fetchSettings();
+  }, [fetchSettings]);
+
+  useEffect(() => {
+    if (settingsLoaded) {
+      if (initialDataBarang && initialDataBarang.length > 0) {
+        setIsLoading(false);
+        initializeSocket();
+        return;
       }
-      clearInterval(interval);
-    };
-  }, [initialDataBarang, fetchData, initializeSocket]);
+      
+      fetchData();
+      
+      const interval = setInterval(fetchData, 30000);
+      
+      return () => {
+        if (socketRef.current) {
+          socketRef.current.off('barang:created');
+          socketRef.current.off('barang:updated');
+          socketRef.current.off('barang:deleted');
+          socketRef.current.off('stockUpdated');
+          socketRef.current.off('settings:updated');
+          socketRef.current.disconnect();
+        }
+        clearInterval(interval);
+      };
+    }
+  }, [initialDataBarang, fetchData, initializeSocket, settingsLoaded]);
 
   const filteredBarang = dataBarang.filter(item =>
     item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.kode?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
     item.kategori.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredBarang.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredBarang.length / itemsPerPage);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   const openDetail = (item: Barang) => {
     setSelectedItem(item);
@@ -569,7 +688,7 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
       <MainLayout>
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <LoadingSpinner />
             <p className="mt-4 text-gray-600">Memuat data barang...</p>
           </div>
         </div>
@@ -578,20 +697,19 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
   }
 
   // Tampilkan error state
-  if (error) {
+  if (serverError) {
     return (
       <MainLayout>
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <XCircle className="h-16 w-16 mx-auto text-red-500 mb-4" />
             <h3 className="text-lg font-medium text-gray-700 mb-2">Terjadi Kesalahan</h3>
-            <p className="text-gray-500 mb-4">{error}</p>
+            <p className="text-gray-500 mb-4">{error || 'Gagal terhubung ke server'}</p>
             <button 
               onClick={() => window.location.reload()} 
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 mx-auto"
             >
+              <RefreshCw className="h-4 w-4" />
               Muat Ulang
             </button>
           </div>
@@ -610,7 +728,8 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
         </div>
         
         {/* Info Jumlah Barang */}
-        <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
+        <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 flex items-center gap-2">
+          <Package className="h-5 w-5 text-blue-600" />
           <p className="text-blue-800 font-medium">
             Total: <span className="font-bold">{filteredBarang.length}</span> barang
           </p>
@@ -621,9 +740,7 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
       <div className="mb-6">
         <div className="relative w-full">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 20 20" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
-            </svg>
+            <Search className="w-5 h-5 text-gray-500" />
           </div>
           <input
             type="text"
@@ -637,7 +754,7 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
 
       {/* Barang Grid - Menggunakan StokCard */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-        {filteredBarang.map(item => (
+        {currentItems.map(item => (
           <StokCard
             key={item._id}
             item={item}
@@ -646,12 +763,54 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
         ))}
       </div>
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-8">
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => paginate(pageNum)}
+                  className={`w-10 h-10 rounded-md ${currentPage === pageNum ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className={`p-2 rounded-md ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Empty State */}
       {filteredBarang.length === 0 && !isLoading && (
         <div className="text-center py-12">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <Package className="h-16 w-16 mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-700 mb-2">Tidak ada barang yang ditemukan</h3>
           <p className="text-gray-500">Coba gunakan kata kunci pencarian yang berbeda</p>
         </div>
