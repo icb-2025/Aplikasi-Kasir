@@ -17,7 +17,6 @@ export const login = async (req, res) => {
       return;
     }
 
-    // update status jadi aktif untuk semua role
     user.status = "aktif";
     await user.save();
 
@@ -57,7 +56,6 @@ export const logout = async (req, res) => {
       return;
     }
 
-    // update status jadi nonaktif untuk semua role
     user.status = "nonaktif";
     await user.save();
 
