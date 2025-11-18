@@ -24,19 +24,37 @@ interface TopBarangResponse {
   }[];
 }
 
-interface ProdukLaba {
-  produk: string;
-  harga_jual: number;
-  harga_beli: number;
-  laba: number;
-  _id: string;
-}
-
-interface LaporanResponse {
-  laba: {
-    total_laba: number;
-    detail: ProdukLaba[];
+// Update interface untuk mencocokkan dengan struktur API /hpp-total/summary
+interface HppTotalSummaryResponse {
+  success: boolean;
+  summary: {
+    total_hpp: number;
+    total_pendapatan: number;
+    total_laba_kotor: number;
+    total_beban: number;
+    total_laba_bersih: number;
   };
+  data?: {
+    _id: string;
+    tanggal: string;
+    produk: {
+      nama_produk: string;
+      jumlah_terjual: number;
+      hpp_per_porsi: number;
+      hpp_total: number;
+      pendapatan: number;
+      laba_kotor: number;
+      _id: string;
+    }[];
+    total_hpp: number;
+    total_pendapatan: number;
+    total_laba_kotor: number;
+    total_beban: number;
+    laba_bersih: number;
+    createdAt: string;
+    updatedAt: string;
+    __v: number;
+  }[];
 }
 
 interface BarangDibeli {
@@ -114,19 +132,19 @@ const AdminDashboard: React.FC = () => {
         const [
           usersResponse,
           topBarangResponse,
-          laporanResponse,
+          hppTotalResponse,
           transaksiResponse,
           settingsResponse
         ] = await Promise.all([
           fetch(`${ipbe}:${portbe}/api/admin/users`),
           fetch(`${ipbe}:${portbe}/api/admin/dashboard/top-barang?filter=bulan`),
-          fetch(`${ipbe}:${portbe}/api/admin/laporan`),
+          fetch(`${ipbe}:${portbe}/api/admin/hpp-total/summary`), // PERBAIKAN: Gunakan endpoint /summary
           fetch(`${ipbe}:${portbe}/api/admin/dashboard/transaksi/terakhir`),
           fetch(`${ipbe}:${portbe}/api/admin/settings`)
         ]);
 
         // Check for errors
-        if (!usersResponse.ok || !topBarangResponse.ok || !laporanResponse.ok || 
+        if (!usersResponse.ok || !topBarangResponse.ok || !hppTotalResponse.ok || 
             !transaksiResponse.ok || !settingsResponse.ok) {
           throw new Error('One or more requests failed');
         }
@@ -134,9 +152,12 @@ const AdminDashboard: React.FC = () => {
         // Parse responses
         const usersData: User[] = await usersResponse.json();
         const topBarangData: TopBarangResponse = await topBarangResponse.json();
-        const laporanData: LaporanResponse[] = await laporanResponse.json();
+        const hppTotalData: HppTotalSummaryResponse = await hppTotalResponse.json(); // Update interface
         const transaksiData: Transaksi[] = await transaksiResponse.json();
         const settingsData: SettingsResponse = await settingsResponse.json();
+
+        // Debug: Log hppTotalData untuk melihat struktur
+        console.log('HPP Total Data:', hppTotalData);
 
         // Calculate statistics
         const totalUsers = usersData.length;
@@ -144,8 +165,18 @@ const AdminDashboard: React.FC = () => {
         const totalTransactions = transaksiData.length;
         const completedTransactions = transaksiData.filter(t => t.status === 'selesai').length;
         
-        // Get total revenue from laporan data
-        const totalRevenue = laporanData.length > 0 ? laporanData[0].laba.total_laba : 0;
+        // PERBAIKAN: Ambil total revenue dari summary
+        let totalRevenue = 0;
+        if (hppTotalData && hppTotalData.success && hppTotalData.summary) {
+          if (typeof hppTotalData.summary.total_pendapatan === 'number') {
+            totalRevenue = hppTotalData.summary.total_pendapatan;
+          } else if (typeof hppTotalData.summary.total_pendapatan === 'string') {
+            totalRevenue = parseFloat(hppTotalData.summary.total_pendapatan) || 0;
+          } else {
+            console.warn('total_pendapatan is not a number or string:', hppTotalData.summary.total_pendapatan);
+            totalRevenue = 0;
+          }
+        }
         
         // Calculate total products sold
         const totalProductsSold = topBarangData.barang_terlaris.reduce(
@@ -162,12 +193,14 @@ const AdminDashboard: React.FC = () => {
           ? transaksiData.reduce((sum, t) => sum + t.total_harga, 0) / totalTransactions 
           : 0;
 
+        console.log('Total Revenue:', totalRevenue); // Debug log
+
         setStats({
           totalUsers,
           totalTransactions,
           totalRevenue,
           totalProductsSold,
-          paymentMethods: activePaymentMethods, // Use active payment methods count
+          paymentMethods: activePaymentMethods,
           activeUsers,
           completedTransactions,
           averageTransactionValue
@@ -176,6 +209,7 @@ const AdminDashboard: React.FC = () => {
         // Store recent transactions (limit to 5)
         setRecentTransactions(transaksiData.slice(0, 5));
       } catch (err) {
+        console.error('Error fetching dashboard data:', err);
         setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengambil data');
       } finally {
         setLoading(false);
@@ -185,8 +219,13 @@ const AdminDashboard: React.FC = () => {
     fetchDashboardData();
   }, []);
 
-  // Format Rupiah dengan penanganan nilai negatif
+  // Format Rupiah dengan penanganan nilai negatif dan NaN
   const formatRupiah = (amount: number): string => {
+    // Handle NaN case
+    if (isNaN(amount) || amount === null || amount === undefined) {
+      return 'Rp 0';
+    }
+    
     const isNegative = amount < 0;
     const absoluteAmount = Math.abs(amount);
     
@@ -324,7 +363,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Card Total Pendapatan - Diperbaiki untuk nilai negatif */}
+        {/* Card Total Pendapatan - Diperbaiki untuk nilai negatif dan NaN */}
         <div className={`bg-gradient-to-br ${stats.totalRevenue < 0 ? 'from-red-500 to-red-600' : 'from-purple-500 to-purple-600'} p-6 rounded-xl shadow-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl`}>
           <div className="flex items-center justify-between">
             <div>
@@ -332,12 +371,12 @@ const AdminDashboard: React.FC = () => {
               <p className={`text-2xl font-bold text-white mt-1 ${stats.totalRevenue < 0 ? 'text-red-100' : ''}`}>
                 {formatRupiah(stats.totalRevenue)}
               </p>
-              <p className="text-xs text-white mt-2 flex items-center">
+              {/* <p className="text-xs text-white mt-2 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
                 </svg>
                 Rata-rata: <span className="text-sm font-bold text-white ml-2">{formatRupiah(stats.averageTransactionValue)}</span>
-              </p>
+              </p> */}
             </div>
             <div className="p-3 rounded-full bg-white bg-opacity-20">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">

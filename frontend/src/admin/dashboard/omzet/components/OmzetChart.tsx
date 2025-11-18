@@ -1,3 +1,4 @@
+// omzetchart.tsx
 import React from 'react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -29,6 +30,18 @@ interface OmzetData {
   hari_ini: number;
   minggu_ini: number;
   bulan_ini: number;
+  detail_hari: {
+    tanggal: string;
+    omzet: number;
+  }[];
+  detail_minggu: {
+    tanggal: string;
+    omzet: number;
+  }[];
+  detail_bulan: {
+    tanggal: string;
+    omzet: number;
+  }[];
 }
 
 interface OmzetChartProps {

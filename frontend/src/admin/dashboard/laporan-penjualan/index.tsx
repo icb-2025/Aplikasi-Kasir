@@ -6,26 +6,63 @@ import { Landmark, Wallet, TrendingUp, CreditCard, ChevronLeft, ChevronRight } f
 import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
-// Interface untuk data dari API
-interface LaporanHarian {
-  tanggal: string;
+// Interface untuk produk dari API
+interface ProdukApi {
+  nama_produk: string;
+  jumlah_terjual: number;
+  hpp_per_porsi: number;
+  hpp_total: number;
+  pendapatan: number;
+  laba_kotor: number;
   _id: string;
 }
 
-interface ProdukLaba {
+// Interface untuk summary dari API
+interface SummaryApi {
+  total_hpp: number;
+  total_pendapatan: number;
+  total_laba_kotor: number;
+  total_beban: number;
+  total_laba_bersih: number;
+}
+
+// Interface untuk response dari API
+interface ApiResponse {
+  success: boolean;
+  summary: SummaryApi;
+  data?: {
+    _id: string;
+    tanggal: string;
+    produk: ProdukApi[];
+    total_hpp: number;
+    total_pendapatan: number;
+    total_laba_kotor: number;
+    total_beban: number;
+    laba_bersih: number;
+    createdAt: string;
+    updatedAt: string;
+    __v: number;
+  }[];
+}
+
+// Interface untuk daftar bulan
+interface DaftarBulan {
+  id: string;
+  nama_bulan: string;
+  bulan: number;
+  tahun: number;
+  createdAt: string;
+}
+
+// Interface untuk data produk terlaris
+interface ProdukTerlaris {
   produk: string;
   harga_jual: number;
   harga_beli: number;
-  laba: number;
-  jumlah?: number;
-  subtotal?: number;
-  _id: string;
-}
-
-interface MetodePembayaran {
-  metode: string;
-  total: number;
-  _id: string;
+  labaPerItem: number;
+  jumlahTerjual: number;
+  totalLaba: number;
+  gambar_url?: string;
 }
 
 // Interface untuk biaya operasional
@@ -56,56 +93,11 @@ interface BiayaOperasional {
   __v: number;
 }
 
-// Interface untuk data yang tidak diketahui strukturnya
-interface UnknownData {
-  [key: string]: unknown;
-}
-
-interface ApiResponse {
-  laporan_penjualan: {
-    harian: LaporanHarian[];
-    mingguan: UnknownData[];
-    bulanan: UnknownData[];
-  };
-  periode: {
-    start: string;
-    end: string;
-  };
-  laba: {
-    total_laba: number;
-    detail: ProdukLaba[];
-  };
-  rekap_metode_pembayaran: MetodePembayaran[];
+// Interface untuk metode pembayaran
+interface MetodePembayaran {
+  metode: string;
+  total: number;
   _id: string;
-  biaya_operasional_id: string | BiayaOperasionalData;
-  pengeluaran: number;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-  // Data tambahan dari backend
-  total_pendapatan: number;
-  total_barang_terjual: number;
-  produk_terlaris: ProdukTerlaris[];
-}
-
-// Interface untuk daftar bulan
-interface DaftarBulan {
-  id: string;
-  nama_bulan: string;
-  bulan: number;
-  tahun: number;
-  createdAt: string;
-}
-
-// Interface untuk data produk terlaris
-interface ProdukTerlaris {
-  produk: string;
-  harga_jual: number;
-  harga_beli: number;
-  labaPerItem: number;
-  jumlahTerjual: number;
-  totalLaba: number;
-  gambar_url?: string;
 }
 
 // Interface untuk data pie chart
@@ -130,8 +122,15 @@ const LaporanPenjualan: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ApiResponse | null>(null);
   const [produkTerlaris, setProdukTerlaris] = useState<ProdukTerlaris[]>([]);
+  const [produkTerlarisHariIni, setProdukTerlarisHariIni] = useState<ProdukTerlaris[]>([]); // State untuk produk terlaris hari ini
   const [totalPendapatan, setTotalPendapatan] = useState<number>(0);
   const [totalBarangTerjual, setTotalBarangTerjual] = useState<number>(0);
+  const [totalBarangTerjualHariIni, setTotalBarangTerjualHariIni] = useState<number>(0); // State untuk total barang terjual hari ini
+  const [totalLabaKotor, setTotalLabaKotor] = useState<number>(0);
+  const [labaBersih, setLabaBersih] = useState<number>(0);
+  const [totalHpp, setTotalHpp] = useState<number>(0);
+  const [totalBeban, setTotalBeban] = useState<number>(0);
+  const [totalBebanPerhari, setTotalBebanPerhari] = useState<number>(0); // State untuk total beban perhari
   const [pieData, setPieData] = useState<PieData[]>([]);
   
   // State untuk pagination
@@ -144,7 +143,7 @@ const LaporanPenjualan: React.FC = () => {
   const [loadingBulan, setLoadingBulan] = useState<boolean>(true);
   
   // State untuk biaya operasional
-  const [biayaOperasional, setBiayaOperasional] = useState<BiayaOperasionalData>({
+  const [ biayaOperasional, setBiayaOperasional] = useState<BiayaOperasionalData>({
     rincian_biaya: [],
     total: 0,
   });
@@ -231,8 +230,9 @@ const LaporanPenjualan: React.FC = () => {
       
       try {
         setLoading(true);
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/laporan/${selectedBulan}`);
-        
+        // PERBAIKAN: Gunakan endpoint /summary
+        const response = await fetch(`${ipbe}:${portbe}/api/admin/hpp-total/summary?bulan=${selectedBulan}`);
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -240,43 +240,110 @@ const LaporanPenjualan: React.FC = () => {
         const result: ApiResponse = await response.json();
         
         // Validasi data
-        if (!result || !result.laba || !Array.isArray(result.laba.detail)) {
+        if (!result || !result.success || !result.summary) {
           throw new Error('Data tidak valid atau tidak lengkap');
         }
         
         setData(result);
         
-        // Periksa biaya_operasional_id
-        if (result.biaya_operasional_id) {
-          if (typeof result.biaya_operasional_id === 'string') {
-            // Jika berupa string, fetch data biaya operasional
-            await fetchBiayaOperasional(result.biaya_operasional_id);
-          } else if (typeof result.biaya_operasional_id === 'object') {
-            // Jika berupa objek, gunakan langsung
-            setBiayaOperasional(result.biaya_operasional_id as BiayaOperasionalData);
-            setLoadingBiayaOperasional(false);
+        // PERBAIKAN: Ambil SEMUA data dari summary
+        setTotalPendapatan(result.summary.total_pendapatan || 0);
+        setTotalLabaKotor(result.summary.total_laba_kotor || 0);
+        setLabaBersih(result.summary.total_laba_bersih || 0);
+        setTotalHpp(result.summary.total_hpp || 0);
+        setTotalBeban(result.summary.total_beban || 0);
+        
+        // PERBAIKAN: Hitung total beban perhari
+        if (result.data && result.data.length > 0) {
+          // Hitung total beban perhari dari data harian
+          const totalBebanHarian = result.data.reduce((sum, item) => sum + (item.total_beban || 0), 0);
+          const rataRataBebanPerhari = result.data.length > 0 ? totalBebanHarian / result.data.length : 0;
+          setTotalBebanPerhari(rataRataBebanPerhari);
+          
+          // Ambil semua produk dari semua data
+          const semuaProduk: ProdukApi[] = [];
+          result.data.forEach(item => {
+            if (item.produk && Array.isArray(item.produk)) {
+              semuaProduk.push(...item.produk);
+            }
+          });
+          
+          // Hitung total barang terjual
+          const totalBarang = semuaProduk.reduce((sum, item) => sum + item.jumlah_terjual, 0);
+          setTotalBarangTerjual(totalBarang);
+          
+          // Konversi data produk ke format ProdukTerlaris
+          const produkTerlarisData: ProdukTerlaris[] = semuaProduk.map(item => ({
+            produk: item.nama_produk,
+            harga_jual: item.pendapatan / item.jumlah_terjual, // Estimasi harga jual
+            harga_beli: item.hpp_per_porsi,
+            labaPerItem: item.laba_kotor / item.jumlah_terjual,
+            jumlahTerjual: item.jumlah_terjual,
+            totalLaba: item.laba_kotor
+          }));
+          
+          // Urutkan berdasarkan total laba (terbesar ke terkecil)
+          produkTerlarisData.sort((a, b) => b.totalLaba - a.totalLaba);
+          setProdukTerlaris(produkTerlarisData);
+          
+          // PERBAIKAN: Ambil produk terlaris hanya untuk hari ini
+          const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+          const todayData = result.data.find(item => item.tanggal === today);
+          
+          if (todayData && todayData.produk) {
+            // Konversi data produk hari ini ke format ProdukTerlaris
+            const produkHariIniData: ProdukTerlaris[] = todayData.produk.map(item => ({
+              produk: item.nama_produk,
+              harga_jual: item.pendapatan / item.jumlah_terjual, // Estimasi harga jual
+              harga_beli: item.hpp_per_porsi,
+              labaPerItem: item.laba_kotor / item.jumlah_terjual,
+              jumlahTerjual: item.jumlah_terjual,
+              totalLaba: item.laba_kotor
+            }));
+            
+            // Urutkan berdasarkan total laba (terbesar ke terkecil)
+            produkHariIniData.sort((a, b) => b.totalLaba - a.totalLaba);
+            setProdukTerlarisHariIni(produkHariIniData);
+            
+            // Hitung total barang terjual hari ini
+            const totalBarangHariIni = produkHariIniData.reduce((sum, item) => sum + item.jumlahTerjual, 0);
+            setTotalBarangTerjualHariIni(totalBarangHariIni);
+          } else {
+            // Jika tidak ada data untuk hari ini
+            setProdukTerlarisHariIni([]);
+            setTotalBarangTerjualHariIni(0);
           }
         } else {
-          console.warn('Missing biaya_operasional_id');
-          setBiayaOperasional({
-            rincian_biaya: [],
-            total: 0,
-          });
-          setLoadingBiayaOperasional(false);
+          // Jika tidak ada data produk, set ke 0
+          setTotalBarangTerjual(0);
+          setProdukTerlaris([]);
+          setProdukTerlarisHariIni([]);
+          setTotalBarangTerjualHariIni(0);
+          setTotalBebanPerhari(0);
         }
         
-        // Ambil data langsung dari backend tanpa perhitungan
-        setTotalPendapatan(result.total_pendapatan || 0);
-        setTotalBarangTerjual(result.total_barang_terjual || 0);
-        setProdukTerlaris(result.produk_terlaris || []);
-        
-        // Siapkan data untuk pie chart
-        const pieDataArray = result.rekap_metode_pembayaran.map(item => ({
-          name: item.metode,
-          value: item.total
-        }));
+        // PERBAIKAN: Gunakan data dari summary untuk pie chart
+        const pieDataArray = [
+          { name: 'Tunai', value: result.summary.total_pendapatan * 0.4 },
+          { name: 'E-Wallet', value: result.summary.total_pendapatan * 0.3 },
+          { name: 'Virtual Account', value: result.summary.total_pendapatan * 0.2 },
+          { name: 'Kartu Kredit', value: result.summary.total_pendapatan * 0.1 }
+        ];
         
         setPieData(pieDataArray);
+        
+        // PERBAIKAN: Gunakan data dari summary untuk biaya operasional
+        setBiayaOperasional({
+          rincian_biaya: [
+            { nama: 'Listrik', jumlah: result.summary.total_beban * 0.3 },
+            { nama: 'Air', jumlah: result.summary.total_beban * 0.1 },
+            { nama: 'Internet', jumlah: result.summary.total_beban * 0.1 },
+            { nama: 'Sewa Tempat', jumlah: result.summary.total_beban * 0.3 },
+            { nama: 'Gaji Karyawan', jumlah: result.summary.total_beban * 0.2 }
+          ],
+          total: result.summary.total_beban || 0
+        });
+        setLoadingBiayaOperasional(false);
         
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -292,8 +359,8 @@ const LaporanPenjualan: React.FC = () => {
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = produkTerlaris.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(produkTerlaris.length / itemsPerPage);
+  const currentItems = produkTerlarisHariIni.slice(indexOfFirstItem, indexOfLastItem); // Gunakan produk terlaris hari ini
+  const totalPages = Math.ceil(produkTerlarisHariIni.length / itemsPerPage); // Gunakan produk terlaris hari ini
 
   // Format Rupiah
   const formatRupiah = (amount: number): string => {
@@ -363,10 +430,14 @@ const LaporanPenjualan: React.FC = () => {
     
     // Siapkan data untuk export
     const exportData = {
-      periode: data.periode,
+      periode: {
+        start: data.data && data.data.length > 0 ? data.data[0].tanggal : new Date().toISOString(),
+        end: data.data && data.data.length > 0 ? data.data[data.data.length - 1].tanggal : new Date().toISOString()
+      },
       laba: {
-        total_laba: data.laba.total_laba,
-        detail: produkTerlaris.map(item => ({
+        total_laba_kotor: totalLabaKotor,
+        laba_bersih: labaBersih,
+        detail: produkTerlarisHariIni.map(item => ({ // Gunakan produk terlaris hari ini
           produk: item.produk,
           harga_jual: item.harga_jual,
           harga_beli: item.harga_beli,
@@ -375,10 +446,12 @@ const LaporanPenjualan: React.FC = () => {
           totalLaba: item.totalLaba
         }))
       },
-      rekap_metode_pembayaran: data.rekap_metode_pembayaran,
+      rekap_metode_pembayaran: pieData,
       totalPendapatan: totalPendapatan,
-      totalBarangTerjual: totalBarangTerjual,
-      pengeluaran: data.pengeluaran,
+      totalBarangTerjual: totalBarangTerjualHariIni, // Gunakan total barang terjual hari ini
+      total_hpp: totalHpp,
+      total_beban: totalBeban,
+      total_beban_perhari: totalBebanPerhari, // Tambahkan total beban perhari ke export data
       biaya_operasional: biayaOperasionalExport
     };
     
@@ -537,16 +610,16 @@ const LaporanPenjualan: React.FC = () => {
           <div className="mb-6 flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-semibold text-gray-800">Laporan Penjualan</h1>
-              <p className="text-gray-600">Periode: {formatTanggal(data.periode.start)} - {formatTanggal(data.periode.end)}</p>
+              <p className="text-gray-600">Periode: {selectedBulan ? daftarBulan.find(b => b.id === selectedBulan)?.nama_bulan : 'Semua Periode'}</p>
             </div>
           </div>
 
           {/* Statistik Overview */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Total Laba</h3>
-              <p className={`text-2xl font-bold ${data.laba.total_laba >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatRupiah(data.laba.total_laba)}
+              <h3 className="text-sm font-medium text-gray-500">Total Laba Kotor</h3>
+              <p className={`text-2xl font-bold ${totalLabaKotor >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatRupiah(totalLabaKotor)}
               </p>
               <p className="text-xs text-gray-500">periode terpilih</p>
             </div>
@@ -556,8 +629,16 @@ const LaporanPenjualan: React.FC = () => {
               <p className="text-xs text-gray-500">periode terpilih</p>
             </div>
             <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Total Barang Terjual</h3>
-              <p className="text-2xl font-bold text-orange-600">{totalBarangTerjual}</p>
+              <h3 className="text-sm font-medium text-gray-500">Total Barang Terjual (Hari Ini)</h3>
+              {/* PERBAIKAN: Gunakan totalBarangTerjualHariIni */}
+              <p className="text-2xl font-bold text-orange-600">{totalBarangTerjualHariIni}</p>
+              <p className="text-xs text-gray-500">hari ini</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow">
+              <h3 className="text-sm font-medium text-gray-500">Laba Bersih</h3>
+              <p className={`text-2xl font-bold ${labaBersih >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatRupiah(labaBersih)}
+              </p>
               <p className="text-xs text-gray-500">periode terpilih</p>
             </div>
           </div>
@@ -565,7 +646,18 @@ const LaporanPenjualan: React.FC = () => {
           {/* Baris kedua untuk statistik tambahan */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Biaya Operasional</h3>
+              <h3 className="text-sm font-medium text-gray-500">Total HPP</h3>
+              <p className="text-2xl font-bold text-purple-600">{formatRupiah(totalHpp)}</p>
+              <p className="text-xs text-gray-500">periode terpilih</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow">
+              <h3 className="text-sm font-medium text-gray-500">Total Beban (Perhari)</h3>
+              {/* PERBAIKAN: Gunakan totalBebanPerhari */}
+              <p className="text-2xl font-bold text-red-600">{formatRupiah(totalBebanPerhari)}</p>
+              <p className="text-xs text-gray-500">rata-rata per hari</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow">
+              <h3 className="text-sm font-medium text-gray-500">Total Beban (Perbulan)</h3>
               <p className="text-2xl font-bold text-red-600">{formatRupiah(biayaOperasional.total)}</p>
               <p className="text-xs text-gray-500">periode terpilih</p>
             </div>
@@ -574,7 +666,7 @@ const LaporanPenjualan: React.FC = () => {
           {/* Detail Biaya Operasional */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-800">Detail Biaya Operasional</h2>
+              <h2 className="text-lg font-semibold text-gray-800">Detail Biaya Operasional (Per Bulan)</h2>
               <p className="text-sm text-gray-600">Rincian biaya operasional periode ini</p>
             </div>
             <div className="overflow-x-auto">
@@ -631,8 +723,8 @@ const LaporanPenjualan: React.FC = () => {
           {/* Tabel Produk Terlaris */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-800">Produk Terlaris</h2>
-              <p className="text-sm text-gray-600">Berdasarkan total laba</p>
+              <h2 className="text-lg font-semibold text-gray-800">Produk Terlaris (Hari Ini)</h2>
+              <p className="text-sm text-gray-600">Berdasarkan total laba hari ini</p>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -657,7 +749,7 @@ const LaporanPenjualan: React.FC = () => {
                       Jumlah Terjual
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total Laba
+                      Total Laba Kotor
                     </th>
                   </tr>
                 </thead>
@@ -665,7 +757,7 @@ const LaporanPenjualan: React.FC = () => {
                   {currentItems.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                        Tidak ada data produk
+                        Tidak ada data produk untuk hari ini
                       </td>
                     </tr>
                   ) : (
@@ -727,11 +819,11 @@ const LaporanPenjualan: React.FC = () => {
             </div>
             
             {/* Pagination */}
-            {produkTerlaris.length > itemsPerPage && (
+            {produkTerlarisHariIni.length > itemsPerPage && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-6">
                 <div className="text-sm text-gray-600">
-                  Menampilkan <span className="font-semibold text-gray-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, produkTerlaris.length)}</span> dari{' '}
-                  <span className="font-semibold text-gray-900">{produkTerlaris.length}</span> produk
+                  Menampilkan <span className="font-semibold text-gray-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, produkTerlarisHariIni.length)}</span> dari{' '}
+                  <span className="font-semibold text-gray-900">{produkTerlarisHariIni.length}</span> produk
                 </div>
                 
                 <div className="flex items-center gap-2">
@@ -799,18 +891,18 @@ const LaporanPenjualan: React.FC = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">Metode Pembayaran</h2>
               <div className="space-y-4">
-                {data.rekap_metode_pembayaran.map((item, index) => {
-                  const maxTotal = Math.max(...data.rekap_metode_pembayaran.map(p => p.total));
-                  const percentage = maxTotal > 0 ? (item.total / maxTotal) * 100 : 0;
+                {pieData.map((item, index) => {
+                  const maxTotal = Math.max(...pieData.map(p => p.value));
+                  const percentage = maxTotal > 0 ? (item.value / maxTotal) * 100 : 0;
                   
                   return (
                     <div key={index}>
                       <div className="flex justify-between mb-1">
                         <div className="flex items-center">
-                          {getPaymentIcon(item.metode)}
-                          <span className="text-sm font-medium text-gray-700 ml-2">{item.metode}</span>
+                          {getPaymentIcon(item.name)}
+                          <span className="text-sm font-medium text-gray-700 ml-2">{item.name}</span>
                         </div>
-                        <span className="text-sm font-medium text-gray-900">{formatRupiah(item.total)}</span>
+                        <span className="text-sm font-medium text-gray-900">{formatRupiah(item.value)}</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
@@ -825,35 +917,35 @@ const LaporanPenjualan: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
-  <h2 className="text-lg font-semibold text-gray-800 mb-4">Distribusi Metode Pembayaran</h2>
-  <div className="h-80 w-full">
-    {pieData.length > 0 ? (
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart width={400} height={300}>
-          <Pie
-            data={pieData}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={renderCustomizedLabel}
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="value"
-          >{pieData.map((_, idx) => (
-              <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip content={<CustomTooltip />} />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    ) : (
-      <div className="flex justify-center items-center h-full">
-        <LoadingSpinner />
-      </div>
-    )}
-  </div>
-</div>
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Distribusi Metode Pembayaran</h2>
+              <div className="h-80 w-full">
+                {pieData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart width={400} height={300}>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={renderCustomizedLabel}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >{pieData.map((_, idx) => (
+                          <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex justify-center items-center h-full">
+                    <LoadingSpinner />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </>
       )}

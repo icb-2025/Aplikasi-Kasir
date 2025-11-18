@@ -1,19 +1,62 @@
+// index.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import OmzetCards from './components/OmzetCards';
 import OmzetChart from './components/OmzetChart';
 import OmzetTable from './components/OmzetTable';
-import OmzetSummary from './components/OmzetSummary';
+// import OmzetSummary from './components/OmzetSummary';
 import { exportOmzetToCsv, exportOmzetToExcel, exportOmzetToPdf } from '@/admin/utils/OmzetExport';
 import { formatRupiah } from '@/admin/utils/formatRupiah';
 import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
+
+// Interface untuk produk dari API
+interface ProdukApi {
+  nama_produk: string;
+  jumlah_terjual: number;
+  hpp_per_porsi: number;
+  hpp_total: number;
+  pendapatan: number;
+  laba_kotor: number;
+  _id: string;
+}
+
+// Interface untuk response dari API
+interface ApiResponse {
+  success: boolean;
+  data: {
+    _id: string;
+    tanggal: string;
+    produk: ProdukApi[];
+    total_hpp: number;
+    total_pendapatan: number;
+    total_laba_kotor: number;
+    total_beban: number;
+    laba_bersih: number;
+    createdAt: string;
+    updatedAt: string;
+    __v: number;
+  }[];
+}
+
+// Interface untuk data omzet
 interface OmzetData {
-  omzet: {
-    hari_ini: number;
-    minggu_ini: number;
-    bulan_ini: number;
-  };
+  hari_ini: number;
+  minggu_ini: number;
+  bulan_ini: number;
+  // Tambahkan data detail untuk chart dan tabel
+  detail_hari: {
+    tanggal: string;
+    omzet: number;
+  }[];
+  detail_minggu: {
+    tanggal: string;
+    omzet: number;
+  }[];
+  detail_bulan: {
+    tanggal: string;
+    omzet: number;
+  }[];
 }
 
 const OmzetPage: React.FC = () => {
@@ -22,19 +65,30 @@ const OmzetPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<'hari' | 'minggu' | 'bulan'>('hari');
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [apiData, setApiData] = useState<ApiResponse | null>(null);
 
   const fetchOmzetData = useCallback(async (showNotification = false) => {
     try {
-     
-      // Tambahkan parameter periode ke URL
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/dashboard/omzet?period=${selectedPeriod}`);
+      setLoading(true);
+      
+      // Ambil data dari API
+      const response = await fetch(`${ipbe}:${portbe}/api/admin/hpp-total`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data: OmzetData = await response.json();
-      setOmzetData(data);
+      const data: ApiResponse = await response.json();
+      setApiData(data);
+      
+      // Validasi data
+      if (!data || !data.success || !data.data || data.data.length === 0) {
+        throw new Error('Data tidak valid atau tidak lengkap');
+      }
+      
+      // Proses data untuk omzet
+      const processedData = processOmzetData(data.data);
+      setOmzetData(processedData);
       
       if (showNotification) {
         setNotification({message: 'Data berhasil diperbarui', type: 'success'});
@@ -51,11 +105,71 @@ const OmzetPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedPeriod]); // Tambahkan selectedPeriod sebagai dependency
+  }, [selectedPeriod]);
+
+  // Fungsi untuk memproses data dari API menjadi format omzet
+  const processOmzetData = (data: ApiResponse['data']): OmzetData => {
+    // Kelompokkan data berdasarkan tanggal
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const monthAgo = new Date(today);
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    
+    // Filter data untuk periode yang berbeda
+    const todayData = data.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      return itemDate.toDateString() === today.toDateString();
+    });
+    
+    const weekData = data.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      return itemDate >= weekAgo && itemDate <= today;
+    });
+    
+    const monthData = data.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      return itemDate >= monthAgo && itemDate <= today;
+    });
+    
+    // Hitung total omzet untuk setiap periode
+    const todayOmzet = todayData.reduce((sum, item) => sum + item.total_pendapatan, 0);
+    const weekOmzet = weekData.reduce((sum, item) => sum + item.total_pendapatan, 0);
+    const monthOmzet = monthData.reduce((sum, item) => sum + item.total_pendapatan, 0);
+    
+    // Buat detail data untuk chart
+    const detailHari = weekData.map(item => ({
+      tanggal: new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+      omzet: item.total_pendapatan
+    }));
+    
+    const detailMinggu = weekData.map(item => ({
+      tanggal: new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+      omzet: item.total_pendapatan
+    }));
+    
+    const detailBulan = monthData.map(item => ({
+      tanggal: new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+      omzet: item.total_pendapatan
+    }));
+    
+    return {
+      hari_ini: todayOmzet,
+      minggu_ini: weekOmzet,
+      bulan_ini: monthOmzet,
+      detail_hari: detailHari,
+      detail_minggu: detailMinggu,
+      detail_bulan: detailBulan
+    };
+  };
 
   useEffect(() => {
     fetchOmzetData();
-  }, [fetchOmzetData]); // Tambahkan fetchOmzetData sebagai dependency
+  }, [fetchOmzetData]);
 
   if (loading) {
     return (
@@ -116,19 +230,19 @@ const OmzetPage: React.FC = () => {
             </button>
             <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
               <button 
-                onClick={() => exportOmzetToCsv(omzetData?.omzet || null)}
+                onClick={() => exportOmzetToCsv(omzetData)}
                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-100"
               >
                 Export CSV
               </button>
               <button 
-                onClick={() => exportOmzetToExcel(omzetData?.omzet || null)}
+                onClick={() => exportOmzetToExcel(omzetData)}
                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-100"
               >
                 Export Excel
               </button>
               <button 
-                onClick={() => exportOmzetToPdf(omzetData?.omzet || null)}
+                onClick={() => exportOmzetToPdf(omzetData)}
                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-100"
               >
                 Export PDF
@@ -140,13 +254,13 @@ const OmzetPage: React.FC = () => {
 
       {/* Kartu Statistik */}
       <OmzetCards 
-        omzetData={omzetData?.omzet || null} 
+        omzetData={omzetData} 
         formatRupiah={formatRupiah} 
       />
 
       {/* Grafik Omzet */}
       <OmzetChart 
-        omzetData={omzetData?.omzet || null} 
+        omzetData={omzetData} 
         selectedPeriod={selectedPeriod}
         setSelectedPeriod={setSelectedPeriod}
         formatRupiah={formatRupiah}
@@ -154,13 +268,15 @@ const OmzetPage: React.FC = () => {
 
       {/* Tabel Detail Omzet */}
       <OmzetTable 
-        omzetData={omzetData?.omzet || null} 
+        omzetData={omzetData} 
         formatRupiah={formatRupiah} 
       />
 
       {/* Ringkasan */}
-      <OmzetSummary 
-      />
+      {/* <OmzetSummary 
+        omzetData={omzetData}
+        formatRupiah={formatRupiah}
+      /> */}
       
     </div>
   );

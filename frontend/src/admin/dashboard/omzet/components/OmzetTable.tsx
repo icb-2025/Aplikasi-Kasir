@@ -1,9 +1,22 @@
+// omzettable.tsx
 import React from 'react';
 
 interface OmzetData {
   hari_ini: number;
   minggu_ini: number;
   bulan_ini: number;
+  detail_hari: {
+    tanggal: string;
+    omzet: number;
+  }[];
+  detail_minggu: {
+    tanggal: string;
+    omzet: number;
+  }[];
+  detail_bulan: {
+    tanggal: string;
+    omzet: number;
+  }[];
 }
 
 interface OmzetTableProps {
@@ -69,6 +82,18 @@ const OmzetTable: React.FC<OmzetTableProps> = ({ omzetData, formatRupiah: format
     }
   };
 
+  // Dapatkan data detail berdasarkan periode
+  const getDetailData = () => {
+    if (!omzetData) return [];
+    
+    switch (omzetData) {
+      default:
+        return omzetData.detail_bulan || [];
+    }
+  };
+
+  const detailData = getDetailData();
+
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8 transition-all duration-300 hover:shadow-xl">
       <div className="p-6 border-b-2 border-gray-200">
@@ -125,6 +150,48 @@ const OmzetTable: React.FC<OmzetTableProps> = ({ omzetData, formatRupiah: format
           </tbody>
         </table>
       </div>
+      
+      {/* Tabel Detail Per Tanggal */}
+      {detailData.length > 0 && (
+        <div className="border-t-2 border-gray-200">
+          <div className="px-6 py-4 bg-gray-50">
+            <h3 className="text-sm font-medium text-gray-700">Detail Per Tanggal</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tanggal
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Omzet
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {detailData.map((item, index) => (
+                  <tr 
+                    key={index} 
+                    className={`transition-colors hover:bg-gray-50 ${
+                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                    }`}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{item.tanggal}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {formatRupiahFn(item.omzet)}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       
       <div className="bg-gray-50 px-6 py-3 text-xs text-gray-500 border-t-2 border-gray-200">
         <div className="flex items-center">

@@ -14,8 +14,9 @@ export const getHppHarian = async (req, res) => {
 
     // --- KASUS 1: Ambil data untuk tanggal spesifik ---
     if (tanggal) {
-      hppData = await HppHarian.findOne({ tanggal: tanggal });
+      hppData = await HppHarian.findOne({ tanggal });
     } 
+    
     // --- KASUS 2: Ambil data untuk rentang tanggal ---
     else if (startDate && endDate) {
       hppData = await HppHarian.find({
@@ -25,23 +26,76 @@ export const getHppHarian = async (req, res) => {
         },
       }).sort({ tanggal: -1 });
     } 
-    // --- KASUS 3 (Default): Ambil data untuk hari ini ---
-    else {
-      const today = new Date().toISOString().slice(0, 10);
-      hppData = await HppHarian.findOne({ tanggal: today });
+    
+    // --- KASUS 3: Ambil SEMUA DATA jika tidak ada query sama sekali ---
+    else if (!tanggal && !startDate && !endDate) {
+      hppData = await HppHarian.find().sort({ tanggal: -1 });
     }
 
-    // Kirim response LANGSUNG dari database
     res.json({
       success: true,
-      data: hppData, // Tidak ada perhitungan lagi di sini
+      data: hppData,
     });
 
   } catch (err) {
     console.error("Error saat mengambil data HPP:", err);
-    res.status(500).json({ message: "Gagal mengambil data HPP", error: err.message });
+    res.status(500).json({ 
+      message: "Gagal mengambil data HPP", 
+      error: err.message 
+    });
   }
 };
+
+export const getHppSummary = async (req, res) => {
+  try {
+    const data = await HppHarian.find();
+
+    // Kalau data kosong, langsung balikin kosong
+    if (!data || data.length === 0) {
+      return res.json({
+        success: true,
+        summary: {
+          total_hpp: 0,
+          total_pendapatan: 0,
+          total_laba_kotor: 0,
+          total_beban: 0,
+          total_laba_bersih: 0,
+        },
+        data: []
+      });
+    }
+
+    // Hitung akumulasi semua data
+    const summary = data.reduce((acc, item) => {
+      acc.total_hpp += item.total_hpp || 0;
+      acc.total_pendapatan += item.total_pendapatan || 0;
+      acc.total_laba_kotor += item.total_laba_kotor || 0;
+      acc.total_beban += item.total_beban || 0;
+      acc.total_laba_bersih += item.laba_bersih || 0;
+      return acc;
+    }, {
+      total_hpp: 0,
+      total_pendapatan: 0,
+      total_laba_kotor: 0,
+      total_beban: 0,
+      total_laba_bersih: 0
+    });
+
+    res.json({
+      success: true,
+      summary,
+      data
+    });
+
+  } catch (err) {
+    console.error("Error summary HPP:", err);
+    res.status(500).json({ 
+      message: "Gagal menghitung summary", 
+      error: err.message 
+    });
+  }
+};
+
 
 export const addTransaksiToHpp = async (req, res) => {
   try {

@@ -352,7 +352,7 @@ const Transaksi: React.FC = () => {
         </div>
 
         {/* Statistics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -400,7 +400,7 @@ const Transaksi: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Filter Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
