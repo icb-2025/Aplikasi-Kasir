@@ -81,6 +81,16 @@ interface SettingsUpdate {
   lowStockAlert?: number
 }
 
+// Tambahkan definisi BahanBakuFormData
+export interface BahanBakuFormData {
+  nama_produk: string;
+  bahan: Array<{
+    nama: string;
+    harga: number;
+    jumlah: number;
+  }>;
+}
+
 const API_URL = `${ipbe}:${portbe}/api/admin/stok-barang`;
 const KATEGORI_API_URL = `${ipbe}:${portbe}/api/admin/kategori`;
 const SETTINGS_API_URL = `${ipbe}:${portbe}/api/admin/settings`;

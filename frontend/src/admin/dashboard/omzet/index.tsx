@@ -65,7 +65,6 @@ const OmzetPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<'hari' | 'minggu' | 'bulan'>('hari');
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
-  const [apiData, setApiData] = useState<ApiResponse | null>(null);
 
   const fetchOmzetData = useCallback(async (showNotification = false) => {
     try {
@@ -79,7 +78,6 @@ const OmzetPage: React.FC = () => {
       }
       
       const data: ApiResponse = await response.json();
-      setApiData(data);
       
       // Validasi data
       if (!data || !data.success || !data.data || data.data.length === 0) {
@@ -105,7 +103,7 @@ const OmzetPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedPeriod]);
+  }, []); // PERBAIKAN: Hapus selectedPeriod dari dependency array karena tidak digunakan dalam fungsi
 
   // Fungsi untuk memproses data dari API menjadi format omzet
   const processOmzetData = (data: ApiResponse['data']): OmzetData => {

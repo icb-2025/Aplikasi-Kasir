@@ -93,13 +93,6 @@ interface BiayaOperasional {
   __v: number;
 }
 
-// Interface untuk metode pembayaran
-interface MetodePembayaran {
-  metode: string;
-  total: number;
-  _id: string;
-}
-
 // Interface untuk data pie chart
 interface PieData {
   name: string;
@@ -121,10 +114,8 @@ const LaporanPenjualan: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ApiResponse | null>(null);
-  const [produkTerlaris, setProdukTerlaris] = useState<ProdukTerlaris[]>([]);
   const [produkTerlarisHariIni, setProdukTerlarisHariIni] = useState<ProdukTerlaris[]>([]); // State untuk produk terlaris hari ini
   const [totalPendapatan, setTotalPendapatan] = useState<number>(0);
-  const [totalBarangTerjual, setTotalBarangTerjual] = useState<number>(0);
   const [totalBarangTerjualHariIni, setTotalBarangTerjualHariIni] = useState<number>(0); // State untuk total barang terjual hari ini
   const [totalLabaKotor, setTotalLabaKotor] = useState<number>(0);
   const [labaBersih, setLabaBersih] = useState<number>(0);
@@ -181,48 +172,6 @@ const LaporanPenjualan: React.FC = () => {
     fetchDaftarBulan();
   }, []);
 
-  // Fetch data biaya operasional berdasarkan ID
-  const fetchBiayaOperasional = async (id: string) => {
-    try {
-      setLoadingBiayaOperasional(true);
-      
-      // Pastikan id adalah string dan tidak kosong
-      if (!id || typeof id !== 'string') {
-        console.error('Invalid biaya operasional ID:', id);
-        setBiayaOperasional({
-          rincian_biaya: [],
-          total: 0,
-        });
-        return;
-      }
-      
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/biaya-operasional/${id}`);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.warn('Biaya operasional not found for ID:', id);
-          setBiayaOperasional({
-            rincian_biaya: [],
-            total: 0,
-          });
-          return;
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result: BiayaOperasionalData = await response.json();
-      setBiayaOperasional(result);
-    } catch (err) {
-      console.error('Error fetching biaya operasional:', err);
-      setBiayaOperasional({
-        rincian_biaya: [],
-        total: 0,
-      });
-    } finally {
-      setLoadingBiayaOperasional(false);
-    }
-  };
-
   // Fetch data laporan berdasarkan bulan yang dipilih
   useEffect(() => {
     const fetchData = async () => {
@@ -268,24 +217,6 @@ const LaporanPenjualan: React.FC = () => {
             }
           });
           
-          // Hitung total barang terjual
-          const totalBarang = semuaProduk.reduce((sum, item) => sum + item.jumlah_terjual, 0);
-          setTotalBarangTerjual(totalBarang);
-          
-          // Konversi data produk ke format ProdukTerlaris
-          const produkTerlarisData: ProdukTerlaris[] = semuaProduk.map(item => ({
-            produk: item.nama_produk,
-            harga_jual: item.pendapatan / item.jumlah_terjual, // Estimasi harga jual
-            harga_beli: item.hpp_per_porsi,
-            labaPerItem: item.laba_kotor / item.jumlah_terjual,
-            jumlahTerjual: item.jumlah_terjual,
-            totalLaba: item.laba_kotor
-          }));
-          
-          // Urutkan berdasarkan total laba (terbesar ke terkecil)
-          produkTerlarisData.sort((a, b) => b.totalLaba - a.totalLaba);
-          setProdukTerlaris(produkTerlarisData);
-          
           // PERBAIKAN: Ambil produk terlaris hanya untuk hari ini
           const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
           const todayData = result.data.find(item => item.tanggal === today);
@@ -315,8 +246,6 @@ const LaporanPenjualan: React.FC = () => {
           }
         } else {
           // Jika tidak ada data produk, set ke 0
-          setTotalBarangTerjual(0);
-          setProdukTerlaris([]);
           setProdukTerlarisHariIni([]);
           setTotalBarangTerjualHariIni(0);
           setTotalBebanPerhari(0);
@@ -369,16 +298,6 @@ const LaporanPenjualan: React.FC = () => {
       currency: 'IDR',
       minimumFractionDigits: 0,
     }).format(amount);
-  };
-
-  // Format Tanggal
-  const formatTanggal = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
   };
 
   // Fungsi untuk mengubah halaman
@@ -452,7 +371,9 @@ const LaporanPenjualan: React.FC = () => {
       total_hpp: totalHpp,
       total_beban: totalBeban,
       total_beban_perhari: totalBebanPerhari, // Tambahkan total beban perhari ke export data
-      biaya_operasional: biayaOperasionalExport
+      biaya_operasional: biayaOperasionalExport,
+      // PERBAIKAN: Tambahkan properti pengeluaran yang dibutuhkan oleh fungsi export
+      pengeluaran: biayaOperasionalExport
     };
     
     if (type === 'pdf') {
