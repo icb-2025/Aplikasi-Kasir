@@ -19,14 +19,14 @@ interface MetodePembayaran {
   total: number;
 }
 
-// Interface untuk biaya operasional
+// Interface untuk biaya operasional (sesuaikan dengan struktur API)
 interface BiayaOperasional {
   _id: string;
-  listrik: number;
-  air: number;
-  internet: number;
-  sewa_tempat: number;
-  gaji_karyawan: number;
+  rincian_biaya: Array<{
+    nama: string;
+    jumlah: number;
+    _id: string;
+  }>;
   total: number;
   createdAt: string;
   __v: number;
@@ -45,8 +45,8 @@ interface LaporanData {
   rekap_metode_pembayaran: MetodePembayaran[];
   totalPendapatan: number;
   totalBarangTerjual: number;
-  pengeluaran: number;
-  biaya_operasional: BiayaOperasional; // Tambahkan biaya operasional
+  pengeluaran: number; // Tambahkan properti ini
+  biaya_operasional: BiayaOperasional;
 }
 
 // Interface untuk options autoTable
@@ -110,16 +110,18 @@ export const exportPdf = (data: LaporanData) => {
   doc.setFontSize(14);
   doc.text('Detail Biaya Operasional', 14, 95);
   
+  // Siapkan data untuk tabel biaya operasional
+  const biayaOperasionalBody = data.biaya_operasional.rincian_biaya.map(item => [
+    item.nama,
+    formatRupiah(item.jumlah)
+  ]);
+  
+  // Tambahkan baris total
+  biayaOperasionalBody.push(['Total', formatRupiah(data.biaya_operasional.total)]);
+  
   const biayaOperasionalTable: AutoTableOptions = {
     head: [['Kategori', 'Jumlah']],
-    body: [
-      ['Listrik', formatRupiah(data.biaya_operasional.listrik)],
-      ['Air', formatRupiah(data.biaya_operasional.air)],
-      ['Internet', formatRupiah(data.biaya_operasional.internet)],
-      ['Sewa Tempat', formatRupiah(data.biaya_operasional.sewa_tempat)],
-      ['Gaji Karyawan', formatRupiah(data.biaya_operasional.gaji_karyawan)],
-      ['Total', formatRupiah(data.biaya_operasional.total)]
-    ],
+    body: biayaOperasionalBody,
     startY: 100,
     styles: {
       fontSize: 10,

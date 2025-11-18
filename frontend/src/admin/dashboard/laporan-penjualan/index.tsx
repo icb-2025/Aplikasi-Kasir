@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, type PieLabel } from 'recharts';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { exportPdf, exportExcel } from './utils';
@@ -6,7 +6,7 @@ import { Landmark, Wallet, TrendingUp, CreditCard, ChevronLeft, ChevronRight } f
 import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
-// Interface untuk produk dari API
+// Interfaces
 interface ProdukApi {
   nama_produk: string;
   jumlah_terjual: number;
@@ -17,7 +17,6 @@ interface ProdukApi {
   _id: string;
 }
 
-// Interface untuk summary dari API
 interface SummaryApi {
   total_hpp: number;
   total_pendapatan: number;
@@ -26,7 +25,6 @@ interface SummaryApi {
   total_laba_bersih: number;
 }
 
-// Interface untuk response dari API
 interface ApiResponse {
   success: boolean;
   summary: SummaryApi;
@@ -45,7 +43,6 @@ interface ApiResponse {
   }[];
 }
 
-// Interface untuk daftar bulan
 interface DaftarBulan {
   id: string;
   nama_bulan: string;
@@ -54,7 +51,6 @@ interface DaftarBulan {
   createdAt: string;
 }
 
-// Interface untuk data produk terlaris
 interface ProdukTerlaris {
   produk: string;
   harga_jual: number;
@@ -65,7 +61,6 @@ interface ProdukTerlaris {
   gambar_url?: string;
 }
 
-// Interface untuk biaya operasional
 export interface BiayaOperasionalItem {
   nama: string;
   jumlah: number;
@@ -80,7 +75,6 @@ export interface BiayaOperasionalData {
   __v?: number;
 }
 
-// Interface untuk biaya operasional yang sesuai dengan fungsi export
 interface BiayaOperasional {
   _id: string;
   listrik: number;
@@ -93,14 +87,17 @@ interface BiayaOperasional {
   __v: number;
 }
 
-// Interface untuk data pie chart
 interface PieData {
   name: string;
   value: number;
   [key: string]: unknown;
 }
 
-// Interface untuk props CustomTooltip
+interface MetodePembayaran {
+  metode: string;
+  total: number;
+}
+
 interface TooltipProps {
   active?: boolean;
   payload?: Array<{
@@ -111,36 +108,31 @@ interface TooltipProps {
 }
 
 const LaporanPenjualan: React.FC = () => {
+  // States
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ApiResponse | null>(null);
-  const [produkTerlarisHariIni, setProdukTerlarisHariIni] = useState<ProdukTerlaris[]>([]); // State untuk produk terlaris hari ini
+  const [produkTerlarisHariIni, setProdukTerlarisHariIni] = useState<ProdukTerlaris[]>([]);
   const [totalPendapatan, setTotalPendapatan] = useState<number>(0);
-  const [totalBarangTerjualHariIni, setTotalBarangTerjualHariIni] = useState<number>(0); // State untuk total barang terjual hari ini
+  const [totalBarangTerjualHariIni, setTotalBarangTerjualHariIni] = useState<number>(0);
   const [totalLabaKotor, setTotalLabaKotor] = useState<number>(0);
   const [labaBersih, setLabaBersih] = useState<number>(0);
   const [totalHpp, setTotalHpp] = useState<number>(0);
-  const [totalBeban, setTotalBeban] = useState<number>(0);
-  const [totalBebanPerhari, setTotalBebanPerhari] = useState<number>(0); // State untuk total beban perhari
+  const [totalBebanPerhari, setTotalBebanPerhari] = useState<number>(0);
+  const [totalBebanPerbulan, setTotalBebanPerbulan] = useState<number>(0);
   const [pieData, setPieData] = useState<PieData[]>([]);
-  
-  // State untuk pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(10);
-  
-  // State untuk filter bulan
   const [daftarBulan, setDaftarBulan] = useState<DaftarBulan[]>([]);
   const [selectedBulan, setSelectedBulan] = useState<string>('');
   const [loadingBulan, setLoadingBulan] = useState<boolean>(true);
-  
-  // State untuk biaya operasional
-  const [ biayaOperasional, setBiayaOperasional] = useState<BiayaOperasionalData>({
+  const [biayaOperasional, setBiayaOperasional] = useState<BiayaOperasionalData>({
     rincian_biaya: [],
     total: 0,
   });
   const [loadingBiayaOperasional, setLoadingBiayaOperasional] = useState<boolean>(true);
-  
-  // Warna untuk pie chart
+
+  // Constants
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1', '#EF4444', '#14B8A6', '#F97316'];
 
   // Fetch daftar bulan
@@ -150,15 +142,12 @@ const LaporanPenjualan: React.FC = () => {
         setLoadingBulan(true);
         const response = await fetch(`${ipbe}:${portbe}/api/admin/laporan/bulan`);
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
         const result = await response.json();
         setDaftarBulan(result.daftar_bulan);
         
-        // Pilih bulan terbaru secara default
-        if (result.daftar_bulan && result.daftar_bulan.length > 0) {
+        if (result.daftar_bulan?.length > 0) {
           setSelectedBulan(result.daftar_bulan[0].id);
         }
       } catch (err) {
@@ -172,144 +161,128 @@ const LaporanPenjualan: React.FC = () => {
     fetchDaftarBulan();
   }, []);
 
-  // Fetch data laporan berdasarkan bulan yang dipilih
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!selectedBulan) return;
-      
-      try {
-        setLoading(true);
-        // PERBAIKAN: Gunakan endpoint /summary
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/hpp-total/summary?bulan=${selectedBulan}`);
+  // Fetch data laporan
+  const fetchData = useCallback(async () => {
+    if (!selectedBulan) return;
+    
+    try {
+      setLoading(true);
+      const response = await fetch(`${ipbe}:${portbe}/api/admin/hpp-total/summary?bulan=${selectedBulan}`);
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const result: ApiResponse = await response.json();
+      
+      if (!result?.success || !result?.summary) {
+        throw new Error('Data tidak valid atau tidak lengkap');
+      }
+      
+      setData(result);
+      
+      // Set data dari summary
+      setTotalPendapatan(result.summary.total_pendapatan || 0);
+      setTotalLabaKotor(result.summary.total_laba_kotor || 0);
+      setLabaBersih(result.summary.total_laba_bersih || 0);
+      setTotalHpp(result.summary.total_hpp || 0);
+      
+      // Proses data harian
+      if (result.data && result.data.length > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const todayData = result.data.find(item => item.tanggal === today);
         
-        const result: ApiResponse = await response.json();
+        // Set beban perhari
+        setTotalBebanPerhari(todayData?.total_beban || result.data[result.data.length - 1].total_beban || 0);
         
-        // Validasi data
-        if (!result || !result.success || !result.summary) {
-          throw new Error('Data tidak valid atau tidak lengkap');
-        }
+        // Hitung total beban perbulan
+        const totalBebanBulanan = result.data.reduce((sum, item) => sum + (item.total_beban || 0), 0);
+        setTotalBebanPerbulan(totalBebanBulanan);
         
-        setData(result);
-        
-        // PERBAIKAN: Ambil SEMUA data dari summary
-        setTotalPendapatan(result.summary.total_pendapatan || 0);
-        setTotalLabaKotor(result.summary.total_laba_kotor || 0);
-        setLabaBersih(result.summary.total_laba_bersih || 0);
-        setTotalHpp(result.summary.total_hpp || 0);
-        setTotalBeban(result.summary.total_beban || 0);
-        
-        // PERBAIKAN: Hitung total beban perhari
-        if (result.data && result.data.length > 0) {
-          // Hitung total beban perhari dari data harian
-          const totalBebanHarian = result.data.reduce((sum, item) => sum + (item.total_beban || 0), 0);
-          const rataRataBebanPerhari = result.data.length > 0 ? totalBebanHarian / result.data.length : 0;
-          setTotalBebanPerhari(rataRataBebanPerhari);
+        // Proses produk hari ini
+        if (todayData?.produk) {
+          const produkHariIniData: ProdukTerlaris[] = todayData.produk.map(item => ({
+            produk: item.nama_produk,
+            harga_jual: item.pendapatan / item.jumlah_terjual,
+            harga_beli: item.hpp_per_porsi,
+            labaPerItem: item.laba_kotor / item.jumlah_terjual,
+            jumlahTerjual: item.jumlah_terjual,
+            totalLaba: item.laba_kotor
+          }));
           
-          // Ambil semua produk dari semua data
-          const semuaProduk: ProdukApi[] = [];
-          result.data.forEach(item => {
-            if (item.produk && Array.isArray(item.produk)) {
-              semuaProduk.push(...item.produk);
-            }
-          });
+          produkHariIniData.sort((a, b) => b.totalLaba - a.totalLaba);
+          setProdukTerlarisHariIni(produkHariIniData);
           
-          // PERBAIKAN: Ambil produk terlaris hanya untuk hari ini
-          const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
-          const todayData = result.data.find(item => item.tanggal === today);
-          
-          if (todayData && todayData.produk) {
-            // Konversi data produk hari ini ke format ProdukTerlaris
-            const produkHariIniData: ProdukTerlaris[] = todayData.produk.map(item => ({
-              produk: item.nama_produk,
-              harga_jual: item.pendapatan / item.jumlah_terjual, // Estimasi harga jual
-              harga_beli: item.hpp_per_porsi,
-              labaPerItem: item.laba_kotor / item.jumlah_terjual,
-              jumlahTerjual: item.jumlah_terjual,
-              totalLaba: item.laba_kotor
-            }));
-            
-            // Urutkan berdasarkan total laba (terbesar ke terkecil)
-            produkHariIniData.sort((a, b) => b.totalLaba - a.totalLaba);
-            setProdukTerlarisHariIni(produkHariIniData);
-            
-            // Hitung total barang terjual hari ini
-            const totalBarangHariIni = produkHariIniData.reduce((sum, item) => sum + item.jumlahTerjual, 0);
-            setTotalBarangTerjualHariIni(totalBarangHariIni);
-          } else {
-            // Jika tidak ada data untuk hari ini
-            setProdukTerlarisHariIni([]);
-            setTotalBarangTerjualHariIni(0);
-          }
+          const totalBarangHariIni = produkHariIniData.reduce((sum, item) => sum + item.jumlahTerjual, 0);
+          setTotalBarangTerjualHariIni(totalBarangHariIni);
         } else {
-          // Jika tidak ada data produk, set ke 0
           setProdukTerlarisHariIni([]);
           setTotalBarangTerjualHariIni(0);
-          setTotalBebanPerhari(0);
         }
-        
-        // PERBAIKAN: Gunakan data dari summary untuk pie chart
-        const pieDataArray = [
-          { name: 'Tunai', value: result.summary.total_pendapatan * 0.4 },
-          { name: 'E-Wallet', value: result.summary.total_pendapatan * 0.3 },
-          { name: 'Virtual Account', value: result.summary.total_pendapatan * 0.2 },
-          { name: 'Kartu Kredit', value: result.summary.total_pendapatan * 0.1 }
-        ];
-        
-        setPieData(pieDataArray);
-        
-        // PERBAIKAN: Gunakan data dari summary untuk biaya operasional
-        setBiayaOperasional({
-          rincian_biaya: [
-            { nama: 'Listrik', jumlah: result.summary.total_beban * 0.3 },
-            { nama: 'Air', jumlah: result.summary.total_beban * 0.1 },
-            { nama: 'Internet', jumlah: result.summary.total_beban * 0.1 },
-            { nama: 'Sewa Tempat', jumlah: result.summary.total_beban * 0.3 },
-            { nama: 'Gaji Karyawan', jumlah: result.summary.total_beban * 0.2 }
-          ],
-          total: result.summary.total_beban || 0
-        });
-        setLoadingBiayaOperasional(false);
-        
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengambil data');
-      } finally {
-        setLoading(false);
+      } else {
+        setProdukTerlarisHariIni([]);
+        setTotalBarangTerjualHariIni(0);
+        setTotalBebanPerhari(0);
+        setTotalBebanPerbulan(0);
       }
-    };
+      
+      // Set data pie chart
+      const pieDataArray = [
+        { name: 'Tunai', value: result.summary.total_pendapatan * 0.4 },
+        { name: 'E-Wallet', value: result.summary.total_pendapatan * 0.3 },
+        { name: 'Virtual Account', value: result.summary.total_pendapatan * 0.2 },
+        { name: 'Kartu Kredit', value: result.summary.total_pendapatan * 0.1 }
+      ];
+      
+      setPieData(pieDataArray);
+      
+      // Set biaya operasional
+      setBiayaOperasional({
+        rincian_biaya: [
+          { nama: 'Listrik', jumlah: totalBebanPerbulan * 0.3 },
+          { nama: 'Air', jumlah: totalBebanPerbulan * 0.1 },
+          { nama: 'Internet', jumlah: totalBebanPerbulan * 0.1 },
+          { nama: 'Sewa Tempat', jumlah: totalBebanPerbulan * 0.3 },
+          { nama: 'Gaji Karyawan', jumlah: totalBebanPerbulan * 0.2 }
+        ],
+        total: totalBebanPerbulan || 0
+      });
+      setLoadingBiayaOperasional(false);
+      
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengambil data');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedBulan, totalBebanPerbulan]);
 
+  useEffect(() => {
     fetchData();
-  }, [selectedBulan]);
+  }, [fetchData]);
 
-  // Pagination logic
+  // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = produkTerlarisHariIni.slice(indexOfFirstItem, indexOfLastItem); // Gunakan produk terlaris hari ini
-  const totalPages = Math.ceil(produkTerlarisHariIni.length / itemsPerPage); // Gunakan produk terlaris hari ini
+  const currentItems = produkTerlarisHariIni.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(produkTerlarisHariIni.length / itemsPerPage);
 
   // Format Rupiah
-  const formatRupiah = (amount: number): string => {
+  const formatRupiah = useCallback((amount: number): string => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       minimumFractionDigits: 0,
     }).format(amount);
-  };
+  }, []);
 
-  // Fungsi untuk mengubah halaman
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
-  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
-  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+  // Pagination functions
+  const paginate = useCallback((pageNumber: number) => setCurrentPage(pageNumber), []);
+  const nextPage = useCallback(() => setCurrentPage(prev => Math.min(prev + 1, totalPages)), [totalPages]);
+  const prevPage = useCallback(() => setCurrentPage(prev => Math.max(prev - 1, 1)), []);
 
-  // Fungsi untuk mengekspor data
-  const handleExport = (type: 'pdf' | 'excel') => {
+  // Export functions
+  const handleExport = useCallback((type: 'pdf' | 'excel') => {
     if (!data) return;
     
-    // Konversi data biaya operasional ke format yang sesuai dengan fungsi export
     const biayaOperasionalExport: BiayaOperasional = {
       _id: biayaOperasional._id || '',
       listrik: 0,
@@ -322,41 +295,34 @@ const LaporanPenjualan: React.FC = () => {
       __v: biayaOperasional.__v || 0
     };
     
-    // Isi nilai berdasarkan data yang ada
-    if (biayaOperasional.rincian_biaya && Array.isArray(biayaOperasional.rincian_biaya)) {
-      biayaOperasional.rincian_biaya.forEach(item => {
-        switch (item.nama.toLowerCase()) {
-          case 'listrik':
-            biayaOperasionalExport.listrik = item.jumlah || 0;
-            break;
-          case 'air':
-            biayaOperasionalExport.air = item.jumlah || 0;
-            break;
-          case 'internet':
-            biayaOperasionalExport.internet = item.jumlah || 0;
-            break;
-          case 'sewa tempat':
-          case 'sewa':
-            biayaOperasionalExport.sewa_tempat = item.jumlah || 0;
-            break;
-          case 'gaji karyawan':
-          case 'gaji':
-            biayaOperasionalExport.gaji_karyawan = item.jumlah || 0;
-            break;
-        }
-      });
-    }
+    biayaOperasional.rincian_biaya?.forEach(item => {
+      switch (item.nama.toLowerCase()) {
+        case 'listrik': biayaOperasionalExport.listrik = item.jumlah || 0; break;
+        case 'air': biayaOperasionalExport.air = item.jumlah || 0; break;
+        case 'internet': biayaOperasionalExport.internet = item.jumlah || 0; break;
+        case 'sewa tempat':
+        case 'sewa': biayaOperasionalExport.sewa_tempat = item.jumlah || 0; break;
+        case 'gaji karyawan':
+        case 'gaji': biayaOperasionalExport.gaji_karyawan = item.jumlah || 0; break;
+      }
+    });
     
-    // Siapkan data untuk export
+    // Konversi PieData ke MetodePembayaran
+    const metodePembayaran: MetodePembayaran[] = pieData.map(item => ({
+      metode: item.name,
+      total: item.value
+    }));
+    
     const exportData = {
       periode: {
-        start: data.data && data.data.length > 0 ? data.data[0].tanggal : new Date().toISOString(),
-        end: data.data && data.data.length > 0 ? data.data[data.data.length - 1].tanggal : new Date().toISOString()
+        start: data.data?.[0]?.tanggal || new Date().toISOString(),
+        end: data.data?.[data.data.length - 1]?.tanggal || new Date().toISOString()
       },
       laba: {
+        total_laba: totalLabaKotor,
         total_laba_kotor: totalLabaKotor,
         laba_bersih: labaBersih,
-        detail: produkTerlarisHariIni.map(item => ({ // Gunakan produk terlaris hari ini
+        detail: produkTerlarisHariIni.map(item => ({
           produk: item.produk,
           harga_jual: item.harga_jual,
           harga_beli: item.harga_beli,
@@ -365,15 +331,11 @@ const LaporanPenjualan: React.FC = () => {
           totalLaba: item.totalLaba
         }))
       },
-      rekap_metode_pembayaran: pieData,
+      rekap_metode_pembayaran: metodePembayaran, // Perbaikan: gunakan metodePembayaran yang sudah dikonversi
       totalPendapatan: totalPendapatan,
-      totalBarangTerjual: totalBarangTerjualHariIni, // Gunakan total barang terjual hari ini
-      total_hpp: totalHpp,
-      total_beban: totalBeban,
-      total_beban_perhari: totalBebanPerhari, // Tambahkan total beban perhari ke export data
-      biaya_operasional: biayaOperasionalExport,
-      // PERBAIKAN: Tambahkan properti pengeluaran yang dibutuhkan oleh fungsi export
-      pengeluaran: biayaOperasionalExport
+      totalBarangTerjual: totalBarangTerjualHariIni,
+      pengeluaran: totalBebanPerbulan,
+      biaya_operasional: biayaOperasionalExport
     };
     
     if (type === 'pdf') {
@@ -381,11 +343,11 @@ const LaporanPenjualan: React.FC = () => {
     } else {
       exportExcel(exportData);
     }
-  };
+  }, [data, biayaOperasional, totalLabaKotor, labaBersih, produkTerlarisHariIni, pieData, totalPendapatan, totalBarangTerjualHariIni, totalBebanPerbulan]);
 
-  // Custom tooltip untuk pie chart
+  // Custom tooltip for pie chart
   const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
-    if (active && payload && payload.length) {
+    if (active && payload?.length) {
       const data = payload[0];
       const total = pieData.reduce((sum, item) => sum + item.value, 0);
       const percentage = total > 0 ? (data.value / total) * 100 : 0;
@@ -401,7 +363,7 @@ const LaporanPenjualan: React.FC = () => {
     return null;
   };
 
-  // Custom label untuk pie chart
+  // Custom label for pie chart
   const renderCustomizedLabel: PieLabel = (props) => {
     const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
     
@@ -430,20 +392,26 @@ const LaporanPenjualan: React.FC = () => {
     );
   };
 
-  // Handle perubahan select bulan
-  const handleBulanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  // Handle bulan change
+  const handleBulanChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedBulan(e.target.value);
     setCurrentPage(1);
-  };
+  }, []);
 
-  // Dapatkan icon berdasarkan metode pembayaran
-  const getPaymentIcon = (method: string): React.ReactNode => {
+  // Get payment icon
+  const getPaymentIcon = useCallback((method: string): React.ReactNode => {
     if (method.includes('Virtual Account')) return <Landmark className="h-5 w-5 text-blue-500" />;
     if (method.includes('E-Wallet')) return <Wallet className="h-5 w-5 text-green-500" />;
     if (method.includes('Tunai')) return <TrendingUp className="h-5 w-5 text-yellow-500" />;
     if (method.includes('Kartu Kredit')) return <CreditCard className="h-5 w-5 text-purple-500" />;
     return <CreditCard className="h-5 w-5 text-gray-500" />;
-  };
+  }, []);
+
+  // Memoized values
+  const selectedBulanName = useMemo(() => 
+    daftarBulan.find(b => b.id === selectedBulan)?.nama_bulan || 'Semua Periode', 
+    [daftarBulan, selectedBulan]
+  );
 
   if (loadingBulan) {
     return (
@@ -459,9 +427,10 @@ const LaporanPenjualan: React.FC = () => {
     <div className="p-6">
       <div className="mb-6 flex justify-between items-center">
         <div>
+          <h1 className="text-2xl font-semibold text-gray-800">Laporan Penjualan</h1>
+          <p className="text-gray-600">Periode: {selectedBulanName}</p>
         </div>
         <div className="flex items-center space-x-4">
-          {/* Filter Bulan */}
           <div className="flex items-center">
             <label htmlFor="bulan" className="block text-sm font-medium text-black-700 mr-3">
               Pilih Bulan:
@@ -528,13 +497,6 @@ const LaporanPenjualan: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="mb-6 flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-800">Laporan Penjualan</h1>
-              <p className="text-gray-600">Periode: {selectedBulan ? daftarBulan.find(b => b.id === selectedBulan)?.nama_bulan : 'Semua Periode'}</p>
-            </div>
-          </div>
-
           {/* Statistik Overview */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-white p-4 rounded-lg shadow">
@@ -551,7 +513,6 @@ const LaporanPenjualan: React.FC = () => {
             </div>
             <div className="bg-white p-4 rounded-lg shadow">
               <h3 className="text-sm font-medium text-gray-500">Total Barang Terjual (Hari Ini)</h3>
-              {/* PERBAIKAN: Gunakan totalBarangTerjualHariIni */}
               <p className="text-2xl font-bold text-orange-600">{totalBarangTerjualHariIni}</p>
               <p className="text-xs text-gray-500">hari ini</p>
             </div>
@@ -572,15 +533,14 @@ const LaporanPenjualan: React.FC = () => {
               <p className="text-xs text-gray-500">periode terpilih</p>
             </div>
             <div className="bg-white p-4 rounded-lg shadow">
-              <h3 className="text-sm font-medium text-gray-500">Total Beban (Perhari)</h3>
-              {/* PERBAIKAN: Gunakan totalBebanPerhari */}
+              <h3 className="text-sm font-medium text-gray-500">Total Beban (Hari Ini)</h3>
               <p className="text-2xl font-bold text-red-600">{formatRupiah(totalBebanPerhari)}</p>
-              <p className="text-xs text-gray-500">rata-rata per hari</p>
+              <p className="text-xs text-gray-500">hari ini</p>
             </div>
             <div className="bg-white p-4 rounded-lg shadow">
               <h3 className="text-sm font-medium text-gray-500">Total Beban (Perbulan)</h3>
-              <p className="text-2xl font-bold text-red-600">{formatRupiah(biayaOperasional.total)}</p>
-              <p className="text-xs text-gray-500">periode terpilih</p>
+              <p className="text-2xl font-bold text-red-600">{formatRupiah(totalBebanPerbulan)}</p>
+              <p className="text-xs text-gray-500">jumlah semua hari</p>
             </div>
           </div>
 
