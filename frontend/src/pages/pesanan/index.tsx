@@ -67,6 +67,10 @@ interface Settings {
   receiptFooter: string;
 }
 
+interface BiayaLayananItem {
+  persen: number;
+}
+
 interface LocationState {
   transaksiTerbaru?: Pesanan;
   message?: string;
@@ -79,6 +83,7 @@ interface ApiResponse {
 
 const API_URL = `${ipbe}:${portbe}/api/users/history`;
 const SETTINGS_URL = `${ipbe}:${portbe}/api/admin/settings`;
+const BIAYA_LAYANAN_URL = `${ipbe}:${portbe}/api/admin/biaya-layanan`;
 
 const StatusPesananPage = () => {
   const [filterStatus, setFilterStatus] = useState<string>("semua");
@@ -93,6 +98,7 @@ const StatusPesananPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [settings, setSettings] = useState<Settings>({ receiptHeader: "", receiptFooter: "" });
   const [showDateFilter, setShowDateFilter] = useState(false); // Kontrol visibilitas filter tanggal
+  const [totalBiayaLayanan, setTotalBiayaLayanan] = useState(0); // State untuk total biaya layanan
   const itemsPerPage = 10;
  
   const location = useLocation();
@@ -151,6 +157,28 @@ const StatusPesananPage = () => {
       }
     } catch (error) {
       console.error("Gagal mengambil data settings:", error);
+    }
+  };
+
+  // Fetch biaya layanan dari API
+  const fetchBiayaLayanan = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(BIAYA_LAYANAN_URL, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data: BiayaLayananItem[] = await response.json();
+        // Hitung total persentase dari semua biaya layanan
+        const total = data.reduce((sum: number, item: BiayaLayananItem) => sum + item.persen, 0);
+        setTotalBiayaLayanan(total);
+      }
+    } catch (error) {
+      console.error("Gagal mengambil data biaya layanan:", error);
     }
   };
 
@@ -223,6 +251,7 @@ const StatusPesananPage = () => {
   useEffect(() => {
     fetchPesanan();
     fetchSettings();
+    fetchBiayaLayanan();
   }, []);
 
   // Ambil data transaksi terbaru dari state navigasi
@@ -346,6 +375,16 @@ const StatusPesananPage = () => {
   const formatCurrency = (value: number | undefined | null): string => {
     if (!value || isNaN(value)) return "Rp 0";
     return `Rp ${value.toLocaleString("id-ID")}`;
+  };
+
+  // Fungsi untuk menghitung subtotal dari barang yang dibeli
+  const calculateSubtotalFromItems = (items: BarangDibeli[]): number => {
+    return items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+  };
+
+  // Fungsi untuk menghitung biaya layanan dari total dan persentase
+  const calculateBiayaLayanan = (total: number, percentage: number): number => {
+    return Math.round(total * percentage / 100);
   };
 
   const toggleSidebar = () => {
@@ -849,10 +888,28 @@ const StatusPesananPage = () => {
                       </tbody>
                     </table>
 
+                    {/* Garis pembatas di atas subtotal */}
+                    <div className="border-t border-gray-300 my-3"></div>
+
+                    <div className="flex justify-between items-center text-sm mb-2">
+                      <span>Subtotal</span>
+                      <span>{formatCurrency(calculateSubtotalFromItems(selectedPesanan.nama_barang))}</span>
+                    </div>
+
+                    {totalBiayaLayanan > 0 && (
+                      <div className="flex justify-between items-center text-sm mb-2">
+                        <span>Biaya Layanan ({totalBiayaLayanan}%)</span>
+                        <span>{formatCurrency(calculateBiayaLayanan(calculateSubtotalFromItems(selectedPesanan.nama_barang), totalBiayaLayanan))}</span>
+                      </div>
+                    )}
+
                     <div className="flex justify-between items-center text-lg font-bold mb-6">
-                      <span>Total</span>
+                      <span>Total Pembayaran</span>
                       <span className="text-green-600">
-                        {formatCurrency(selectedPesanan.total_harga)}
+                        {formatCurrency(
+                          calculateSubtotalFromItems(selectedPesanan.nama_barang) + 
+                          calculateBiayaLayanan(calculateSubtotalFromItems(selectedPesanan.nama_barang), totalBiayaLayanan)
+                        )}
                       </span>
                     </div>
 

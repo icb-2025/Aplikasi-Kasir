@@ -90,6 +90,10 @@ interface SettingsReceipt {
   receiptFooter?: string;
 }
 
+interface BiayaLayananItem {
+  persen: number;
+}
+
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -231,9 +235,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         });
         
         if (response.ok) {
-          const data = await response.json();
+          const data: BiayaLayananItem[] = await response.json();
           // Hitung total persentase dari semua biaya layanan
-          const total = data.reduce((sum: number, item: any) => sum + item.persen, 0);
+          const total = data.reduce((sum: number, item: BiayaLayananItem) => sum + item.persen, 0);
           setTotalBiayaLayanan(total);
         }
       } catch (error) {
@@ -740,6 +744,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
                         {/* Total dan footer struk - tetap di bawah */}
                         <div className="flex-shrink-0">
+                          {/* Garis pembatas di atas subtotal */}
+                          <div className="border-t border-gray-300 my-3"></div>
+                          
                           <div className="flex justify-between items-center text-sm mb-2">
                             <span>Subtotal</span>
                             <span>{formatCurrency(calculateSubtotalFromItems(transactionData.barang_dibeli))}</span>
