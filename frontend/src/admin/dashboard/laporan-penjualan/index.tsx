@@ -182,7 +182,6 @@ const LaporanPenjualan: React.FC = () => {
       // Set data dari summary
       setTotalPendapatan(result.summary.total_pendapatan || 0);
       setTotalLabaKotor(result.summary.total_laba_kotor || 0);
-      setLabaBersih(result.summary.total_laba_bersih || 0);
       setTotalHpp(result.summary.total_hpp || 0);
       
       // Proses data harian
@@ -223,6 +222,17 @@ const LaporanPenjualan: React.FC = () => {
         setTotalBebanPerhari(0);
         setTotalBebanPerbulan(0);
       }
+      
+      // PERBAIKAN: Hitung laba bersih dengan rumus yang benar
+      // Laba Bersih = Total Pendapatan - Total HPP - Total Beban
+      const calculatedLabaBersih = (result.summary.total_pendapatan || 0) - (result.summary.total_hpp || 0) - (result.summary.total_beban || 0);
+      setLabaBersih(calculatedLabaBersih);
+      
+      console.log('Total Pendapatan:', result.summary.total_pendapatan);
+      console.log('Total HPP:', result.summary.total_hpp);
+      console.log('Total Beban:', result.summary.total_beban);
+      console.log('Laba Bersih (dihitung):', calculatedLabaBersih);
+      console.log('Laba Bersih (dari API):', result.summary.total_laba_bersih);
       
       // Set data pie chart
       const pieDataArray = [
@@ -307,7 +317,6 @@ const LaporanPenjualan: React.FC = () => {
       }
     });
     
-    // Konversi PieData ke MetodePembayaran
     const metodePembayaran: MetodePembayaran[] = pieData.map(item => ({
       metode: item.name,
       total: item.value
@@ -331,10 +340,12 @@ const LaporanPenjualan: React.FC = () => {
           totalLaba: item.totalLaba
         }))
       },
-      rekap_metode_pembayaran: metodePembayaran, // Perbaikan: gunakan metodePembayaran yang sudah dikonversi
+      rekap_metode_pembayaran: metodePembayaran,
       totalPendapatan: totalPendapatan,
       totalBarangTerjual: totalBarangTerjualHariIni,
-      pengeluaran: totalBebanPerbulan,
+      total_hpp: totalHpp,
+      total_beban: totalBebanPerbulan,
+      total_beban_perhari: totalBebanPerhari,
       biaya_operasional: biayaOperasionalExport
     };
     
@@ -343,7 +354,7 @@ const LaporanPenjualan: React.FC = () => {
     } else {
       exportExcel(exportData);
     }
-  }, [data, biayaOperasional, totalLabaKotor, labaBersih, produkTerlarisHariIni, pieData, totalPendapatan, totalBarangTerjualHariIni, totalBebanPerbulan]);
+  }, [data, biayaOperasional, totalLabaKotor, labaBersih, produkTerlarisHariIni, pieData, totalPendapatan, totalBarangTerjualHariIni, totalHpp, totalBebanPerbulan, totalBebanPerhari]);
 
   // Custom tooltip for pie chart
   const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {

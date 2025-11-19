@@ -20,3 +20,5 @@
   }, { timestamps: true });
 
   export default mongoose.model("HppHarian", hppHarianSchema, "HppHarian");
+
+  

@@ -48,9 +48,16 @@ export const getHppHarian = async (req, res) => {
 
 export const getHppSummary = async (req, res) => {
   try {
-    const data = await HppHarian.find();
+    const { startDate, endDate } = req.query;
 
-    // Kalau data kosong, langsung balikin kosong
+    // Ambil data sesuai rentang (mingguan / bulanan)
+    const filter = {};
+    if (startDate && endDate) {
+      filter.tanggal = { $gte: startDate, $lte: endDate };
+    }
+
+    const data = await HppHarian.find(filter).sort({ tanggal: 1 });
+
     if (!data || data.length === 0) {
       return res.json({
         success: true,
@@ -65,34 +72,53 @@ export const getHppSummary = async (req, res) => {
       });
     }
 
-    // Hitung akumulasi semua data
-    const summary = data.reduce((acc, item) => {
-      acc.total_hpp += item.total_hpp || 0;
-      acc.total_pendapatan += item.total_pendapatan || 0;
-      acc.total_laba_kotor += item.total_laba_kotor || 0;
-      acc.total_beban += item.total_beban || 0;
-      acc.total_laba_bersih += item.laba_bersih || 0;
-      return acc;
-    }, {
-      total_hpp: 0,
-      total_pendapatan: 0,
-      total_laba_kotor: 0,
-      total_beban: 0,
-      total_laba_bersih: 0
+    // Ambil biaya layanan & operasional
+    const biayaLayanan = await BiayaLayanan.findOne();
+    const biayaOperasional = await BiayaOperasional.findOne();
+
+    const persenLayanan = biayaLayanan?.persen || 0;
+    const biayaOperasionalBulanan = biayaOperasional?.total || 0;
+
+    // === AKUMULASI PENDAPATAN, HPP, LABA KOTOR ===
+    let totalPendapatan = 0;
+    let totalHpp = 0;
+    let totalLabaKotor = 0;
+
+    // === BIAYA LAYANAN DIJUMAHKAN PERHARI ===
+    let totalBiayaLayanan = 0;
+
+    data.forEach(item => {
+      const pendapatan = item.total_pendapatan || 0;
+
+      totalPendapatan += pendapatan;
+      totalHpp += item.total_hpp || 0;
+      totalLabaKotor += item.total_laba_kotor || 0;
+
+      // biaya layanan harian
+      totalBiayaLayanan += (persenLayanan / 100) * pendapatan;
     });
+
+    // === TOTAL BEBAN = BIAYA LAYANAN + OPERASIONAL (1x) ===
+    const totalBeban = totalBiayaLayanan + biayaOperasionalBulanan;
+
+    // === RUMUS LABA BERSIH ===
+    const labaBersih = totalPendapatan - totalHpp - totalBeban;
 
     res.json({
       success: true,
-      summary,
+      summary: {
+        total_hpp: totalHpp,
+        total_pendapatan: totalPendapatan,
+        total_laba_kotor: totalLabaKotor,
+        total_beban: totalBeban,
+        total_laba_bersih: labaBersih
+      },
       data
     });
 
   } catch (err) {
     console.error("Error summary HPP:", err);
-    res.status(500).json({ 
-      message: "Gagal menghitung summary", 
-      error: err.message 
-    });
+    res.status(500).json({ message: "Gagal menghitung summary", error: err.message });
   }
 };
 
@@ -133,7 +159,28 @@ export const addTransaksiToHpp = async (req, res) => {
     const laba_kotor = pendapatan - hpp_total;
 
     // 4. Cari dokumen HPP hari ini atau buat baru
-    let hppHarian = await HppHarian.findOne({ tanggal: today });
+  let hppHarian = await HppHarian.findOne({ tanggal: today });
+
+if (!hppHarian) {
+  hppHarian = new HppHarian({
+    tanggal: today,
+    produk: [],
+    total_hpp: 0,
+    total_pendapatan: 0,
+    total_laba_kotor: 0,
+    total_beban: 0,
+    laba_bersih: 0
+  });
+} else {
+  // pastikan data tidak membawa nilai lama
+  hppHarian.produk = hppHarian.produk || [];
+  hppHarian.total_hpp = hppHarian.total_hpp || 0;
+  hppHarian.total_pendapatan = hppHarian.total_pendapatan || 0;
+  hppHarian.total_laba_kotor = hppHarian.total_laba_kotor || 0;
+  hppHarian.total_beban = 0; // reset setiap hari
+  hppHarian.laba_bersih = 0; // reset setiap hari
+}
+
 
     if (!hppHarian) {
       hppHarian = new HppHarian({
@@ -178,7 +225,9 @@ export const addTransaksiToHpp = async (req, res) => {
 
     // 7. Hitung total beban dan laba bersih berdasarkan total yang sudah terakumulasi
     const biayaLayananHariIni = (biayaLayanan.persen / 100) * hppHarian.total_pendapatan;
-    const totalBebanHariIni = biayaLayananHariIni + biayaOperasional.total;
+    const bebanOperasionalPerHari = biayaOperasional.total / 30; // bagi bulanan jadi harian
+    const totalBebanHariIni = biayaLayananHariIni + bebanOperasionalPerHari;
+
     const labaBersihHariIni = hppHarian.total_laba_kotor - totalBebanHariIni;
     
     hppHarian.total_beban = totalBebanHariIni;
