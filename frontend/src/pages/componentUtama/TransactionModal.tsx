@@ -755,7 +755,10 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                           <div className="flex justify-between items-center text-lg font-bold mb-6">
                             <span>Total Pembayaran</span>
                             <span className="text-green-600">
-                              {formatCurrency(transactionData.total_harga)}
+                              {formatCurrency(
+                                calculateSubtotalFromItems(transactionData.barang_dibeli) + 
+                                calculateBiayaLayanan(calculateSubtotalFromItems(transactionData.barang_dibeli), totalBiayaLayanan)
+                              )}
                             </span>
                           </div>
 
