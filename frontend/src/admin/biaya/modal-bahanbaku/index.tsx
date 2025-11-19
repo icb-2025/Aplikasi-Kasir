@@ -1,3 +1,4 @@
+// src/admin/bahan-baku/index.tsx
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import LoadingSpinner from '../../../components/LoadingSpinner';
@@ -5,7 +6,7 @@ import BahanBakuTable from './components/BahanBakuTable';
 import TambahBahanBakuForm from './components/TambahBahanBakuForm';
 import EditProdukForm from './components/EditProdukForm';
 import EditBahanBakuForm from './components/EditBahanBakuForm';
-import { Plus } from 'lucide-react'; // Hanya Plus yang digunakan di sini
+import { Plus } from 'lucide-react'; // Tambahkan Edit dan Trash2
 import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 

@@ -3,6 +3,7 @@ import React from "react";
 import type { Barang } from ".";
 import type { BahanBakuItem } from "./ModalBarang";
 import { portbe } from "../../../../backend/ngrokbackend";
+import { CheckCircle, AlertCircle, XCircle, Edit, Trash2, Package, Circle } from "lucide-react";
 const ipbe = import.meta.env.VITE_IPBE;
 
 const safeValue = <T,>(value: T | null | undefined, fallback: T): T => {
@@ -34,13 +35,33 @@ const getStokClass = (status?: string): string => {
   return statusMap[status?.toLowerCase() || ""] || "bg-gray-50 text-gray-600 border border-gray-200";
 };
 
-const getStokIcon = (status?: string): string => {
-  const iconMap: { [key: string]: string } = {
-    "aman": "✅",
-    "hampir habis": "⚠️",
-    "habis": "❌",
-  };
-  return iconMap[status?.toLowerCase() || ""] || "⚫";
+// Komponen ikon status stok dengan Tailwind
+const StokIcon: React.FC<{ status?: string }> = ({ status }) => {
+  const statusLower = status?.toLowerCase() || "";
+  
+  if (statusLower === "aman") {
+    return <CheckCircle className="w-5 h-5 text-green-500" />;
+  } else if (statusLower === "hampir habis") {
+    return <AlertCircle className="w-5 h-5 text-yellow-500" />;
+  } else if (statusLower === "habis") {
+    return <XCircle className="w-5 h-5 text-red-500" />;
+  } else {
+    return <Circle className="w-5 h-5 text-gray-400" />;
+  }
+};
+
+// Fungsi untuk mendapatkan warna progress bar
+const getProgressBarColor = (stok: number, stokMinimal: number = 5) => {
+  if (stok <= 0) return "bg-red-500";
+  if (stok <= stokMinimal) return "bg-yellow-500";
+  return "bg-green-500";
+};
+
+// Fungsi untuk menghitung lebar progress bar
+const getProgressBarWidth = (stok: number, stokAwal?: number) => {
+  // Jika tidak ada stok awal, gunakan stok minimal sebagai acuan
+  const referenceStock = stokAwal || 50;
+  return `${Math.min(100, (stok / referenceStock) * 100)}%`;
 };
 
 interface BarangTableProps {
@@ -167,11 +188,15 @@ const BarangTable: React.FC<BarangTableProps> = ({
                 const isOutOfStock = item.status === "habis";
                 const bahanBakuInfo = getBahanBakuInfo(item);
                 
+                // Menghitung warna dan lebar progress bar
+                const progressBarColor = getProgressBarColor(item.stok, item.stokMinimal || 5);
+                const progressBarWidth = getProgressBarWidth(item.stok, item.stok_awal);
+                
                 return (
                   <tr 
                     key={item._id || `row-${index}-${Date.now()}`}
                     className={`transition-all duration-200 hover:bg-blue-50/30 ${
-                      isOutOfStock ? 'bg-red-50/20' : 
+                      isOutOfStock ? 'bg-red-100/100' : 
                       isLowStock ? 'bg-yellow-50/20' : 
                       index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
                     } ${isOutOfStock ? 'border-l-4 border-l-red-400' : ''}`}
@@ -212,7 +237,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                         <div className="text-sm font-medium text-gray-900 truncate" title={item.nama || "-"}>
                           {safeValue(item.nama, "-")}
                         </div>
-                        {bahanBakuInfo && (
+                        {/* {bahanBakuInfo && (
                           <div className="text-xs text-blue-600 mt-1 flex items-center">
                             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -221,7 +246,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                               ? bahanBakuInfo.bahan.map(b => b.nama).join(", ") 
                               : "Tidak ada data bahan"}
                           </div>
-                        )}
+                        )} */}
                       </div>
                     </td>
 
@@ -237,7 +262,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                       </div>
                       {bahanBakuInfo && (
                         <div className="text-xs text-green-600 mt-1">
-                          ✓ Dari bahan baku
+                          {/* ✓ Dari bahan baku */}
                         </div>
                       )}
                     </td>
@@ -277,23 +302,11 @@ const BarangTable: React.FC<BarangTableProps> = ({
                         <div className="text-xs text-gray-500">
                           Minimal: {safeValue(item.stokMinimal, 5)}
                         </div>
-                        {item.stok !== undefined && item.stok_awal !== undefined && (
+                        {item.stok !== undefined && (
                           <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                             <div 
-                              className={`h-1.5 rounded-full transition-all duration-300 ${
-                                item.status === "habis"
-                                  ? 'bg-red-500'
-                                  : item.status === "hampir habis"
-                                  ? 'bg-yellow-500'
-                                  : 'bg-green-500'
-                              }`}
-                              style={{
-                                width: `${
-                                  item.stok_awal
-                                    ? Math.min((item.stok / item.stok_awal) * 100, 100)
-                                    : 100
-                                }%`,
-                              }}
+                              className={`h-1.5 rounded-full transition-all duration-500 ${progressBarColor}`}
+                              style={{ width: progressBarWidth }}
                             ></div>
                           </div>
                         )}
@@ -302,7 +315,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
 
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
-                        <span className="text-sm">{getStokIcon(item.status)}</span>
+                        <StokIcon status={item.status} />
                         <span
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStokClass(item.status)}`}
                         >
@@ -321,7 +334,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                           title="Edit barang"
                           disabled={!item._id}
                         >
-                          <span className="text-sm">✏️</span>
+                          <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => item._id && onDelete(item._id)}
@@ -329,7 +342,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                           title="Hapus barang"
                           disabled={!item._id}
                         >
-                          <span className="text-sm">🗑️</span>
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -341,7 +354,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                 <td colSpan={11} className="px-6 py-12 text-center">
                   <div className="flex flex-col items-center justify-center">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                      <span className="text-2xl">📦</span>
+                      <Package className="w-8 h-8 text-gray-400" />
                     </div>
                     <p className="text-gray-500 font-medium">Tidak ada data barang</p>
                     <p className="text-gray-400 text-sm mt-1">Data barang akan muncul di sini</p>

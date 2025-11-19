@@ -9,15 +9,13 @@ interface OmzetData {
 export const exportOmzetToCsv = (omzetData: OmzetData | null) => {
   if (!omzetData) return;
   
-  const data = [
-    ['Periode', 'Omzet', 'Target', 'Pencapaian', 'Pertumbuhan'],
-    ['Hari Ini', formatRupiah(omzetData.hari_ini), formatRupiah(50000000), 
-      `${Math.round((omzetData.hari_ini / 50000000) * 100)}%`, '+12.5%'],
-    ['Minggu Ini', formatRupiah(omzetData.minggu_ini), formatRupiah(450000000), 
-      `${Math.round((omzetData.minggu_ini / 450000000) * 100)}%`, '+8.3%'],
-    ['Bulan Ini', formatRupiah(omzetData.bulan_ini), formatRupiah(2000000000), 
-      `${Math.round((omzetData.bulan_ini / 2000000000) * 100)}%`, '+15.2%']
-  ];
+const data = [
+  ['Periode', 'Omzet'],
+  ['Hari Ini', formatRupiah(omzetData.hari_ini)],
+  ['Minggu Ini', formatRupiah(omzetData.minggu_ini)],
+  ['Bulan Ini', formatRupiah(omzetData.bulan_ini)]
+];
+
   
   const csvContent = "data:text/csv;charset=utf-8," + 
     data.map(row => row.join(",")).join("\n");

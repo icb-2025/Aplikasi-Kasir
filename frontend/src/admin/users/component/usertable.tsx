@@ -1,5 +1,6 @@
 // src/admin/users/component/usertable.tsx
 import React from 'react';
+import { Edit, Trash2 } from 'lucide-react'; // Import ikon dari Lucide React
 
 interface User {
   _id: string;
@@ -75,20 +76,22 @@ const UserTable: React.FC<UserTableProps> = ({ users, onEdit, onDelete }) => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => onEdit(user)}
-                      className="text-blue-600 hover:text-blue-900 mr-3 transition-colors"
-                      title="Edit"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => onDelete(user._id)}
-                      className="text-red-600 hover:text-red-900 transition-colors"
-                      title="Hapus"
-                    >
-                      🗑️
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => onEdit(user)}
+                        className="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg border border-blue-200 hover:border-blue-600 transition-all duration-200"
+                        title="Edit"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onDelete(user._id)}
+                        className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-white hover:bg-red-600 rounded-lg border border-red-200 hover:border-red-600 transition-all duration-200"
+                        title="Hapus"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

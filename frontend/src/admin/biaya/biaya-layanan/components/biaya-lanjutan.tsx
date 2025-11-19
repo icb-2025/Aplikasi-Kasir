@@ -185,7 +185,7 @@ const BiayaLanjutan: React.FC<BiayaLanjutanProps> = ({
                     {totalBiayaOperasional.toLocaleString('id-ID')}
                   </span>
                 </div>
-                <p className="text-blue-100 opacity-90 mt-2">Total semua biaya operasional</p>
+                <p className="text-blue-100 opacity-90 mt-2">Total semua Biaya Operasional</p>
               </div>
               <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -204,7 +204,7 @@ const BiayaLanjutan: React.FC<BiayaLanjutanProps> = ({
                     {serviceCharge}%
                   </span>
                 </div>
-                <p className="text-purple-100 opacity-90 mt-2">Diatur di halaman Pengaturan</p>
+                <p className="text-purple-100 opacity-90 mt-2">Diatur di halaman Biaya Operasional</p>
               </div>
               <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { Plus, Edit, Trash2, Camera, X, Check, Save, Image } from 'lucide-react';
 
 interface PaymentChannel {
   name: string;
@@ -267,9 +268,7 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
               onClick={() => setShowAddPaymentMethod(!showAddPaymentMethod)}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200 flex items-center"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-              </svg>
+              <Plus className="h-5 w-5 mr-2" />
               Tambah Metode
             </button>
             <button
@@ -277,9 +276,7 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
               onClick={() => setShowAddChannel(!showAddChannel)}
               className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-200 flex items-center"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-              </svg>
+              <Plus className="h-5 w-5 mr-2" />
               Tambah Channel
             </button>
           </div>
@@ -306,9 +303,7 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
                   onClick={addPaymentMethodChannel}
                   className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                  </svg>
+                  <Plus className="h-4 w-4 mr-1" />
                   Tambah Channel
                 </button>
               </div>
@@ -326,11 +321,10 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
                     <button
                       type="button"
                       onClick={() => removePaymentMethodChannel(index)}
-                      className="px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition duration-200"
+                      className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-white hover:bg-red-600 rounded-lg border border-red-200 hover:border-red-600 transition-all duration-200"
+                      title="Hapus"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -401,7 +395,7 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
                   />
                 ) : (
                   <div className="h-16 w-16 border-2 border-dashed border-gray-300 rounded-md flex items-center justify-center">
-                    <span className="text-gray-400 text-xs">No Logo</span>
+                    <Image className="h-6 w-6 text-gray-400" />
                   </div>
                 )}
                 
@@ -484,12 +478,10 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
                   <button
                     type="button"
                     onClick={() => onDeletePaymentMethod(pm.method)}
-                    className="p-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition duration-200"
+                    className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-white hover:bg-red-600 rounded-lg border border-red-200 hover:border-red-600 transition-all duration-200"
                     title="Hapus Metode Pembayaran"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -512,7 +504,7 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
                             />
                           ) : (
                             <div className="h-10 w-10 border-2 border-dashed border-gray-300 rounded-md flex items-center justify-center mr-4 bg-white">
-                              <span className="text-gray-400 text-xs">No Logo</span>
+                              <Image className="h-5 w-5 text-gray-400" />
                             </div>
                           )}
                           
@@ -529,22 +521,18 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
                                 <button
                                   type="button"
                                   onClick={saveChannelName}
-                                  className="p-1.5 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition duration-200"
+                                  className="inline-flex items-center justify-center w-8 h-8 text-green-600 hover:text-white hover:bg-green-600 rounded-lg border border-green-200 hover:border-green-600 transition-all duration-200"
                                   title="Simpan"
                                 >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
+                                  <Check className="w-4 h-4" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={cancelEditingChannelName}
-                                  className="p-1.5 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition duration-200"
+                                  className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-white hover:bg-red-600 rounded-lg border border-red-200 hover:border-red-600 transition-all duration-200"
                                   title="Batal"
                                 >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                  </svg>
+                                  <X className="w-4 h-4" />
                                 </button>
                               </div>
                             </div>
@@ -575,12 +563,10 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
                               <button
                                 type="button"
                                 onClick={() => startEditingChannelName(pm._id, channel._id, channel.name)}
-                                className="p-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition duration-200"
+                                className="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg border border-blue-200 hover:border-blue-600 transition-all duration-200"
                                 title="Edit Nama"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                </svg>
+                                <Edit className="w-4 h-4" />
                               </button>
                               
                               {isEditingLogo ? (
@@ -595,44 +581,36 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
                                   <button
                                     type="button"
                                     onClick={triggerFileInput}
-                                    className="p-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition duration-200"
+                                    className="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-white hover:bg-gray-600 rounded-lg border border-gray-200 hover:border-gray-600 transition-all duration-200"
                                     title={currentLogo ? 'Ganti Logo' : 'Pilih Logo'}
                                   >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                                    </svg>
+                                    <Camera className="w-4 h-4" />
                                   </button>
                                   {currentLogo && (
                                     <button
                                       type="button"
                                       onClick={removeLogo}
-                                      className="p-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition duration-200"
+                                      className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-white hover:bg-red-600 rounded-lg border border-red-200 hover:border-red-600 transition-all duration-200"
                                       title="Hapus Logo"
                                     >
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                      </svg>
+                                      <Trash2 className="w-4 h-4" />
                                     </button>
                                   )}
                                   <button
                                     type="button"
                                     onClick={saveLogo}
-                                    className="p-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition duration-200"
+                                    className="inline-flex items-center justify-center w-8 h-8 text-green-600 hover:text-white hover:bg-green-600 rounded-lg border border-green-200 hover:border-green-600 transition-all duration-200"
                                     title="Simpan"
                                   >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
+                                    <Save className="w-4 h-4" />
                                   </button>
                                   <button
                                     type="button"
                                     onClick={cancelEditing}
-                                    className="p-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition duration-200"
+                                    className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-white hover:bg-red-600 rounded-lg border border-red-200 hover:border-red-600 transition-all duration-200"
                                     title="Batal"
                                   >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                    </svg>
+                                    <X className="w-4 h-4" />
                                   </button>
                                 </div>
                               ) : (
@@ -640,22 +618,18 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => startEditing(pm._id, channel._id, channel.logo)}
-                                    className="p-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition duration-200"
+                                    className="inline-flex items-center justify-center w-8 h-8 text-green-600 hover:text-white hover:bg-green-600 rounded-lg border border-green-200 hover:border-green-600 transition-all duration-200"
                                     title={channel.logo ? 'Edit Logo' : 'Tambah Logo'}
                                   >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                                    </svg>
+                                    <Camera className="w-4 h-4" />
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteChannel(pm.method, channel.name)}
-                                    className="p-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition duration-200"
+                                    className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-white hover:bg-red-600 rounded-lg border border-red-200 hover:border-red-600 transition-all duration-200"
                                     title="Hapus Channel"
                                   >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </>
                               )}
@@ -675,7 +649,7 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({
                               />
                             ) : (
                               <div className="h-20 w-20 border-2 border-dashed border-gray-300 rounded-md flex items-center justify-center bg-white">
-                                <span className="text-gray-400 text-sm">No Logo</span>
+                                <Image className="h-8 w-8 text-gray-400" />
                               </div>
                             )}
                             

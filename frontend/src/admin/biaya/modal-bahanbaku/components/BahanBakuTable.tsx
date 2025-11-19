@@ -1,6 +1,7 @@
+// src/admin/bahan-baku/components/BahanBakuTable.tsx
 import React, { useState, useEffect } from 'react';
 import type { ProdukBahan } from '../index';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react'; // Mengganti Pencil dengan Edit
 
 interface BahanBakuTableProps {
   bahanBaku: ProdukBahan[];
@@ -58,20 +59,20 @@ const BahanBakuTable: React.FC<BahanBakuTableProps> = ({
                         e.stopPropagation();
                         setEditingProduk({...produk});
                       }}
-                      className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50 transition-colors duration-200"
+                      className="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg border border-blue-200 hover:border-blue-600 transition-all duration-200"
                       title="Edit Produk"
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         showDeleteConfirmation('produk', bahanBaku.indexOf(produk));
                       }}
-                      className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors duration-200"
+                      className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-white hover:bg-red-600 rounded-lg border border-red-200 hover:border-red-600 transition-all duration-200"
                       title="Hapus Produk"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -198,20 +199,22 @@ const BahanBakuTable: React.FC<BahanBakuTableProps> = ({
                               : '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button
-                              onClick={() => openEditBahanForm(bahanBaku.indexOf(selectedProduk), bahanIndex)}
-                              className="text-blue-600 hover:text-blue-900 mr-3 p-1 rounded-full hover:bg-blue-50 transition-colors duration-200"
-                              title="Edit"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => showDeleteConfirmation('bahan', bahanBaku.indexOf(selectedProduk), bahanIndex)}
-                              className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 transition-colors duration-200"
-                              title="Hapus"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => openEditBahanForm(bahanBaku.indexOf(selectedProduk), bahanIndex)}
+                                className="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg border border-blue-200 hover:border-blue-600 transition-all duration-200"
+                                title="Edit"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => showDeleteConfirmation('bahan', bahanBaku.indexOf(selectedProduk), bahanIndex)}
+                                className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-white hover:bg-red-600 rounded-lg border border-red-200 hover:border-red-600 transition-all duration-200"
+                                title="Hapus"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );

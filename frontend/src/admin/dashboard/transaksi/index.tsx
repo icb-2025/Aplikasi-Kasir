@@ -406,7 +406,7 @@ const Transaksi: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             <div className="lg:col-span-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">🔍 Cari Transaksi</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Cari Transaksi</label>
               <input
                 type="text"
                 placeholder="Cari no. transaksi atau nama barang..."
@@ -417,7 +417,7 @@ const Transaksi: React.FC = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">📊 Status</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
@@ -430,7 +430,7 @@ const Transaksi: React.FC = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">💳 Metode Bayar</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Metode Bayar</label>
               <select
                 value={filterMetode}
                 onChange={(e) => setFilterMetode(e.target.value)}
@@ -453,7 +453,7 @@ const Transaksi: React.FC = () => {
                 }}
                 className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
               >
-                🔄 Reset Filter
+                Reset Filter
               </button>
             </div>
           </div>
@@ -583,7 +583,7 @@ const Transaksi: React.FC = () => {
                           onClick={() => setSelectedTransaction(trans)}
                           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all duration-200 font-medium text-sm group"
                         >
-                          <span>👁️</span>
+                          {/* <span>👁️</span> */}
                           <span className="hidden sm:inline">Detail</span>
                         </button>
                       </td>

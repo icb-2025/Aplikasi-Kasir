@@ -1,3 +1,4 @@
+// src/kasir/components/TransactionModal.tsx
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
@@ -21,7 +22,7 @@ import {
 import SweetAlert from "../../components/SweetAlert";
 import ProsesTransaksiModal from "./proses-transaksi";
 
-// Interface definitions (tetap sama)
+// Interface definitions
 interface PaymentChannel {
   method: string;
   channels: { name: string; logo?: string; _id: string; isActive: boolean }[];
@@ -105,7 +106,7 @@ interface TransactionModalProps {
   }) => void;
 }
 
-// Animation variants (tetap sama)
+// Animation variants
 const backdropVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
@@ -153,7 +154,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   const [removingItem, setRemovingItem] = useState<string | null>(null);
   const [kasirAktif, setKasirAktif] = useState<boolean>(true);
   const [receiptSettings, setReceiptSettings] = useState<SettingsReceipt>({});
-  const [isFirstMount, setIsFirstMount] = useState(true); // Tambahkan state ini
+  const [isFirstMount, setIsFirstMount] = useState(true);
+  const [totalBiayaLayanan, setTotalBiayaLayanan] = useState(0); // State untuk total biaya layanan
   
   // State for process transaction modal
   const [isProsesTransaksiOpen, setIsProsesTransaksiOpen] = useState(false);
@@ -201,7 +203,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         }
       } catch (err) {
         console.error("Failed to fetch payment methods:", err);
-        setErrorMessage("Failed to load payment methods. Please refresh the page.");
+        setErrorMessage("Failed to load payment methods. Please refresh page.");
       }
     };
     
@@ -216,10 +218,33 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         console.error("Failed to fetch receipt settings:", err);
       }
     };
+
+    // Fungsi untuk mengambil total biaya layanan
+    const fetchTotalBiayaLayanan = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${ipbe}:${portbe}/api/admin/biaya-layanan`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Hitung total persentase dari semua biaya layanan
+          const total = data.reduce((sum: number, item: any) => sum + item.persen, 0);
+          setTotalBiayaLayanan(total);
+        }
+      } catch (error) {
+        console.error("Error fetching biaya layanan:", error);
+      }
+    };
     
     if (isOpen && !transactionSuccess) {
       fetchPaymentMethods();
       fetchReceiptSettings();
+      fetchTotalBiayaLayanan(); // Ambil data biaya layanan
     }
     
     // Set isFirstMount ke false setelah mount pertama
@@ -241,7 +266,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     if (!kasirAktif) {
       await SweetAlert.fire({
         title: 'Cashier Inactive',
-        text: 'Sorry, the cashier is currently inactive. Please contact admin.',
+        text: 'Sorry, cashier is currently inactive. Please contact admin.',
         icon: 'warning',
         confirmButtonText: 'OK',
         confirmButtonColor: '#f59e0b'
@@ -325,9 +350,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       kasirId = null;
     }
 
+    // Hitung total dengan biaya layanan
+    const totalWithBiayaLayanan = total + Math.round(total * totalBiayaLayanan / 100);
+
     const bodyData: Record<string, unknown> = {
       barang_dibeli: barangDibeli,
-      total_harga: total,
+      total_harga: totalWithBiayaLayanan,
       metode_pembayaran: paymentMethod,
       kasir_id: kasirId,
       status: "pending",
@@ -383,6 +411,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       const transactionDataToSave = {
         cartItems: cartItems,
         total: total,
+        totalWithBiayaLayanan: totalWithBiayaLayanan,
         transactionData: responseData.transaksi,
         midtransData: responseData.midtrans,
         expiryTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
@@ -440,14 +469,14 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     }
   };
 
-  // Handle close modal - tambahkan fungsi ini
+  // Handle close modal
   const handleCloseModal = () => {
     // Hapus status transaksi dari localStorage saat modal ditutup
     localStorage.removeItem('transactionStatus');
     onClose();
   };
 
-  // Helper functions (tetap sama)
+  // Helper functions
   const getChannelKey = (channel: { name: string; logo?: string; _id: string }): string => {
     return channel._id || channel.name;
   };
@@ -558,6 +587,16 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     return 0;
   };
 
+  // Function to calculate subtotal from transaction data
+  const calculateSubtotalFromItems = (items: BarangDibeli[]): number => {
+    return items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+  };
+
+  // Function to calculate service charge from total and percentage
+  const calculateBiayaLayanan = (total: number, percentage: number): number => {
+    return Math.round(total * percentage / 100);
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -587,7 +626,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
             initial="hidden"
             animate="visible"
             exit="hidden"
-            onClick={handleCloseModal} // Ganti onClose dengan handleCloseModal
+            onClick={handleCloseModal}
           />
               
           <motion.div
@@ -616,7 +655,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         </div>
                       </div>
                       <button 
-                        onClick={handleCloseModal} // Ganti onClose dengan handleCloseModal
+                        onClick={handleCloseModal}
                         className="p-2 rounded-full hover:bg-white/20 transition-colors"
                       >
                         <X className="w-6 h-6" />
@@ -701,8 +740,20 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
                         {/* Total dan footer struk - tetap di bawah */}
                         <div className="flex-shrink-0">
+                          <div className="flex justify-between items-center text-sm mb-2">
+                            <span>Subtotal</span>
+                            <span>{formatCurrency(calculateSubtotalFromItems(transactionData.barang_dibeli))}</span>
+                          </div>
+
+                          {totalBiayaLayanan > 0 && (
+                            <div className="flex justify-between items-center text-sm mb-2">
+                              <span>Biaya Layanan ({totalBiayaLayanan}%)</span>
+                              <span>{formatCurrency(calculateBiayaLayanan(calculateSubtotalFromItems(transactionData.barang_dibeli), totalBiayaLayanan))}</span>
+                            </div>
+                          )}
+
                           <div className="flex justify-between items-center text-lg font-bold mb-6">
-                            <span>Total</span>
+                            <span>Total Pembayaran</span>
                             <span className="text-green-600">
                               {formatCurrency(transactionData.total_harga)}
                             </span>
@@ -719,7 +770,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
                       <div className="flex gap-3 mt-6 print:hidden">
                         <button
-                          onClick={handleCloseModal} // Ganti onClose dengan handleCloseModal
+                          onClick={handleCloseModal}
                           className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2"
                         >
                           <Home className="w-4 h-4" />
@@ -751,7 +802,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         </div>
                       </div>
                       <button 
-                        onClick={handleCloseModal} // Ganti onClose dengan handleCloseModal
+                        onClick={handleCloseModal}
                         className="p-2 rounded-full hover:bg-white/20 transition-colors"
                       >
                         <X className="w-6 h-6" />
@@ -766,7 +817,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         <h3 className="text-xl font-bold text-gray-700 mb-2">Empty Cart</h3>
                         <p className="text-gray-500 mb-6">Add products to start a transaction</p>
                         <button
-                          onClick={handleCloseModal} // Ganti onClose dengan handleCloseModal
+                          onClick={handleCloseModal}
                           className="px-6 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors"
                         >
                           Back to Home
@@ -973,13 +1024,22 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                           )}
                         </div>
 
-                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4 rounded-xl shadow-lg text-white">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="text-amber-100 text-xs">Total Payment</p>
-                              <h3 className="text-xl font-bold">Rp {total.toLocaleString("id-ID")}</h3>
+                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm text-gray-600">Subtotal</span>
+                            <span className="text-sm font-medium">{formatCurrency(total)}</span>
+                          </div>
+                          {totalBiayaLayanan > 0 && (
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm text-gray-600">Biaya Layanan ({totalBiayaLayanan}%)</span>
+                              <span className="text-sm font-medium">{formatCurrency(calculateBiayaLayanan(total, totalBiayaLayanan))}</span>
                             </div>
-                            <Wallet className="w-6 h-6" />
+                          )}
+                          <div className="flex justify-between items-center">
+                            <span className="text-lg font-semibold">Total Pembayaran</span>
+                            <span className="text-xl font-bold text-green-600">
+                              {formatCurrency(total + calculateBiayaLayanan(total, totalBiayaLayanan))}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -989,7 +1049,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                   <div className="border-t border-gray-200 p-4 bg-gray-50">
                     <div className="flex justify-end space-x-3">
                       <button
-                        onClick={handleCloseModal} // Ganti onClose dengan handleCloseModal
+                        onClick={handleCloseModal}
                         className="px-5 py-2.5 bg-white text-gray-700 rounded-lg font-medium border border-gray-300 hover:bg-gray-100 transition-colors"
                       >
                         Cancel

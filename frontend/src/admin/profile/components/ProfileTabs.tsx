@@ -6,8 +6,8 @@ const ProfileTabs: React.FC = () => {
   const [activeTab, setActiveTab] = useState('info');
 
   const tabs = [
-    { id: 'info', label: 'Informasi Profile', icon: '👤' },
-    { id: 'password', label: 'Ubah Password', icon: '🔒' },
+    { id: 'info', label: 'Informasi Profile', icon: '' },
+    { id: 'password', label: 'Ubah Password', icon: '' },
   ];
 
   return (

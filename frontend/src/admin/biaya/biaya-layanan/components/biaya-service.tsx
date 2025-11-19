@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import SweetAlert from '../../../../components/SweetAlert';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
-import { Pencil, Trash2, Plus } from 'lucide-react';
+import { Edit, Trash2, Plus } from 'lucide-react'; // Mengganti Pencil dengan Edit
 import { portbe } from '../../../../../../backend/ngrokbackend';
 
 const ipbe = import.meta.env.VITE_IPBE;
@@ -291,8 +291,8 @@ const BiayaService: React.FC<BiayaServiceProps> = ({ refreshTrigger }) => {
                   <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                     Deskripsi
                   </th>
-                  <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                    <span className="sr-only">Aksi</span>
+                   <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                    Aksi
                   </th>
                 </tr>
               </thead>
@@ -309,24 +309,26 @@ const BiayaService: React.FC<BiayaServiceProps> = ({ refreshTrigger }) => {
                       {item.deskripsi}
                     </td>
                     <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(item)}
-                        disabled={saving}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4 disabled:opacity-50 p-1 rounded-full hover:bg-indigo-50 transition-colors duration-200"
-                        title="Edit"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteItem(item._id)}
-                        disabled={saving}
-                        className="text-red-600 hover:text-red-900 disabled:opacity-50 p-1 rounded-full hover:bg-red-50 transition-colors duration-200"
-                        title="Hapus"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(item)}
+                          disabled={saving || !item._id}
+                          className="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg border border-blue-200 hover:border-blue-600 transition-all duration-200"
+                          title="Edit"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteItem(item._id)}
+                          disabled={saving || !item._id}
+                          className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-white hover:bg-red-600 rounded-lg border border-red-200 hover:border-red-600 transition-all duration-200"
+                          title="Hapus"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

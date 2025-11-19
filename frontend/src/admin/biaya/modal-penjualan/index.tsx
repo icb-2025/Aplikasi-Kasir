@@ -123,16 +123,35 @@ const PenjualanPage: React.FC = () => {
     }
   };
 
+    // Format date
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Tanggal tidak valid';
+      }
+      return date.toLocaleString('id-ID', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return 'Tanggal tidak valid';
+    }
+  };
+
   // Filter riwayat berdasarkan search term dan filter type
-  const filteredRiwayat = modalData ? modalData.riwayat.filter(item => {
-    const matchesSearch = searchTerm === '' || 
-      item.keterangan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      formatDate(item.tanggal).toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = filterType === 'semua' || item.tipe === filterType;
-    
-    return matchesSearch && matchesType;
-  }) : [];
+ const filteredRiwayat = modalData ? modalData.riwayat.filter(item => {
+  const matchesSearch = searchTerm === '' || 
+    item.keterangan.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    formatDate(item.tanggal).toLowerCase().includes(searchTerm.toLowerCase());
+  
+  const matchesType = filterType === 'semua' || item.tipe === filterType;
+  
+  return matchesSearch && matchesType;
+}).sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()) : [];
 
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -151,25 +170,6 @@ const PenjualanPage: React.FC = () => {
       currency: 'IDR',
       minimumFractionDigits: 0,
     }).format(amount);
-  };
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return 'Tanggal tidak valid';
-      }
-      return date.toLocaleString('id-ID', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return 'Tanggal tidak valid';
-    }
   };
 
   if (loading) {
