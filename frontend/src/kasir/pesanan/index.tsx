@@ -63,9 +63,9 @@ const PesananKasirPage = () => {
   const [loadingKasir, setLoadingKasir] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // State untuk pagination
+  // State untuk pagination - DIUBAH MENJADI 10 DATA PER HALAMAN
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(8);
+  const [itemsPerPage] = useState(10); // DIUBAH DARI 8 MENJADI 10
   const [totalItems, setTotalItems] = useState(0);
   
   // State untuk produk list
@@ -196,10 +196,11 @@ const PesananKasirPage = () => {
           const data = await res.json();
           const dataArray: PesananItem[] = Array.isArray(data) ? data : (data.data || []);
           
+          // MEMASTIKAN DATA TERBARU DI PALING ATAS
           dataArray.sort((a: PesananItem, b: PesananItem) => {
             const dateA = new Date(a.tanggal_transaksi).getTime();
             const dateB = new Date(b.tanggal_transaksi).getTime();
-            return dateB - dateA;
+            return dateB - dateA; // DESCENDING (terbaru dulu)
           });
           
           setPesananList(dataArray);
@@ -250,6 +251,7 @@ const PesananKasirPage = () => {
                 item._id === data._id ? { ...item, ...data } : item
               );
             } else {
+              // MENAMBAHKAN DATA BARU DI PALING ATAS
               return [data, ...prev];
             }
           });
@@ -279,6 +281,7 @@ const PesananKasirPage = () => {
                 : item
             );
           } else {
+            // MENAMBAHKAN TRANSAKSI TERBARU DI PALING ATAS
             return [locationState.transaksiTerbaru!, ...prev];
           }
         });
