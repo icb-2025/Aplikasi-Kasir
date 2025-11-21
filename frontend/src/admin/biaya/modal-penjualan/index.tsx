@@ -1,49 +1,10 @@
-// src/admin/penjualan/index.tsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { portbe } from '../../../../../backend/ngrokbackend';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, FileSpreadsheet } from 'lucide-react';
 const ipbe = import.meta.env.VITE_IPBE;
-
-interface BahanBaku {
-  _id: string;
-  nama: string;
-  harga: number;
-  jumlah: number;
-  total: number;
-}
-
-interface BiayaOperasional {
-  _id: string;
-  nama: string;
-  jumlah: number;
-}
-
-interface Riwayat {
-  _id: string;
-  keterangan: string;
-  tipe: 'pemasukan' | 'pengeluaran';
-  jumlah: number;
-  saldo_setelah: number;
-  tanggal: string;
-}
-
-interface ModalUtama {
-  _id: string;
-  total_modal: number;
-  bahan_baku: BahanBaku[];
-  biaya_operasional: BiayaOperasional[];
-  sisa_modal: number;
-  riwayat: Riwayat[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Interface untuk response API tambah modal
-interface AddModalResponse {
-  message: string;
-  modal: ModalUtama;
-}
+import { exportToExcel, exportToPDF } from './utils';
+import type { ModalUtama, AddModalResponse } from './types';
 
 const PenjualanPage: React.FC = () => {
   const [modalData, setModalData] = useState<ModalUtama | null>(null);
@@ -62,6 +23,10 @@ const PenjualanPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterType, setFilterType] = useState<string>('semua');
   const itemsPerPage = 10;
+  
+  // State untuk filter tanggal dengan default hari ini
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   // Fetch modal data
   useEffect(() => {
@@ -80,10 +45,18 @@ const PenjualanPage: React.FC = () => {
     fetchModalData();
   }, []);
 
+  // Set default filter ke hari ini saat komponen dimuat
+  useEffect(() => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    setStartDate(todayStr);
+    setEndDate(todayStr);
+  }, []);
+
   // Reset ke halaman pertama saat filter berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterType]);
+  }, [searchTerm, filterType, startDate, endDate]);
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,7 +75,7 @@ const PenjualanPage: React.FC = () => {
     setSubmitError(null);
 
     try {
-      const response = await axios.post<AddModalResponse>(
+      await axios.post<AddModalResponse>(
         `${ipbe}:${portbe}/api/admin/modal-utama/tambah-modal`,
         {
           jumlah: Number(formData.jumlah),
@@ -113,8 +86,9 @@ const PenjualanPage: React.FC = () => {
       setSubmitSuccess(true);
       setFormData({ jumlah: '', keterangan: '' });
       
-      // Menggunakan data dari response yang sudah ter-typing
-      setModalData(response.data.modal);
+      // Refresh data setelah menambah modal
+      const refreshResponse = await axios.get<ModalUtama>(`${ipbe}:${portbe}/api/admin/modal-utama`);
+      setModalData(refreshResponse.data);
     } catch (err) {
       setSubmitError('Gagal menambah penjualan');
       console.error(err);
@@ -123,7 +97,7 @@ const PenjualanPage: React.FC = () => {
     }
   };
 
-    // Format date
+  // Format date
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -142,7 +116,7 @@ const PenjualanPage: React.FC = () => {
     }
   };
 
-  // Filter riwayat berdasarkan search term dan filter type
+  // Filter riwayat berdasarkan search term, filter type, dan tanggal
  const filteredRiwayat = modalData ? modalData.riwayat.filter(item => {
   const matchesSearch = searchTerm === '' || 
     item.keterangan.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -150,7 +124,18 @@ const PenjualanPage: React.FC = () => {
   
   const matchesType = filterType === 'semua' || item.tipe === filterType;
   
-  return matchesSearch && matchesType;
+  // Filter berdasarkan tanggal
+  let matchesDate = true;
+  if (startDate && endDate) {
+    const itemDate = new Date(item.tanggal);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    // Tambahkan 1 hari ke end untuk inklusif
+    end.setDate(end.getDate() + 1);
+    matchesDate = itemDate >= start && itemDate < end;
+  }
+  
+  return matchesSearch && matchesType && matchesDate;
 }).sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()) : [];
 
   // Pagination logic
@@ -170,6 +155,15 @@ const PenjualanPage: React.FC = () => {
       currency: 'IDR',
       minimumFractionDigits: 0,
     }).format(amount);
+  };
+
+  // Handle export functions
+  const handleExportExcel = () => {
+    exportToExcel({ modalData, startDate, endDate });
+  };
+
+  const handleExportPDF = () => {
+    exportToPDF({ modalData, startDate, endDate });
   };
 
   if (loading) {
@@ -208,6 +202,13 @@ const PenjualanPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-700 mb-2">Jumlah Riwayat</h3>
           <p className="text-2xl font-bold text-purple-600">
             {modalData ? modalData.riwayat.length : 0}
+          </p>
+        </div>
+        
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">Total Modal</h3>
+          <p className="text-2xl font-bold text-blue-600">
+            {modalData ? formatCurrency(modalData.total_modal) : '-'}
           </p>
         </div>
       </div>
@@ -276,7 +277,7 @@ const PenjualanPage: React.FC = () => {
 
       {/* Search and Filter Section */}
       <div className="bg-white p-6 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Pencarian</label>
             <input
@@ -300,6 +301,44 @@ const PenjualanPage: React.FC = () => {
               <option value="pengeluaran">Pengeluaran</option>
             </select>
           </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Selesai</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+        
+        {/* Export Buttons */}
+        <div className="flex justify-end mt-4 gap-2">
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-300"
+          >
+            <FileText className="h-4 w-4" />
+            Export PDF
+          </button>
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition duration-300"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Export Excel
+          </button>
         </div>
       </div>
 
