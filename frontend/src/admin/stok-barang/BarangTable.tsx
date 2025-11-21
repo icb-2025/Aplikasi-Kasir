@@ -35,16 +35,16 @@ const getStokClass = (status?: string): string => {
   return statusMap[status?.toLowerCase() || ""] || "bg-gray-50 text-gray-600 border border-gray-200";
 };
 
-// Komponen ikon status stok dengan Tailwind
+// Komponen ikon status stok dengan Tailwind - tanpa animasi
 const StokIcon: React.FC<{ status?: string }> = ({ status }) => {
   const statusLower = status?.toLowerCase() || "";
   
   if (statusLower === "aman") {
     return <CheckCircle className="w-5 h-5 text-green-500" />;
   } else if (statusLower === "hampir habis") {
-    return <AlertCircle className="w-5 h-5 text-yellow-500 animate-pulse" />;
+    return <AlertCircle className="w-5 h-5 text-yellow-500" />;
   } else if (statusLower === "habis") {
-    return <XCircle className="w-5 h-5 text-red-500 animate-pulse" />;
+    return <XCircle className="w-5 h-5 text-red-500" />;
   } else {
     return <Circle className="w-5 h-5 text-gray-400" />;
   }
@@ -196,9 +196,9 @@ const BarangTable: React.FC<BarangTableProps> = ({
                   <tr 
                     key={item._id || `row-${index}-${Date.now()}`}
                     className={`transition-all duration-200 hover:bg-blue-50/30 ${
-                      isOutOfStock ? 'bg-red-50/70 animate-pulse' : 
-                      isLowStock ? 'bg-yellow-50/70 animate-pulse' : 
-                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
+                      isOutOfStock ? 'bg-red-50/70' : 
+                      isLowStock ? 'bg-yellow-50/70' : 
+                      'bg-white'
                     } ${isOutOfStock ? 'border-l-4 border-l-red-500' : isLowStock ? 'border-l-4 border-l-yellow-500' : ''}`}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -307,7 +307,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                         {item.stok !== undefined && (
                           <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                             <div 
-                              className={`h-1.5 rounded-full transition-all duration-500 ${progressBarColor} ${isLowStock || isOutOfStock ? 'animate-pulse' : ''}`}
+                              className={`h-1.5 rounded-full transition-all duration-500 ${progressBarColor}`}
                               style={{ width: progressBarWidth }}
                             ></div>
                           </div>
@@ -319,7 +319,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                       <div className="flex items-center space-x-2">
                         <StokIcon status={item.status} />
                         <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStokClass(item.status)} ${isLowStock || isOutOfStock ? 'animate-pulse' : ''}`}
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStokClass(item.status)}`}
                         >
                           {item.status
                             ? item.status.charAt(0).toUpperCase() + item.status.slice(1)

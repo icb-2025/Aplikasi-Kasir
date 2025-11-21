@@ -2,12 +2,20 @@ import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AuthContext from '../../auth/context/AuthContext';
 import { portbe } from '../../../../backend/ngrokbackend';
+import { 
+  BarChart3, 
+  FileText, 
+  User, 
+  LogOut, 
+  LogIn, 
+  X
+} from 'lucide-react';
 const ipbe = import.meta.env.VITE_IPBE;
 
 interface MenuItem {
   id: string;
   name: string;
-  icon: string;
+  icon: React.ReactNode; // Changed from string to React.ReactNode
   path: string;
   authRequired?: boolean;
 }
@@ -48,9 +56,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const { user, logout } = authContext;
   
   const menuItems: MenuItem[] = [
-    { id: 'dashboard', name: 'Dashboard', icon: '📊', path: '/' },
-    { id: 'status-pesanan', name: 'Riwayat', icon: '📋', path: '/pesanan', authRequired: true },
-    { id: 'profile', name: 'Profile', icon: '👤', path: '/profile', authRequired: true },
+    { id: 'dashboard', name: 'Dashboard', icon: <BarChart3 size={20} />, path: '/' },
+    { id: 'status-pesanan', name: 'Riwayat', icon: <FileText size={20} />, path: '/pesanan', authRequired: true },
+    { id: 'profile', name: 'Profile', icon: <User size={20} />, path: '/profile', authRequired: true },
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
@@ -173,9 +181,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               onClick={onToggle}
               className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X size={24} />
             </button>
           </div>
           
@@ -220,7 +226,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                         />
                       ) : (
                         <div className="bg-blue-100 p-2 rounded-full">
-                          <span className="text-blue-600 text-lg">👤</span>
+                          <User size={20} className="text-blue-600" />
                         </div>
                       );
                     })()}
@@ -256,7 +262,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                       : 'text-gray-700 hover:bg-amber-50'
                   }`}
                 >
-                  <span className="text-xl">{item.icon}</span>
+                  {item.icon}
                   <span className="font-medium">{item.name}</span>
                 </button>
               ))}
@@ -266,7 +272,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                   onClick={handleLogout}
                   className="w-full flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 text-gray-700 hover:bg-red-50"
                 >
-                  <span className="text-xl">🚪</span>
+                  <LogOut size={20} />
                   <span className="font-medium">Logout</span>
                 </button>
               ) : (
@@ -283,7 +289,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                       : 'text-gray-700 hover:bg-amber-50'
                   }`}
                 >
-                  <span className="text-xl">🔑</span>
+                  <LogIn size={20} />
                   <span className="font-medium">Login</span>
                 </button>
               )}
