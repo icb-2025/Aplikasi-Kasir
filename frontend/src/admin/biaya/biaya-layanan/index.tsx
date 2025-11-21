@@ -49,8 +49,9 @@ const BiayaLayanan: React.FC = () => {
       if (!response.ok) {
         throw new Error('Gagal mengambil data pengaturan');
       }
-      
+
       const data = await response.json();
+      console.log('>>> Data pengaturan diterima dari server:', data)
       
       if (data) {
         if (typeof data.taxRate === 'number') setTaxRate(data.taxRate);
@@ -70,15 +71,19 @@ const BiayaLayanan: React.FC = () => {
     fetchSettings();
   }, [fetchSettings]);
 
-  // Auto refresh setiap 3 detik
+
 useEffect(() => {
+
+  if (saving) {
+    return;
+  }
+
   const interval = setInterval(() => {
     fetchSettings();
   }, 3000);
 
   return () => clearInterval(interval);
-}, [fetchSettings]);
-
+}, [fetchSettings, saving]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -139,72 +144,90 @@ useEffect(() => {
       setSaving(false);
     }
   };
-
-  const handleSaveSettings = async () => {
-    try {
-      setSaving(true);
-      SweetAlert.loading('Menyimpan pengaturan...');
-      
-      const token = getToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-        headers['x-api-key'] = API_KEY;
-      }
-      
-      // Simpan pajak
-      const taxResponse = await fetch(`${BASE_API_URL}/tax`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ taxRate })
-      });
-      
-      if (!taxResponse.ok) {
-        const errorData = await taxResponse.json();
-        console.error('Server error:', errorData);
-        throw new Error(errorData.message || 'Gagal menyimpan pajak');
-      }
-      
-      // Simpan diskon global
-      const discountResponse = await fetch(`${BASE_API_URL}/discount`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ globalDiscount })
-      });
-      
-      if (!discountResponse.ok) {
-        const errorData = await discountResponse.json();
-        console.error('Server error:', errorData);
-        throw new Error(errorData.message || 'Gagal menyimpan diskon global');
-      }
-      
-      // Simpan peringatan stok rendah
-      const stockResponse = await fetch(`${BASE_API_URL}/general`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ lowStockAlert })
-      });
-      
-      if (!stockResponse.ok) {
-        const errorData = await stockResponse.json();
-        console.error('Server error:', errorData);
-        throw new Error(errorData.message || 'Gagal menyimpan peringatan stok rendah');
-      }
-      
-      SweetAlert.close();
-      SweetAlert.success('Pengaturan berhasil disimpan');
-      fetchSettings();
-    } catch (error) {
-      SweetAlert.close();
-      SweetAlert.error(error instanceof Error ? error.message : 'Gagal menyimpan pengaturan');
-      console.error(error);
-    } finally {
-      setSaving(false);
+const handleSaveSettings = async () => {
+  try {
+    setSaving(true);
+    SweetAlert.loading('Menyimpan pengaturan...');
+    
+    const token = getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      headers['x-api-key'] = API_KEY;
     }
-  };
+
+    console.log('>>> Menyimpan pengaturan. Nilai lowStockAlert yang akan dikirim:', lowStockAlert);
+    
+    // Simpan pajak
+    const taxResponse = await fetch(`${BASE_API_URL}/tax`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ taxRate })
+    });
+    
+    if (!taxResponse.ok) {
+      const errorData = await taxResponse.json();
+      console.error('Server error:', errorData);
+      throw new Error(errorData.message || 'Gagal menyimpan pajak');
+    }
+    
+    // Simpan diskon global
+    const discountResponse = await fetch(`${BASE_API_URL}/discount`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ globalDiscount })
+    });
+    
+    if (!discountResponse.ok) {
+      const errorData = await discountResponse.json();
+      console.error('Server error:', errorData);
+      throw new Error(errorData.message || 'Gagal menyimpan diskon global');
+    }
+    
+    // Simpan peringatan stok rendah
+    const stockResponse = await fetch(`${BASE_API_URL}/general`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ lowStockAlert })
+    });
+    
+    const responseData = await stockResponse.json();
+    console.log('>>> Respons dari server untuk /general:', responseData);
+
+    if (!stockResponse.ok) {
+      const errorData = await stockResponse.json();
+      console.error('Server error:', errorData);
+      throw new Error(errorData.message || 'Gagal menyimpan peringatan stok rendah');
+    }
+    
+    SweetAlert.close();
+    
+    // Periksa apakah backend berhasil memperbarui barang
+    if (responseData.updatedItems !== undefined) {
+      if (responseData.updatedItems > 0) {
+        SweetAlert.success(`Pengaturan berhasil disimpan. Stok minimal untuk ${responseData.updatedItems} barang telah diperbarui.`);
+      } else {
+        SweetAlert.warning('Pengaturan berhasil disimpan, tetapi tidak ada barang yang diperbarui.');
+      }
+    } else {
+      SweetAlert.success('Pengaturan berhasil disimpan');
+    }
+    
+    // Hanya panggil fetchSettings sekali setelah penanganan respons
+    setTimeout(() => {
+      fetchSettings();
+    }, 500);
+  } catch (error) {
+    SweetAlert.close();
+    SweetAlert.error(error instanceof Error ? error.message : 'Gagal menyimpan pengaturan');
+    console.error(error);
+  } finally {
+    setSaving(false);
+  }
+};
 
   if (loading) {
     return <LoadingSpinner />;

@@ -4,12 +4,13 @@ import { register } from "../auth/Register.js";
 // import apiMiddleware from "../middleware/api.js";
 import verifyToken from "../middleware/verifyToken.js";
 import User from "../models/user.js";
+import userAuth from "../middleware/user.js";
 
 const router = express.Router();
 
 router.post("/login", login);
 router.post("/register", register);
-router.post("/logout", logout);
+router.post("/logout", userAuth, logout);
 
 // ✅ Tambahkan ini:
 router.get("/me", verifyToken, async (req, res) => {
