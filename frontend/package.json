@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.1",
+    "@heroicons/react": "^2.2.0",
     "@swc/core": "^1.13.5",
     "@swc/wasm": "^1.13.20",
     "@vitejs/plugin-react-swc": "^4.1.0",

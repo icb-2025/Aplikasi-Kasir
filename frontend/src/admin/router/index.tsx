@@ -17,7 +17,6 @@ import StokBarangAdmin from '../stok-barang';
 import StatusPesananAdmin from '../status-pesanan';
 import UsersPage from '../users';
 import SettingsPage from '../settings';
-import ProfilePage from '../profile';
 import Admin404 from '../notif/404notfound';
 import type { Barang } from '../stok-barang';
 
@@ -60,8 +59,7 @@ const AdminRouter: React.FC<AdminRouterProps> = ({ dataBarang, setDataBarang }) 
         {/* Users Route */}
         <Route path="users" element={<UsersPage />} />
         
-        {/* Profile Route */}
-        <Route path="profile" element={<ProfilePage />} />
+        
         
         {/* Settings Route */}
         <Route path="settings" element={<SettingsPage />} />

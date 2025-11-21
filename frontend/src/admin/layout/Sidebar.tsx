@@ -9,7 +9,6 @@ import {
   ClipboardList,
   DollarSign,
   Users,
-  User,
   Settings,
   Home,
   Star,
@@ -148,11 +147,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       name: 'User',
       icon: <Users size={20} />,
       path: '/admin/users',
-    },
-    {
-      name: 'Profile',
-      icon: <User size={20} />,
-      path: '/admin/profile',
     },
     {
       name: 'Settings',
