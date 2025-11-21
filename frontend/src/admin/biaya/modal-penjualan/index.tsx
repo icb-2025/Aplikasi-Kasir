@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { portbe } from '../../../../../backend/ngrokbackend';
-import { ChevronLeft, ChevronRight, FileText, FileSpreadsheet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Wallet, TrendingUp, CreditCard, Package, ShoppingCart, TrendingDown } from 'lucide-react';
 const ipbe = import.meta.env.VITE_IPBE;
 import { exportToExcel, exportToPDF } from './utils';
 import type { ModalUtama, AddModalResponse } from './types';
@@ -184,167 +184,230 @@ const PenjualanPage: React.FC = () => {
     );
   }
 
+  // Hitung total pemasukan dan pengeluaran
+  const totalPemasukan = filteredRiwayat
+    .filter(item => item.tipe === 'pemasukan')
+    .reduce((sum, item) => sum + item.jumlah, 0);
+
+  const totalPengeluaran = filteredRiwayat
+    .filter(item => item.tipe === 'pengeluaran')
+    .reduce((sum, item) => sum + item.jumlah, 0);
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Halaman Penjualan</h1>
-      
-      {/* Modal Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Modal Utama</h3>
-          <p className="text-2xl font-bold text-green-600">
-            {modalData ? formatCurrency(modalData.sisa_modal) : '-'}
-          </p>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Halaman Penjualan</h1>
+          <p className="text-gray-600 mt-1">Kelola modal dan pantau transaksi keuangan</p>
         </div>
-        
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Jumlah Riwayat</h3>
-          <p className="text-2xl font-bold text-purple-600">
-            {modalData ? modalData.riwayat.length : 0}
-          </p>
-        </div>
-        
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Total Modal</h3>
-          <p className="text-2xl font-bold text-blue-600">
-            {modalData ? formatCurrency(modalData.total_modal) : '-'}
-          </p>
-        </div>
-      </div>
-
-      {/* Add Sale Form */}
-      <div className="bg-white p-6 rounded-lg shadow mb-8">
-        <h2 className="text-xl font-semibold mb-4">Tambah Modal</h2>
-        
-        {submitSuccess && (
-          <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">
-            Modal Berhasil Ditambahkan!
-          </div>
-        )}
-        
-        {submitError && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-            {submitError}
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="jumlah">
-                Nominal Modal (Rp)
-              </label>
-              <input
-                type="number"
-                id="jumlah"
-                name="jumlah"
-                value={formData.jumlah}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Contoh: 1000000"
-                required
-                min="1"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="keterangan">
-                Keterangan
-              </label>
-              <input
-                type="text"
-                id="keterangan"
-                name="keterangan"
-                value={formData.keterangan}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Contoh: Dana Tambahan"
-                required
-              />
-            </div>
-          </div>
-          
-          <button
-            type="submit"
-            disabled={submitLoading}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-300 disabled:opacity-50"
-          >
-            {submitLoading ? 'Menyimpan...' : 'Tambah Modal'}
-          </button>
-        </form>
-      </div>
-
-      {/* Search and Filter Section */}
-      <div className="bg-white p-6 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Pencarian</label>
-            <input
-              type="text"
-              placeholder="Cari berdasarkan tanggal atau keterangan..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Filter Tipe</label>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="semua">Semua Tipe</option>
-              <option value="pemasukan">Pemasukan</option>
-              <option value="pengeluaran">Pengeluaran</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Selesai</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-        
-        {/* Export Buttons */}
-        <div className="flex justify-end mt-4 gap-2">
+        <div className="flex space-x-2">
           <button
             onClick={handleExportPDF}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-300"
+            className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-md hover:from-red-600 hover:to-red-700 transition-all shadow-md flex items-center justify-center"
           >
-            <FileText className="h-4 w-4" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
+            </svg>
             Export PDF
           </button>
           <button
             onClick={handleExportExcel}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition duration-300"
+            className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-md hover:from-green-600 hover:to-green-700 transition-all shadow-md flex items-center justify-center"
           >
-            <FileSpreadsheet className="h-4 w-4" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
             Export Excel
           </button>
         </div>
       </div>
+      
+      {/* Modal Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* PERUBAAN DIMULAI DI SINI */}
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-md p-6 border border-blue-100 hover:shadow-lg transition-all lg:col-span-2">
+          <div className="flex items-center">
+            <div className="rounded-full bg-blue-100 p-3 mr-4 flex-shrink-0">
+              <Wallet className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-medium text-blue-800">Modal Utama</h3>
+              <p className="text-xl font-bold text-blue-700 truncate">
+                {modalData ? formatCurrency(modalData.sisa_modal) : '-'}
+              </p>
+              <p className="text-xs text-blue-600">periode terpilih</p>
+            </div>
+          </div>
+        </div>
+        {/* PERUBAAN SELESAI DI SINI */}
+        
+        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-6 border border-green-100 hover:shadow-lg transition-all">
+          <div className="flex items-center">
+            <div className="rounded-full bg-green-100 p-3 mr-4">
+              <TrendingUp className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-green-800">Total Pemasukan</h3>
+              <p className="text-xl font-bold text-green-700">
+                {formatCurrency(totalPemasukan)}
+              </p>
+              <p className="text-xs text-green-600">periode terpilih</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl shadow-md p-6 border border-amber-100 hover:shadow-lg transition-all">
+          <div className="flex items-center">
+            <div className="rounded-full bg-amber-100 p-3 mr-4">
+              <TrendingDown className="h-6 w-6 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-amber-800">Total Pengeluaran</h3>
+              <p className="text-xl font-bold text-amber-700">
+                {formatCurrency(totalPengeluaran)}
+              </p>
+              <p className="text-xs text-amber-600">periode terpilih</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Sale Form */}
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8 border border-gray-200">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+            <Package className="h-5 w-5 mr-2 text-gray-600" />
+            Tambah Modal
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">Tambahkan modal baru ke sistem</p>
+        </div>
+        <div className="p-6">
+          {submitSuccess && (
+            <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">
+              Modal Berhasil Ditambahkan!
+            </div>
+          )}
+          
+          {submitError && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+              {submitError}
+            </div>
+          )}
+          
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-gray-700 mb-2" htmlFor="jumlah">
+                  Nominal Modal (Rp)
+                </label>
+                <input
+                  type="number"
+                  id="jumlah"
+                  name="jumlah"
+                  value={formData.jumlah}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Contoh: 1000000"
+                  required
+                  min="1"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-gray-700 mb-2" htmlFor="keterangan">
+                  Keterangan
+                </label>
+                <input
+                  type="text"
+                  id="keterangan"
+                  name="keterangan"
+                  value={formData.keterangan}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Contoh: Dana Tambahan"
+                  required
+                />
+              </div>
+            </div>
+            
+            <button
+              type="submit"
+              disabled={submitLoading}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-300 disabled:opacity-50"
+            >
+              {submitLoading ? 'Menyimpan...' : 'Tambah Modal'}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Search and Filter Section */}
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8 border border-gray-200">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+            <ShoppingCart className="h-5 w-5 mr-2 text-gray-600" />
+            Filter Riwayat Transaksi
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">Cari dan filter transaksi berdasarkan kriteria</p>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Pencarian</label>
+              <input
+                type="text"
+                placeholder="Cari berdasarkan tanggal atau keterangan..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Filter Tipe</label>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="semua">Semua Tipe</option>
+                <option value="pemasukan">Pemasukan</option>
+                <option value="pengeluaran">Pengeluaran</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Selesai</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Transaction History */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Riwayat Pemasukan</h2>
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+            <CreditCard className="h-5 w-5 mr-2 text-gray-600" />
+            Riwayat Transaksi
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">Daftar semua transaksi modal</p>
+        </div>
         
         {currentItems.length > 0 ? (
           <>
@@ -371,7 +434,7 @@ const PenjualanPage: React.FC = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {currentItems.map((item) => (
-                    <tr key={item._id}>
+                    <tr key={item._id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDate(item.tanggal)}
                       </td>
@@ -403,7 +466,7 @@ const PenjualanPage: React.FC = () => {
             
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-200 p-6">
                 <div className="text-sm text-gray-600">
                   Menampilkan <span className="font-semibold text-gray-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredRiwayat.length)}</span> dari{' '}
                   <span className="font-semibold text-gray-900">{filteredRiwayat.length}</span> riwayat
@@ -413,7 +476,7 @@ const PenjualanPage: React.FC = () => {
                   <button
                     onClick={prevPage}
                     disabled={currentPage === 1}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
                       currentPage === 1 
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                         : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
@@ -455,7 +518,7 @@ const PenjualanPage: React.FC = () => {
                   <button
                     onClick={nextPage}
                     disabled={currentPage === totalPages}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all ${
                       currentPage === totalPages 
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                         : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
