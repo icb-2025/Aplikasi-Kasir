@@ -184,22 +184,25 @@ const BarangTable: React.FC<BarangTableProps> = ({
             {data.length > 0 ? (
               data.map((item, index) => {
                 const imageUrl = getImageUrl(item.gambarUrl);
+                const stokAvail = item.status === "aman";
                 const isLowStock = item.status === "hampir habis";
                 const isOutOfStock = item.status === "habis";
-                const bahanBakuInfo = getBahanBakuInfo(item);
-                
-                // Menghitung warna dan lebar progress bar
+                let rowClasses = 'transition-all duration-200 hover:bg-blue-50/70';
+                if (isOutOfStock) {
+                  rowClasses += ' bg-red-50/70 border-l-[4px] border-l-red-500 !border-l-red-500';
+                } else if (isLowStock) {
+                  rowClasses += ' bg-yellow-50/70 border-l-[4px] border-l-yellow-500 !border-l-yellow-500';
+                } else if (stokAvail){
+                  rowClasses += ' bg-green-50/70 border-l-[4px] border-l-green-500 !border-l-green-500';
+                }
+                const bahanBakuInfo = getBahanBakuInfo(item);                
                 const progressBarColor = getProgressBarColor(item.stok, item.stokMinimal || 5);
                 const progressBarWidth = getProgressBarWidth(item.stok, item.stok_awal);
                 
                 return (
                   <tr 
                     key={item._id || `row-${index}-${Date.now()}`}
-                    className={`transition-all duration-200 hover:bg-blue-50/30 ${
-                      isOutOfStock ? 'bg-red-50/70' : 
-                      isLowStock ? 'bg-yellow-50/70' : 
-                      'bg-white'
-                    } ${isOutOfStock ? 'border-l-4 border-l-red-500' : isLowStock ? 'border-l-4 border-l-yellow-500' : ''}`}
+                    className={rowClasses} 
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex justify-center">
