@@ -309,8 +309,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       }
     }
 
+    // FIXED: Removed the extra 'barang_id' field that was causing the 400 error
     const barangDibeli = cartItems.map((item) => ({
-      barang_id: item._id,
       kode_barang: item._id,
       nama_barang: item.nama,
       jumlah: item.quantity,
@@ -377,6 +377,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       
       const token = localStorage.getItem('token');
       
+      // Log the request data for debugging
+      console.log("Sending transaction data:", JSON.stringify(bodyData, null, 2));
+      
       const res = await fetch(`${ipbe}:${portbe}/api/transaksi`, {
         method: "POST",
         headers: { 
@@ -401,6 +404,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       
       if (!res.ok) {
         SweetAlert.close();
+        console.error("Server response:", responseData);
         const errorMsg = responseData.message || responseData.error || "Failed to save transaction";
         
         throw new Error(errorMsg);

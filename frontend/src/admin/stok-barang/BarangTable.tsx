@@ -42,9 +42,9 @@ const StokIcon: React.FC<{ status?: string }> = ({ status }) => {
   if (statusLower === "aman") {
     return <CheckCircle className="w-5 h-5 text-green-500" />;
   } else if (statusLower === "hampir habis") {
-    return <AlertCircle className="w-5 h-5 text-yellow-500" />;
+    return <AlertCircle className="w-5 h-5 text-yellow-500 animate-pulse" />;
   } else if (statusLower === "habis") {
-    return <XCircle className="w-5 h-5 text-red-500" />;
+    return <XCircle className="w-5 h-5 text-red-500 animate-pulse" />;
   } else {
     return <Circle className="w-5 h-5 text-gray-400" />;
   }
@@ -196,10 +196,10 @@ const BarangTable: React.FC<BarangTableProps> = ({
                   <tr 
                     key={item._id || `row-${index}-${Date.now()}`}
                     className={`transition-all duration-200 hover:bg-blue-50/30 ${
-                      isOutOfStock ? 'bg-red-100/100' : 
-                      isLowStock ? 'bg-yellow-50/20' : 
+                      isOutOfStock ? 'bg-red-50/70 animate-pulse' : 
+                      isLowStock ? 'bg-yellow-50/70 animate-pulse' : 
                       index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                    } ${isOutOfStock ? 'border-l-4 border-l-red-400' : ''}`}
+                    } ${isOutOfStock ? 'border-l-4 border-l-red-500' : isLowStock ? 'border-l-4 border-l-yellow-500' : ''}`}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex justify-center">
@@ -237,16 +237,18 @@ const BarangTable: React.FC<BarangTableProps> = ({
                         <div className="text-sm font-medium text-gray-900 truncate" title={item.nama || "-"}>
                           {safeValue(item.nama, "-")}
                         </div>
-                        {/* {bahanBakuInfo && (
-                          <div className="text-xs text-blue-600 mt-1 flex items-center">
-                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            Bahan: {bahanBakuInfo.bahan && bahanBakuInfo.bahan.length > 0 
-                              ? bahanBakuInfo.bahan.map(b => b.nama).join(", ") 
-                              : "Tidak ada data bahan"}
+                        {isLowStock && (
+                          <div className="text-xs text-yellow-600 mt-1 flex items-center">
+                            <AlertCircle className="w-3 h-3 mr-1" />
+                            Stok hampir habis!
                           </div>
-                        )} */}
+                        )}
+                        {isOutOfStock && (
+                          <div className="text-xs text-red-600 mt-1 flex items-center">
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Stok habis!
+                          </div>
+                        )}
                       </div>
                     </td>
 
@@ -305,7 +307,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                         {item.stok !== undefined && (
                           <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                             <div 
-                              className={`h-1.5 rounded-full transition-all duration-500 ${progressBarColor}`}
+                              className={`h-1.5 rounded-full transition-all duration-500 ${progressBarColor} ${isLowStock || isOutOfStock ? 'animate-pulse' : ''}`}
                               style={{ width: progressBarWidth }}
                             ></div>
                           </div>
@@ -317,7 +319,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                       <div className="flex items-center space-x-2">
                         <StokIcon status={item.status} />
                         <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStokClass(item.status)}`}
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStokClass(item.status)} ${isLowStock || isOutOfStock ? 'animate-pulse' : ''}`}
                         >
                           {item.status
                             ? item.status.charAt(0).toUpperCase() + item.status.slice(1)

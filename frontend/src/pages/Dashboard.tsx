@@ -222,8 +222,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       
       const data = await response.json();
       setKategoriList(data);
-    } catch (error) {
-      console.error("Error fetching kategori:", error);
+    } catch {
       showToast("Gagal mengambil data kategori", "error", "fetch-kategori");
     } finally {
       setLoadingKategori(false);
@@ -365,8 +364,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         quantity: item.quantity,
         gambarUrl: item.image
       }));
-    } catch (error) {
-      console.error('Error fetching cart:', error);
+    } catch {
       return [];
     }
   }, []);
@@ -459,8 +457,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         try {
           const cartData = await fetchCart();
           setCart(cartData);
-        } catch (error) {
-          console.error('Failed to load cart:', error);
+        } catch {
           showToast('Failed to load cart', 'error', 'load-cart');
         } finally {
           setIsCartLoading(false);
@@ -542,8 +539,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
                 }
                 
                 clearTransactionStatus();
-              } catch (error) {
-                console.error('Error verifying transaction status:', error);
+              } catch {
                 clearTransactionStatus();
               }
             };
@@ -553,8 +549,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         } else {
           clearTransactionStatus();
         }
-      } catch (error) {
-        console.error('Error parsing saved transaction status:', error);
+      } catch {
         clearTransactionStatus();
       }
     }
@@ -631,8 +626,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
           setCart(updatedCart);
           showToast(`${product.nama} added to cart`, 'success', `cart-${product._id}`);
         }
-      } catch (error) {
-        console.error('Error adding to cart:', error);
+      } catch {
         showToast('Failed to add item to cart', 'error', 'cart-error');
       } finally {
         setSelectedProduct(null);
@@ -647,8 +641,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       await removeItemFromCart(productId);
       const updatedCart = await fetchCart();
       setCart(updatedCart);
-    } catch (error) {
-      console.error('Error removing from cart:', error);
+    } catch {
       showToast('Failed to remove item from cart', 'error', 'remove-error');
     }
   };
@@ -674,8 +667,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
       await updateItemQuantity(productId, newQuantity);
       const updatedCart = await fetchCart();
       setCart(updatedCart);
-    } catch (error) {
-      console.error('Error updating quantity:', error);
+    } catch {
       showToast('Failed to update quantity', 'error', 'update-error');
     }
   };
@@ -701,8 +693,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         });
         
         setIsTransactionModalOpen(true);
-      } catch (error) {
-        console.error('Error adding to cart for buy now:', error);
+      } catch {
         showToast('Failed to add item to cart', 'error', 'buy-now-error');
       }
     });
@@ -770,17 +761,14 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
                 status: transactionData.status
               }),
             });
-            
-            console.log('Transaction successfully saved to history');
-          } catch (err) {
-            console.error("Failed to save transaction to history:", err);
+          } catch {
+            // Error handling without console
           }
         };
         
         saveToHistory();
       }
-    } catch (error) {
-      console.error('Error clearing cart after transaction:', error);
+    } catch {
       showToast('Failed to clear cart after transaction', 'error', 'clear-cart-error');
     }
   };

@@ -178,7 +178,6 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
       }
       
       setBahanBakuList(bahanBakuData);
-      console.log("Bahan baku data:", bahanBakuData);
     } catch (err) {
       console.error("Gagal mengambil data bahan baku:", err);
     }
@@ -190,12 +189,8 @@ const [settings, setSettings] = useState({
   serviceCharge: 0
 });
 
-
-// Tambahkan console.log untuk debugging
-// Tambahkan console.log untuk debugging
 const fetchSettings = useCallback(async () => {
   try {
-    console.log("Mengambil data settings...");
     const token = localStorage.getItem('token');
     const res = await fetch(SETTINGS_API_URL, {
       headers: {
@@ -207,15 +202,7 @@ const fetchSettings = useCallback(async () => {
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const settingsData = await res.json();
     
-    console.log("Data settings yang diterima:", settingsData);
-    
     setSettings({
-      globalDiscount: settingsData.globalDiscount || 10,
-      taxRate: settingsData.taxRate || 6,
-      serviceCharge: settingsData.serviceCharge || 5.26
-    });
-    
-    console.log("Settings state set to:", {
       globalDiscount: settingsData.globalDiscount || 10,
       taxRate: settingsData.taxRate || 6,
       serviceCharge: settingsData.serviceCharge || 5.26
@@ -243,13 +230,11 @@ const fetchSettings = useCallback(async () => {
 
   const fetchKategori = useCallback(async () => {
     try {
-      console.log("Fetching kategori...");
       const res = await fetch(KATEGORI_API_URL);
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data: KategoriAPI[] = await res.json();
       
       const kategoriNames = data.map((item: KategoriAPI) => item.nama);
-      console.log("Kategori fetched:", kategoriNames);
       setKategoriList(kategoriNames);
       
       if (kategoriNames.length > 0 && !formData.kategori) {
@@ -358,15 +343,14 @@ const fetchSettings = useCallback(async () => {
       );
     });
 
+    // --- PERBAIKAN DI SINI ---
     socketRef.current.on('barang:deleted', (payload: { id: string; nama?: string }) => {
-      const { id, nama } = payload;
-      setDataBarang(prevData => {
-        const found = prevData.find(item => item._id === id);
-        const nameToShow = nama ?? found?.nama ?? 'Tanpa Nama';
-        console.info(`Barang dihapus: ${nameToShow}`);
-        return prevData.filter(item => item._id !== id);
-      });
+      const { id } = payload;
+      setDataBarang(prevData => 
+        prevData.filter(item => item._id !== id)
+      );
     });
+    // --- AKHIR PERBAIKAN ---
 
     socketRef.current.on('stockUpdated', (data: { id: string; stok: number; status?: string }) => {
       setDataBarang(prevData => 
@@ -384,12 +368,9 @@ const fetchSettings = useCallback(async () => {
     });
 
     socketRef.current.on('settings:updated', (updatedSettings: SettingsUpdate) => {
-      console.log('Received settings:updated event:', updatedSettings);
-      
       if (updatedSettings.lowStockAlert !== undefined) {
         const newLowStockAlert = updatedSettings.lowStockAlert;
         setLowStockAlert(newLowStockAlert);
-        console.log("Low stock alert updated to:", newLowStockAlert);
         fetchBarang();
       }
     });
