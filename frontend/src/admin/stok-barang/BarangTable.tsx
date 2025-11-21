@@ -240,7 +240,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                         <div className="text-sm font-medium text-gray-900 truncate" title={item.nama || "-"}>
                           {safeValue(item.nama, "-")}
                         </div>
-                        {isLowStock && (
+                        {/* {isLowStock && (
                           <div className="text-xs text-yellow-600 mt-1 flex items-center">
                             <AlertCircle className="w-3 h-3 mr-1" />
                             Stok hampir habis!
@@ -251,7 +251,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                             <XCircle className="w-3 h-3 mr-1" />
                             Stok habis!
                           </div>
-                        )}
+                        )} */}
                       </div>
                     </td>
 
@@ -274,7 +274,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
 
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col">
-                        <div className={`text-sm font-medium ${getMarginColor(item.margin)}`}>
+                        <div className={`text-sm font-medium text-center ${getMarginColor(item.margin)}`}>
                           {item.margin !== undefined ? `${item.margin}%` : '-'}
                         </div>
                         {item.margin && (
@@ -301,11 +301,11 @@ const BarangTable: React.FC<BarangTableProps> = ({
 
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col space-y-1">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-gray-900 text-center">
                           {safeValue(item.stok, 0)}
                         </div>
-                        <div className="text-xs text-gray-500">
-                          Minimal: {safeValue(item.stokMinimal, 5)}
+                        <div className="text-xs text-gray-500 text-center">
+                          {/* Peringatan: <div className="text-yellow-500">{safeValue(item.stokMinimal, 5)}</div> */}
                         </div>
                         {item.stok !== undefined && (
                           <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">

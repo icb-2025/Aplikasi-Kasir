@@ -50,6 +50,17 @@ export class SweetAlert {
     });
   }
 
+  // Alert
+  static async warning(message: string, timer: number = 2000): Promise<SweetAlertResult> {
+    return Swal.fire({
+      title: 'Peringatan!',
+      text: message,
+      icon: 'warning',
+      timer,
+      showConfirmButton: false
+    });
+  }
+
   // Close alert
   static close(): void {
     Swal.close();

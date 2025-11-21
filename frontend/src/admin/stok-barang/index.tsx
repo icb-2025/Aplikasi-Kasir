@@ -603,7 +603,6 @@ const handleSubmit = async (e: React.FormEvent) => {
           <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-800">Daftar Barang</h1>
-              <p className="text-gray-500 mt-1">Kelola inventaris barang Anda</p>
             </div>
             <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-3">
               <div className="flex gap-2">
