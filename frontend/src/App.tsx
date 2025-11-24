@@ -16,6 +16,7 @@ interface BarangAPI {
   harga_jual: number;
   hargaFinal: number;
   stok: number;
+  stok_awal: number;
   stok_minimal?: number;
   gambar_url?: string;
 }
@@ -40,6 +41,7 @@ function App() {
         hargaJual: item.harga_jual,
         hargaFinal: item.hargaFinal,
         stok: item.stok,
+        stok_awal: item.stok_awal,
         stokMinimal: item.stok_minimal || 5,
         gambarUrl: item.gambar_url,
         status: item.stok <= 0 ? "habis" : item.stok <= (item.stok_minimal || 5) ? "hampir habis" : "aman"
