@@ -713,7 +713,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         {/* Area item struk - dapat di-scroll jika terlalu banyak */}
                         <div className="flex-grow overflow-y-auto max-h-60 mb-4">
                           <table className="w-full text-sm">
-                            <thead className="border-b sticky top-0 bg-white">
+                            <thead className="sticky top-0 bg-white">
                               <tr>
                                 <th className="text-left py-1">Item</th>
                                 <th className="text-center py-1">Qty</th>
@@ -724,7 +724,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                             <tbody>
                               {transactionData.barang_dibeli && transactionData.barang_dibeli.length > 0 ? (
                                 transactionData.barang_dibeli.map((item: BarangDibeli, idx: number) => (
-                                  <tr key={idx} className="border-b">
+                                  <tr key={idx}>
                                     <td className="py-1">{item.nama_barang}</td>
                                     <td className="py-1 text-center">{item.jumlah}</td>
                                     <td className="py-1 text-right">
@@ -737,7 +737,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                                 ))
                               ) : (
                                 <tr>
-                                  <td colSpan={4} className="py-2 text-center text-gray-500">
+                                  <td colSpan={4} className="py-2 text-gray-500">
                                     tidak ada data yang di beli
                                   </td>
                                 </tr>
