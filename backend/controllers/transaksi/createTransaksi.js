@@ -114,6 +114,7 @@ export const createTransaksi = async (req, res) => {
     const { barang_dibeli, metode_pembayaran, total_harga } = req.body;
     const grossAmount = Math.round(Number(total_harga));
 
+    // Validasi metode pembayaran
     const settings = await Settings.findOne();
     const allowedMethods = settings ? settings.payment_methods.map(pm => pm.method) : ["Tunai"];
     let baseMethod = metode_pembayaran;
@@ -141,6 +142,26 @@ export const createTransaksi = async (req, res) => {
       }
     }
 
+    // PINDAHKAN PENGECEKAN KASIR KE SINI (SEBELUM PENGURANGAN STOK)
+    let kasirUsername = req.body.kasir_username;
+    if (!kasirUsername) {
+      try {
+        const kasirTerpilih = await pilihKasirRoundRobin();
+        kasirUsername = kasirTerpilih?.username || "kasir_default";
+      } catch (error) {
+        // Jika tidak ada kasir aktif, kembalikan error tanpa mengurangi stok
+        return res.status(400).json({ 
+          message: "Tidak ada kasir aktif saat ini" 
+        });
+      }
+    } else {
+      const kasirData = await User.findOne({ username: kasirUsername, role: "kasir" });
+      if (!kasirData) {
+        return res.status(400).json({ message: `Kasir '${kasirUsername}' tidak ditemukan atau bukan kasir.` });
+      }
+    }
+
+    // SEKARANG BARU KURANGI STOK SETELAH PASTI ADA KASIR AKTIF
     for (const item of barang_dibeli) {
       const barang = await Barang.findOne({
         $or: [{ kode_barang: item.kode_barang }, { nama_barang: item.nama_barang }],
@@ -179,18 +200,8 @@ export const createTransaksi = async (req, res) => {
       }
     }
 
+    // Sisanya tetap sama
     const nomorTransaksi = uuidv4();
-    let kasirUsername = req.body.kasir_username;
-
-    if (!kasirUsername) {
-      const kasirTerpilih = await pilihKasirRoundRobin();
-      kasirUsername = kasirTerpilih?.username || "kasir_default";
-    } else {
-      const kasirData = await User.findOne({ username: kasirUsername, role: "kasir" });
-      if (!kasirData) {
-        return res.status(400).json({ message: `Kasir '${kasirUsername}' tidak ditemukan atau bukan kasir.` });
-      }
-    }
 
     const barangFinal = await Promise.all(
       barang_dibeli.map(async (item) => {
@@ -223,7 +234,6 @@ export const createTransaksi = async (req, res) => {
 
     await transaksi.save();
     await updateHppOtomatis(barangFinal);
-
 
     if (transaksi.status === "selesai") {
       await addTransaksiToLaporan(transaksi)
