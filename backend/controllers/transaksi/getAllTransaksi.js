@@ -25,6 +25,7 @@ export const getAllTransaksi = async (req, res) => {
         path: "kasir_id",
         select: "nama_lengkap ProfilePicture",
       })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
