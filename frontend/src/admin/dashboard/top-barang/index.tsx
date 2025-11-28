@@ -103,15 +103,18 @@ const TopBarang: React.FC = () => {
           // Urutkan produk berdasarkan pendapatan tertinggi
           const sortedProduk = [...semuaProduk].sort((a, b) => b.pendapatan - a.pendapatan);
           
-          setData(sortedProduk);
+          // PERBAIKAN: Ambil hanya 5 produk terlaris
+          const top5Produk = sortedProduk.slice(0, 5);
+          
+          setData(top5Produk);
           
           // Set produk pertama sebagai produk yang dipilih
-          if (sortedProduk.length > 0) {
-            setSelectedProduct(sortedProduk[0]);
+          if (top5Produk.length > 0) {
+            setSelectedProduct(top5Produk[0]);
           }
           
           // Hitung total penjualan
-          const total = semuaProduk.reduce((sum, item) => sum + item.jumlah_terjual, 0);
+          const total = top5Produk.reduce((sum, item) => sum + item.jumlah_terjual, 0);
           setTotalPenjualan(total);
         } else {
           // Jika tidak ada data produk, set ke array kosong
@@ -174,32 +177,6 @@ const TopBarang: React.FC = () => {
           className={`h-3 rounded-full ${color}`}
           style={{ width: `${percentage}%` }}
         ></div>
-      </div>
-    );
-  };
-
-  // Komponen Mini Chart
-  const MiniChart: React.FC<{ 
-    data: number[]; 
-    color: string;
-    height?: number;
-  }> = ({ data, color, height = 40 }) => {
-    const maxValue = Math.max(...data);
-    const minValue = Math.min(...data, 0);
-    const range = maxValue - minValue;
-    
-    return (
-      <div className="flex items-end space-x-1 h-full" style={{ height: `${height}px` }}>
-        {data.map((value, index) => {
-          const normalizedValue = range > 0 ? ((value - minValue) / range) * 100 : 50;
-          return (
-            <div 
-              key={index}
-              className={`w-2 ${color} rounded-t`}
-              style={{ height: `${normalizedValue}%` }}
-            ></div>
-          );
-        })}
       </div>
     );
   };
@@ -274,7 +251,7 @@ const TopBarang: React.FC = () => {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Top Barang Terlaris</h1>
+        <h1 className="text-2xl font-semibold text-gray-800">Top 5 Barang Terlaris</h1>
         <p className="text-gray-600">Analisis produk paling populer berdasarkan pendapatan</p>
       </div>
 
@@ -303,7 +280,7 @@ const TopBarang: React.FC = () => {
         {/* Daftar Barang Terlaris - Diperluas ke kanan */}
         <div className="bg-white rounded-lg shadow lg:col-span-2">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-800">Ranking Barang Terlaris</h2>
+            <h2 className="text-lg font-semibold text-gray-800">Ranking 5 Barang Terlaris</h2>
             <p className="text-sm text-gray-500">Berdasarkan pendapatan tertinggi</p>
           </div>
           <div className="p-6">
@@ -480,7 +457,7 @@ const TopBarang: React.FC = () => {
       {/* Tabel Detail */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden mt-6">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800">Detail Barang Terlaris</h2>
+          <h2 className="text-lg font-semibold text-gray-800">Detail 5 Barang Terlaris</h2>
           <p className="text-sm text-gray-500">Berdasarkan pendapatan tertinggi</p>
         </div>
         <div className="overflow-x-auto">

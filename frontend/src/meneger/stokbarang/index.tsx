@@ -2,13 +2,20 @@ import type { Barang } from "../../admin/stok-barang";
 import MenegerLayout from "../layout";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import LoadingSpinner from "../../components/LoadingSpinner";
-import StokFilter from "./StokFilter";
-import StokSummary from "./StokSummary";
 import StokCard from "./StokCard";
 import DetailModal from "./DetailModal";
+import StokSummary from "./StokSummary";
+import StokFilter from "./StokFilter";
 import io, { Socket } from 'socket.io-client';
 import { portbe } from "../../../../backend/ngrokbackend";
-import { Package, Search, XCircle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  Package, 
+  Search, 
+  XCircle, 
+  RefreshCw, 
+  ChevronLeft, 
+  ChevronRight 
+} from 'lucide-react';
 
 const ipbe = import.meta.env.VITE_IPBE;
 const API_BASE_URL = `${ipbe}:${portbe}`;
@@ -45,35 +52,45 @@ interface ApiBarang {
   }>;
 }
 
-interface SettingsUpdate {
+interface UpdateStokData {
+  id: string;
+  stok: number;
+}
+
+interface BarangDihapusData {
+  id: string;
+  nama?: string;
+}
+
+interface UpdatePengaturan {
   lowStockAlert?: number;
 }
 
-interface StokBarangMenegerProps {
+interface StokBarangManagerProps {
   dataBarang: Barang[];
   isLoading?: boolean;
 }
 
-export default function StokBarangMeneger({
-  dataBarang: initialDataBarang,
+export default function StokBarangManager({
+  dataBarang: dataAwalBarang,
   isLoading = false,
-}: StokBarangMenegerProps) {
-  const [dataBarang, setDataBarang] = useState<Barang[]>(initialDataBarang || []);
-  const [selectedProduct, setSelectedProduct] = useState<Barang | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [stockStatusFilter, setStockStatusFilter] = useState("");
-  const [socketLoading, setSocketLoading] = useState(false);
+}: StokBarangManagerProps) {
+  const [dataBarang, setDataBarang] = useState<Barang[]>(dataAwalBarang || []);
+  const [produkDipilih, setProdukDipilih] = useState<Barang | null>(null);
+  const [kataPencarian, setKataPencarian] = useState("");
+  const [filterKategori, setFilterKategori] = useState("");
+  const [filterStatusStok, setFilterStatusStok] = useState("");
+  const [sedangMemuatSocket, setSedangMemuatSocket] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [serverError, setServerError] = useState(false);
-  const [lowStockAlert, setLowStockAlert] = useState(5);
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(12);
+  const [batasStokRendah, setBatasStokRendah] = useState(5);
+  const [pengaturanDimuat, setPengaturanDimuat] = useState(false);
+  const [halamanAktif, setHalamanAktif] = useState(1);
+  const [itemPerHalaman] = useState(12);
   const socketRef = useRef<Socket | null>(null);
 
   // Fungsi untuk normalisasi data
-  const normalizeBarangData = useCallback((barang: ApiBarang): Barang => {
+  const normalisasiDataBarang = useCallback((barang: ApiBarang): Barang => {
     return {
       _id: barang._id || '',
       kode: barang.kode || barang.kode_barang || '',
@@ -83,7 +100,7 @@ export default function StokBarangMeneger({
       hargaJual: barang.hargaJual || barang.harga_jual || 0,
       stok: barang.stok || 0,
       stok_awal: barang.stok || 0,
-      stokMinimal: barang.stokMinimal || barang.stok_minimal || lowStockAlert,
+      stokMinimal: barang.stokMinimal || barang.stok_minimal || batasStokRendah,
       hargaFinal: barang.hargaFinal || 0,
       gambarUrl: barang.gambarUrl || barang.gambar_url || '',
       status: barang.status || 'aman',
@@ -91,15 +108,15 @@ export default function StokBarangMeneger({
       margin: barang.margin || 30,
       bahanBaku: barang.bahan_baku || []
     };
-  }, [lowStockAlert]);
+  }, [batasStokRendah]);
 
-  // Fetch settings
-  const fetchSettings = useCallback(async () => {
+  // Fetch pengaturan
+  const ambilPengaturan = useCallback(async () => {
     try {
-      console.log("Mengambil data settings...");
+      console.log("Mengambil data pengaturan...");
       const token = localStorage.getItem('token');
-      const SETTINGS_API_URL = `${API_BASE_URL}/api/admin/settings`;
-      const res = await fetch(SETTINGS_API_URL, {
+      const PENGATURAN_API_URL = `${API_BASE_URL}/api/admin/settings`;
+      const res = await fetch(PENGATURAN_API_URL, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -107,28 +124,28 @@ export default function StokBarangMeneger({
       });
       
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const settingsData = await res.json();
+      const dataPengaturan = await res.json();
       
-      console.log("Data settings yang diterima:", settingsData);
+      console.log("Data pengaturan yang diterima:", dataPengaturan);
       
-      if (settingsData.lowStockAlert !== undefined) {
-        setLowStockAlert(settingsData.lowStockAlert);
-        console.log("Low stock alert set to:", settingsData.lowStockAlert);
+      if (dataPengaturan.lowStockAlert !== undefined) {
+        setBatasStokRendah(dataPengaturan.lowStockAlert);
+        console.log("Batas stok rendah diset ke:", dataPengaturan.lowStockAlert);
       }
       
-      setSettingsLoaded(true);
+      setPengaturanDimuat(true);
     } catch (err) {
       console.error("Gagal mengambil pengaturan:", err);
-      setLowStockAlert(5);
-      setSettingsLoaded(true);
+      setBatasStokRendah(5);
+      setPengaturanDimuat(true);
     }
   }, []);
 
   // Inisialisasi Socket.io
-  const initializeSocket = useCallback(() => {
+  const inisialisasiSocket = useCallback(() => {
     try {
       const token = localStorage.getItem('token');
-      console.log('Initializing socket with token:', token ? 'Present' : 'Missing');
+      console.log('Menginisialisasi socket dengan token:', token ? 'Ada' : 'Tidak ada');
       
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -141,42 +158,42 @@ export default function StokBarangMeneger({
       });
       
       socketRef.current.on('connect', () => {
-        console.log('Socket connected with ID:', socketRef.current?.id);
+        console.log('Socket terhubung dengan ID:', socketRef.current?.id);
         socketRef.current?.emit('joinRoom', 'barang');
       });
       
-      socketRef.current.on('disconnect', (reason) => {
-        console.log('Socket disconnected. Reason:', reason);
+      socketRef.current.on('disconnect', (alasan) => {
+        console.log('Socket terputus. Alasan:', alasan);
       });
       
       socketRef.current.on('connect_error', (error) => {
-        console.error('Socket connection error:', error);
+        console.error('Kesalahan koneksi socket:', error);
       });
       
       // Listener untuk perubahan barang
-      socketRef.current.on('barang:updated', (updatedBarang: ApiBarang) => {
-        console.log('Received barang:updated event:', updatedBarang);
-        const normalizedBarang = normalizeBarangData(updatedBarang);
-        setDataBarang(prevList => 
-          prevList.map(item => item._id === normalizedBarang._id ? normalizedBarang : item)
+      socketRef.current.on('barang:updated', (barangDiperbarui: ApiBarang) => {
+        console.log('Menerima event barang:updated:', barangDiperbarui);
+        const barangNormalisasi = normalisasiDataBarang(barangDiperbarui);
+        setDataBarang(daftarSebelumnya => 
+          daftarSebelumnya.map(item => item._id === barangNormalisasi._id ? barangNormalisasi : item)
         );
       });
       
       // Listener untuk perubahan stok
-      socketRef.current.on('stockUpdated', (data: { id: string; stok: number }) => {
-        console.log('Received stockUpdated event:', data);
-        setDataBarang(prevList => 
-          prevList.map(item => {
+      socketRef.current.on('stockUpdated', (data: UpdateStokData) => {
+        console.log('Menerima event stockUpdated:', data);
+        setDataBarang(daftarSebelumnya => 
+          daftarSebelumnya.map(item => {
             if (item._id === data.id) {
-              const newStok = data.stok;
-              const status = newStok <= 0 
+              const stokBaru = data.stok;
+              const status = stokBaru <= 0 
                 ? "habis" 
-                : newStok <= (item.stokMinimal || lowStockAlert) 
+                : stokBaru <= (item.stokMinimal || batasStokRendah) 
                   ? "hampir habis" 
                   : "aman";
               return { 
                 ...item, 
-                stok: newStok,
+                stok: stokBaru,
                 status
               };
             }
@@ -186,50 +203,50 @@ export default function StokBarangMeneger({
       });
       
       // Listener untuk barang baru
-      socketRef.current.on('barang:created', (newBarang: ApiBarang) => {
-        console.log('Received barang:created event:', newBarang);
-        const normalizedBarang = normalizeBarangData(newBarang);
-        setDataBarang(prevList => [...prevList, normalizedBarang]);
+      socketRef.current.on('barang:created', (barangBaru: ApiBarang) => {
+        console.log('Menerima event barang:created:', barangBaru);
+        const barangNormalisasi = normalisasiDataBarang(barangBaru);
+        setDataBarang(daftarSebelumnya => [...daftarSebelumnya, barangNormalisasi]);
       });
       
       // Listener untuk barang yang dihapus
-      socketRef.current.on('barang:deleted', (payload: { id: string; nama?: string }) => {
-        console.log('Received barang:deleted event:', payload);
-        setDataBarang(prevList => prevList.filter(item => item._id !== payload.id));
+      socketRef.current.on('barang:deleted', (payload: BarangDihapusData) => {
+        console.log('Menerima event barang:deleted:', payload);
+        setDataBarang(daftarSebelumnya => daftarSebelumnya.filter(item => item._id !== payload.id));
       });
       
-      // Listener untuk perubahan settings
-      socketRef.current.on('settings:updated', (updatedSettings: SettingsUpdate) => {
-        console.log('Received settings:updated event:', updatedSettings);
+      // Listener untuk perubahan pengaturan
+      socketRef.current.on('settings:updated', (pengaturanDiperbarui: UpdatePengaturan) => {
+        console.log('Menerima event settings:updated:', pengaturanDiperbarui);
         
-        if (updatedSettings.lowStockAlert !== undefined) {
-          const newLowStockAlert = updatedSettings.lowStockAlert;
-          setLowStockAlert(newLowStockAlert);
-          console.log("Low stock alert updated to:", newLowStockAlert);
+        if (pengaturanDiperbarui.lowStockAlert !== undefined) {
+          const batasStokRendahBaru = pengaturanDiperbarui.lowStockAlert;
+          setBatasStokRendah(batasStokRendahBaru);
+          console.log("Batas stok rendah diperbarui ke:", batasStokRendahBaru);
           
-          setDataBarang(prevData => 
-            prevData.map(item => ({
+          setDataBarang(dataSebelumnya => 
+            dataSebelumnya.map(item => ({
               ...item,
-              stokMinimal: newLowStockAlert
+              stokMinimal: batasStokRendahBaru
             }))
           );
         }
       });
       
     } catch (socketError) {
-      console.error('Error initializing socket:', socketError);
+      console.error('Kesalahan saat menginisialisasi socket:', socketError);
     }
-  }, [lowStockAlert, normalizeBarangData]);
+  }, [batasStokRendah, normalisasiDataBarang]);
 
   // Fetch data dari server
-  const fetchData = useCallback(async () => {
+  const ambilData = useCallback(async () => {
     try {
-      setSocketLoading(true);
+      setSedangMemuatSocket(true);
       setError(null);
       setServerError(false);
       
       const token = localStorage.getItem('token');
-      console.log('Fetching data from:', `${API_BASE_URL}/api/admin/stok-barang`);
+      console.log('Mengambil data dari:', `${API_BASE_URL}/api/admin/stok-barang`);
       
       const response = await fetch(`${API_BASE_URL}/api/admin/stok-barang`, {
         headers: {
@@ -243,48 +260,48 @@ export default function StokBarangMeneger({
       }
       
       const data = await response.json();
-      console.log('Data received:', data);
+      console.log('Data diterima:', data);
       
       // Normalisasi data
-      const normalizedData = Array.isArray(data) ? data.map(normalizeBarangData) : [];
-      setDataBarang(normalizedData);
-      setSocketLoading(false);
+      const dataNormalisasi = Array.isArray(data) ? data.map(normalisasiDataBarang) : [];
+      setDataBarang(dataNormalisasi);
+      setSedangMemuatSocket(false);
       
       // Inisialisasi socket setelah data berhasil dimuat
-      initializeSocket();
+      inisialisasiSocket();
       
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Kesalahan saat mengambil data:', error);
       setError('Gagal memuat data barang. Silakan coba lagi.');
       setServerError(true);
-      setSocketLoading(false);
+      setSedangMemuatSocket(false);
       
       // Gunakan data awal jika ada
-      if (initialDataBarang && initialDataBarang.length > 0) {
-        setDataBarang(initialDataBarang);
+      if (dataAwalBarang && dataAwalBarang.length > 0) {
+        setDataBarang(dataAwalBarang);
       }
     }
-  }, [initializeSocket, normalizeBarangData, initialDataBarang]);
+  }, [inisialisasiSocket, normalisasiDataBarang, dataAwalBarang]);
 
   useEffect(() => {
-    // Fetch settings terlebih dahulu
-    fetchSettings();
-  }, [fetchSettings]);
+    // Ambil pengaturan terlebih dahulu
+    ambilPengaturan();
+  }, [ambilPengaturan]);
 
   useEffect(() => {
-    // Hanya jalankan jika settings sudah dimuat
-    if (settingsLoaded) {
+    // Hanya jalankan jika pengaturan sudah dimuat
+    if (pengaturanDimuat) {
       // Jika sudah ada data awal, tidak perlu loading
-      if (initialDataBarang && initialDataBarang.length > 0) {
-        initializeSocket();
+      if (dataAwalBarang && dataAwalBarang.length > 0) {
+        inisialisasiSocket();
         return;
       }
       
-      // Fetch data dari server
-      fetchData();
+      // Ambil data dari server
+      ambilData();
       
-      // Fetch data setiap 30 detik sebagai fallback
-      const interval = setInterval(fetchData, 30000);
+      // Ambil data setiap 30 detik sebagai cadangan
+      const interval = setInterval(ambilData, 30000);
       
       return () => {
         if (socketRef.current) {
@@ -298,52 +315,52 @@ export default function StokBarangMeneger({
         clearInterval(interval);
       };
     }
-  }, [fetchData, initializeSocket, initialDataBarang, settingsLoaded]);
+  }, [ambilData, inisialisasiSocket, dataAwalBarang, pengaturanDimuat]);
 
   // Dapatkan semua kategori unik dari dataBarang
-  const uniqueCategories = useMemo(() => {
+  const kategoriUnik = useMemo(() => {
     return Array.from(
       new Set(dataBarang.map((item) => item.kategori.toLowerCase()))
     );
   }, [dataBarang]);
 
-  const filteredBarang = useMemo(() => {
+  const barangTersaring = useMemo(() => {
     return dataBarang.filter((item) => {
       // Filter berdasarkan pencarian
-      const matchesSearch =
-        item.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.kode?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-        item.kategori.toLowerCase().includes(searchTerm.toLowerCase());
+      const cocokPencarian =
+        item.nama.toLowerCase().includes(kataPencarian.toLowerCase()) ||
+        (item.kode?.toLowerCase().includes(kataPencarian.toLowerCase()) || false) ||
+        item.kategori.toLowerCase().includes(kataPencarian.toLowerCase());
       
       // Filter berdasarkan kategori
-      const matchesCategory = 
-        categoryFilter === "" || 
-        item.kategori.toLowerCase() === categoryFilter.toLowerCase();
+      const cocokKategori = 
+        filterKategori === "" || 
+        item.kategori.toLowerCase() === filterKategori.toLowerCase();
       
       // Filter berdasarkan status stok
-      let matchesStockStatus = true;
-      if (stockStatusFilter === "tersedia") {
-        matchesStockStatus = item.stok > lowStockAlert;
-      } else if (stockStatusFilter === "terbatas") {
-        matchesStockStatus = item.stok > 0 && item.stok <= lowStockAlert;
-      } else if (stockStatusFilter === "habis") {
-        matchesStockStatus = item.stok === 0;
+      let cocokStatusStok = true;
+      if (filterStatusStok === "tersedia") {
+        cocokStatusStok = item.stok > batasStokRendah;
+      } else if (filterStatusStok === "terbatas") {
+        cocokStatusStok = item.stok > 0 && item.stok <= batasStokRendah;
+      } else if (filterStatusStok === "habis") {
+        cocokStatusStok = item.stok === 0;
       }
       
-      return matchesSearch && matchesCategory && matchesStockStatus;
+      return cocokPencarian && cocokKategori && cocokStatusStok;
     });
-  }, [dataBarang, searchTerm, categoryFilter, stockStatusFilter, lowStockAlert]);
+  }, [dataBarang, kataPencarian, filterKategori, filterStatusStok, batasStokRendah]);
 
-  // Pagination logic
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredBarang.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredBarang.length / itemsPerPage);
+  // Logika pagination
+  const indeksItemTerakhir = halamanAktif * itemPerHalaman;
+  const indeksItemPertama = indeksItemTerakhir - itemPerHalaman;
+  const itemSaatIni = barangTersaring.slice(indeksItemPertama, indeksItemTerakhir);
+  const totalHalaman = Math.ceil(barangTersaring.length / itemPerHalaman);
 
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const paginasi = (nomorHalaman: number) => setHalamanAktif(nomorHalaman);
 
   // 🔹 Kalau masih loading → tampilkan spinner overlay
-  if (isLoading || socketLoading) {
+  if (isLoading || sedangMemuatSocket) {
     return (
       <MenegerLayout>
         <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50">
@@ -354,7 +371,7 @@ export default function StokBarangMeneger({
   }
 
   // 🔹 Cek apakah server mati (dataBarang kosong)
-  const isServerDown = dataBarang.length === 0;
+  const serverMati = dataBarang.length === 0;
 
   // 🔹 Tampilkan error state jika ada
   if (serverError) {
@@ -393,7 +410,7 @@ export default function StokBarangMeneger({
         <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 flex items-center gap-2">
           <Package className="h-5 w-5 text-blue-600" />
           <p className="text-blue-800 font-medium">
-            Total: <span className="font-bold">{filteredBarang.length}</span> barang
+            Total: <span className="font-bold">{barangTersaring.length}</span> barang
           </p>
         </div>
       </div>
@@ -408,28 +425,28 @@ export default function StokBarangMeneger({
             type="text"
             placeholder="Cari nama, kode, atau kategori barang..."
             className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={kataPencarian}
+            onChange={(e) => setKataPencarian(e.target.value)}
           />
         </div>
       </div>
 
       {/* Filter Komponen - Hanya tampilkan jika server tidak mati */}
-      {!isServerDown && (
+      {!serverMati && (
         <StokFilter
-          uniqueCategories={uniqueCategories}
-          onSearchChange={setSearchTerm}
-          onCategoryChange={setCategoryFilter}
-          onStockStatusChange={setStockStatusFilter}
+          kategoriUnik={kategoriUnik}
+          onPencarianChange={setKataPencarian}
+          onKategoriChange={setFilterKategori}
+          onStatusStokChange={setFilterStatusStok}
         />
       )}
 
       {/* Ringkasan Stok - Hanya tampilkan jika server tidak mati */}
-      {!isServerDown && <StokSummary dataBarang={dataBarang} />}
+      {!serverMati && <StokSummary dataBarang={dataBarang} />}
 
       {/* Barang Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {isServerDown ? (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+        {serverMati ? (
           // Tampilan ketika server mati
           <div className="col-span-full flex flex-col items-center justify-center py-12">
             <img
@@ -444,13 +461,13 @@ export default function StokBarangMeneger({
               Tidak dapat terhubung ke server. Silakan periksa koneksi internet Anda atau hubungi administrator.
             </p>
           </div>
-        ) : currentItems.length > 0 ? (
+        ) : itemSaatIni.length > 0 ? (
           // Tampilkan barang jika ada hasil filter
-          currentItems.map((item) => (
+          itemSaatIni.map((item) => (
             <StokCard
               key={item._id}
               item={item}
-              onSelect={setSelectedProduct}
+              onSelect={setProdukDipilih}
             />
           ))
         ) : (
@@ -468,42 +485,42 @@ export default function StokBarangMeneger({
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {totalHalaman > 1 && (
         <div className="flex justify-center mt-8">
           <div className="flex items-center space-x-1">
             <button
-              onClick={() => paginate(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+              onClick={() => paginasi(halamanAktif - 1)}
+              disabled={halamanAktif === 1}
+              className={`p-2 rounded-md ${halamanAktif === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
+            {Array.from({ length: Math.min(5, totalHalaman) }, (_, i) => {
+              let nomorHalaman;
+              if (totalHalaman <= 5) {
+                nomorHalaman = i + 1;
+              } else if (halamanAktif <= 3) {
+                nomorHalaman = i + 1;
+              } else if (halamanAktif >= totalHalaman - 2) {
+                nomorHalaman = totalHalaman - 4 + i;
               } else {
-                pageNum = currentPage - 2 + i;
+                nomorHalaman = halamanAktif - 2 + i;
               }
               
               return (
                 <button
-                  key={pageNum}
-                  onClick={() => paginate(pageNum)}
-                  className={`w-10 h-10 rounded-md ${currentPage === pageNum ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                  key={nomorHalaman}
+                  onClick={() => paginasi(nomorHalaman)}
+                  className={`w-10 h-10 rounded-md ${halamanAktif === nomorHalaman ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
                 >
-                  {pageNum}
+                  {nomorHalaman}
                 </button>
               );
             })}
             <button
-              onClick={() => paginate(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className={`p-2 rounded-md ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+              onClick={() => paginasi(halamanAktif + 1)}
+              disabled={halamanAktif === totalHalaman}
+              className={`p-2 rounded-md ${halamanAktif === totalHalaman ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
             >
               <ChevronRight className="h-5 w-5" />
             </button>
@@ -513,8 +530,8 @@ export default function StokBarangMeneger({
 
       {/* Modal Detail Barang */}
       <DetailModal
-        item={selectedProduct}
-        onClose={() => setSelectedProduct(null)}
+        item={produkDipilih}
+        onClose={() => setProdukDipilih(null)}
       />
     </MenegerLayout>
   );

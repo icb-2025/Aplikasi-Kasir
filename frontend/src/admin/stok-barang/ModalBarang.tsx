@@ -65,7 +65,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
   const [useBahanBaku, setUseBahanBaku] = useState(false);
   const [selectedBahanBaku, setSelectedBahanBaku] = useState("");
   const [isNamaReadOnly, setIsNamaReadOnly] = useState(false);
-  const [isStokReadOnly, setIsStokReadOnly] = useState(false);
+  // Menghapus state isStokReadOnly karena stok akan selalu bisa diubah
   const [isHargaBeliReadOnly, setIsHargaBeliReadOnly] = useState(false);
   const [isKategoriReadOnly, setIsKategoriReadOnly] = useState(false);
   const [isHargaJualReadOnly, setIsHargaJualReadOnly] = useState(false);
@@ -84,7 +84,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
       if (isEditing && formDataRef.current && formDataRef.current.bahanBaku && formDataRef.current.bahanBaku.length > 0) {
         setUseBahanBaku(true);
         setIsNamaReadOnly(true);
-        setIsStokReadOnly(true);
+        // Menghapus setIsStokReadOnly(true) karena stok akan selalu bisa diubah
         setIsHargaBeliReadOnly(true);
         setIsKategoriReadOnly(true);
         setIsHargaJualReadOnly(true);
@@ -93,7 +93,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
         // Jika modal baru dibuka atau tidak ada bahan baku, reset semua
         setUseBahanBaku(false);
         setIsNamaReadOnly(false);
-        setIsStokReadOnly(false);
+        // Menghapus setIsStokReadOnly(false) karena stok akan selalu bisa diubah
         setIsHargaBeliReadOnly(false);
         setIsKategoriReadOnly(false);
         setIsHargaJualReadOnly(false);
@@ -124,7 +124,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
         // Set nama barang dari nama bahan baku yang dipilih
         onInputChange("nama", selected.nama_produk);
         
-        // Set stok dari total_porsi
+        // Set stok dari total_porsi (tetap bisa diubah manual)
         onInputChange("stok", selected.total_porsi.toString());
         
         // Set harga beli dari modal_per_porsi
@@ -152,9 +152,9 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
           onInputChange("hargaJual", Math.round(jual).toString());
         }
         
-        // Set fields to read-only
+        // Set fields to read-only, kecuali stok
         setIsNamaReadOnly(true);
-        setIsStokReadOnly(true);
+        // Menghapus setIsStokReadOnly(true) karena stok akan selalu bisa diubah
         setIsHargaBeliReadOnly(true);
         setIsKategoriReadOnly(true);
         setIsHargaJualReadOnly(true);
@@ -162,7 +162,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
     } else {
       // Reset fields to editable when no bahan baku is selected
       setIsNamaReadOnly(false);
-      setIsStokReadOnly(false);
+      // Menghapus setIsStokReadOnly(false) karena stok akan selalu bisa diubah
       setIsHargaBeliReadOnly(false);
       setIsKategoriReadOnly(false);
       setIsHargaJualReadOnly(false);
@@ -180,7 +180,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
       
       // Make fields editable again
       setIsNamaReadOnly(false);
-      setIsStokReadOnly(false);
+      // Menghapus setIsStokReadOnly(false) karena stok akan selalu bisa diubah
       setIsHargaBeliReadOnly(false);
       setIsKategoriReadOnly(false);
       setIsHargaJualReadOnly(false);
@@ -212,7 +212,6 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
     
     onSubmit(e);
   };
-
 
   if (!visible) return null;
 
@@ -325,32 +324,33 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
                 )}
               </div>
 
-              {/* Stok - Readonly jika menggunakan bahan baku */}
+              {/* Stok - Selalu bisa diubah (tidak readonly) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Stok
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={formData?.stok || ""}
-                    onChange={(e) => onInputChange("stok", e.target.value)}
-                    className={`w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent ${
-                      isStokReadOnly ? 'bg-gray-100 cursor-not-allowed text-gray-600' : ''
-                    }`}
-                    placeholder="0"
-                    min="0"
-                    required
-                    readOnly={isStokReadOnly}
-                  />
-                  {isStokReadOnly && (
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      <div className="bg-green-100 text-green-600 px-2 py-1 rounded text-xs font-medium">
-                        Auto
-                      </div>
-                    </div>
+                  {useBahanBaku && (
+                    <span className="ml-2 text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                      <svg className="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      Dari bahan baku
+                    </span>
                   )}
-                </div>
+                </label>
+                <input
+                  type="number"
+                  value={formData?.stok || ""}
+                  onChange={(e) => onInputChange("stok", e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0"
+                  min="0"
+                  required
+                />
+                {useBahanBaku && (
+                  <div className="mt-1 text-xs text-gray-500">
+                    Nilai awal diisi dari bahan baku, tetapi bisa diubah manual
+                  </div>
+                )}
               </div>
             </div>
 
@@ -395,7 +395,7 @@ const ModalBarang: React.FC<ModalBarangProps> = ({
                         <div>
                           <p className="text-sm font-medium text-green-800">Data terintegrasi</p>
                           <p className="text-sm text-green-700">
-                            Nama, kategori, stok, dan harga beli diisi otomatis
+                            Nama, kategori, dan harga beli diisi otomatis. Stok bisa diubah manual.
                           </p>
                         </div>
                       </div>

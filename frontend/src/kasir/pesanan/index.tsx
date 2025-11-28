@@ -180,8 +180,8 @@ const PesananKasirPage = () => {
         throw new Error('Token tidak ditemukan. Silakan login kembali.');
       }
 
-      const offset = (currentPage - 1) * itemsPerPage;
-      const url = `${ipbe}:${portbe}/api/transaksi?kasir_id=${kasirId}&limit=${itemsPerPage}&offset=${offset}&sort=-tanggal_transaksi`;
+      // PERBAIKAN: Menggunakan page parameter instead of offset
+      const url = `${ipbe}:${portbe}/api/transaksi?kasir_id=${kasirId}&page=${currentPage}&limit=${itemsPerPage}&sort=-tanggal_transaksi`;
       const headers = {
         'Authorization': `Bearer ${token}`,
         'x-api-key': ApiKey || ''
@@ -194,7 +194,8 @@ const PesananKasirPage = () => {
 
         if (res.ok) {
           const data = await res.json();
-          const dataArray: PesananItem[] = Array.isArray(data) ? data : (data.data || []);
+          // PERBAIKAN: Menyesuaikan dengan struktur response dari backend
+          const dataArray: PesananItem[] = Array.isArray(data.data) ? data.data : [];
           
           // MEMASTIKAN DATA TERBARU DI PALING ATAS
           dataArray.sort((a: PesananItem, b: PesananItem) => {
@@ -205,8 +206,9 @@ const PesananKasirPage = () => {
           
           setPesananList(dataArray);
           
-          if (data.total) {
-            setTotalItems(data.total);
+          // PERBAIKAN: Menggunakan totalData dari response backend
+          if (data.totalData) {
+            setTotalItems(data.totalData);
           } else {
             setTotalItems(dataArray.length);
           }

@@ -1,5 +1,10 @@
 import type { Barang } from "../../admin/stok-barang";
-import { Package, AlertTriangle, XCircle, CheckCircle } from 'lucide-react';
+import { 
+  Package, 
+  AlertTriangle, 
+  XCircle, 
+  CheckCircle 
+} from 'lucide-react';
 
 interface StokSummaryProps {
   dataBarang: Barang[];
@@ -7,10 +12,10 @@ interface StokSummaryProps {
 
 export default function StokSummary({ dataBarang }: StokSummaryProps) {
   // Hitung statistik berdasarkan dataBarang
-  const totalItems = dataBarang.length;
-  const totalStock = dataBarang.reduce((sum, item) => sum + item.stok, 0);
-  const lowStockItems = dataBarang.filter(item => item.stok > 0 && item.stok <= (item.stokMinimal || 5)).length;
-  const outOfStockItems = dataBarang.filter(item => item.stok === 0).length;
+  const totalJenisBarang = dataBarang.length;
+  const totalStok = dataBarang.reduce((total, item) => total + item.stok, 0);
+  const stokMenipis = dataBarang.filter(item => item.stok > 0 && item.stok <= (item.stokMinimal || 5)).length;
+  const stokHabis = dataBarang.filter(item => item.stok === 0).length;
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -21,7 +26,7 @@ export default function StokSummary({ dataBarang }: StokSummaryProps) {
           </div>
           <div>
             <p className="text-sm text-gray-500">Total Jenis Barang</p>
-            <p className="text-xl font-bold text-gray-800">{totalItems}</p>
+            <p className="text-xl font-bold text-gray-800">{totalJenisBarang}</p>
           </div>
         </div>
       </div>
@@ -33,7 +38,7 @@ export default function StokSummary({ dataBarang }: StokSummaryProps) {
           </div>
           <div>
             <p className="text-sm text-gray-500">Total Stok</p>
-            <p className="text-xl font-bold text-gray-800">{totalStock} unit</p>
+            <p className="text-xl font-bold text-gray-800">{totalStok} unit</p>
           </div>
         </div>
       </div>
@@ -45,7 +50,7 @@ export default function StokSummary({ dataBarang }: StokSummaryProps) {
           </div>
           <div>
             <p className="text-sm text-gray-500">Stok Menipis</p>
-            <p className="text-xl font-bold text-gray-800">{lowStockItems} item</p>
+            <p className="text-xl font-bold text-gray-800">{stokMenipis} item</p>
           </div>
         </div>
       </div>
@@ -57,7 +62,7 @@ export default function StokSummary({ dataBarang }: StokSummaryProps) {
           </div>
           <div>
             <p className="text-sm text-gray-500">Stok Habis</p>
-            <p className="text-xl font-bold text-gray-800">{outOfStockItems} item</p>
+            <p className="text-xl font-bold text-gray-800">{stokHabis} item</p>
           </div>
         </div>
       </div>

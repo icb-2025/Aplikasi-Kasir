@@ -1,5 +1,14 @@
 import type { Barang } from "../../admin/stok-barang";
-import { Package, FolderOpen, Box, DollarSign, FileText, XCircle, AlertTriangle, CheckCircle } from 'lucide-react';
+import { 
+  Package, 
+  AlertTriangle, 
+  XCircle, 
+  CheckCircle, 
+  FileText, 
+  FolderOpen, 
+  Box, 
+  DollarSign 
+} from 'lucide-react';
 
 interface StokCardProps {
   item: Barang;
@@ -7,27 +16,28 @@ interface StokCardProps {
 }
 
 export default function StokCard({ item, onSelect }: StokCardProps) {
-  const getStockStatus = (stok: number, stokMinimal: number = 5) => {
+  // Fungsi untuk menentukan status stok
+  const getStatusStok = (stok: number, stokMinimal: number = 5) => {
     if (stok === 0)
       return { 
-        text: "Stok Habis", 
-        color: "bg-red-100 text-red-800",
-        icon: <XCircle className="h-4 w-4" />
+        teks: "Stok Habis", 
+        warna: "bg-red-100 text-red-800",
+        ikon: <XCircle className="h-4 w-4" />
       };
     if (stok <= stokMinimal)
       return { 
-        text: "Stok Terbatas", 
-        color: "bg-yellow-100 text-yellow-800",
-        icon: <AlertTriangle className="h-4 w-4" />
+        teks: "Stok Terbatas", 
+        warna: "bg-yellow-100 text-yellow-800",
+        ikon: <AlertTriangle className="h-4 w-4" />
       };
     return { 
-      text: "Stok Tersedia", 
-      color: "bg-green-100 text-green-800",
-      icon: <CheckCircle className="h-4 w-4" />
+      teks: "Stok Tersedia", 
+      warna: "bg-green-100 text-green-800",
+      ikon: <CheckCircle className="h-4 w-4" />
     };
   };
 
-  const stockStatus = getStockStatus(item.stok, item.stokMinimal);
+  const statusStok = getStatusStok(item.stok, item.stokMinimal);
 
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-all flex flex-col group">
@@ -48,13 +58,13 @@ export default function StokCard({ item, onSelect }: StokCardProps) {
           </div>
         )}
         
-        {/* Status Badge Overlay */}
+        {/* Badge Status Overlay */}
         <div className="absolute top-3 right-3">
           <span
-            className={`px-2 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${stockStatus.color}`}
+            className={`px-2 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${statusStok.warna}`}
           >
-            {stockStatus.icon}
-            {stockStatus.text}
+            {statusStok.ikon}
+            {statusStok.teks}
           </span>
         </div>
       </div>

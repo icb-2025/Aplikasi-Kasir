@@ -36,11 +36,23 @@ export default function StokFilter({
     onStockStatusChange(value);
   };
 
+  // Tambahkan validasi untuk mencegah error jika uniqueCategories undefined
+  if (!uniqueCategories || !Array.isArray(uniqueCategories)) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-8 border border-gray-100">
+        <div className="text-center py-4">
+          <p className="text-gray-500">Memuat kategori...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-6 mb-8 border border-gray-100">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            {/* Tambahkan ikon search di sini jika diperlukan */}
           </div>
           <input
             type="text"
