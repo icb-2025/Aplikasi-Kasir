@@ -14,6 +14,11 @@ export const kurangiModalUtama = async (jumlah, keterangan) => {
     return null;
   }
 
+  // Cek apakah sisa modal cukup
+  if (modal.sisa_modal < jumlah) {
+    throw new Error(`Modal tidak cukup. Sisa modal: ${modal.sisa_modal}, dibutuhkan: ${jumlah}.`);
+  }
+
   modal.sisa_modal -= jumlah;
   modal.riwayat.push({
     keterangan,

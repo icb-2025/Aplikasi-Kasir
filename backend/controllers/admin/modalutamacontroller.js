@@ -54,14 +54,21 @@ export const tambahBahanBaku = async (req, res) => {
       return res.status(404).json({ message: "Modal utama belum dibuat." });
     }
 
-    // cari produk dengan nama yang sama
-    let produk = modal.bahan_baku.find(p => p.nama_produk === nama_produk);
-
     // total baru = jumlah total harga bahan (tanpa dikali jumlah)
     let totalBaru = 0;
     if (bahan && Array.isArray(bahan)) {
       totalBaru = bahan.reduce((sum, b) => sum + (b.harga || 0), 0);
     }
+
+    // Cek apakah sisa modal cukup
+    if (modal.sisa_modal < totalBaru) {
+      return res.status(400).json({ 
+        message: `Modal tidak cukup. Sisa modal: ${modal.sisa_modal}, dibutuhkan: ${totalBaru}.` 
+      });
+    }
+
+    // cari produk dengan nama yang sama
+    let produk = modal.bahan_baku.find(p => p.nama_produk === nama_produk);
 
     if (produk) {
       // produk udah ada → tambahkan bahan baru
@@ -115,23 +122,40 @@ export const editBahanBaku = async (req, res) => {
       return res.status(404).json({ message: "Produk tidak ditemukan." });
     }
 
-    // Update data
-    if (nama_produk) produk.nama_produk = nama_produk;
-    if (bahan && Array.isArray(bahan)) produk.bahan = bahan;
-
-    // Hitung ulang total bahan (tanpa dikali jumlah)
-    const totalProduk = produk.bahan.reduce(
+    // Hitung total bahan lama
+    const totalLama = produk.bahan.reduce(
       (sum, b) => sum + (b.harga || 0),
       0
     );
 
+    // Update data
+    if (nama_produk) produk.nama_produk = nama_produk;
+    if (bahan && Array.isArray(bahan)) produk.bahan = bahan;
+
+    // Hitung ulang total bahan baru
+    const totalBaru = produk.bahan.reduce(
+      (sum, b) => sum + (b.harga || 0),
+      0
+    );
+
+    // Hitung selisih
+    const selisih = totalBaru - totalLama;
+
+    // Jika selisih positif (pengeluaran tambahan), cek modal cukup
+    if (selisih > 0 && modal.sisa_modal < selisih) {
+      return res.status(400).json({ 
+        message: `Modal tidak cukup untuk perubahan ini. Sisa modal: ${modal.sisa_modal}, dibutuhkan tambahan: ${selisih}.` 
+      });
+    }
+
     modal.riwayat.push({
       keterangan: `Edit bahan pada produk: ${produk.nama_produk}`,
-      tipe: "pengeluaran",
-      jumlah: totalProduk,
-      saldo_setelah: modal.sisa_modal - totalProduk,
+      tipe: selisih >= 0 ? "pengeluaran" : "pemasukan",
+      jumlah: Math.abs(selisih),
+      saldo_setelah: modal.sisa_modal - selisih,
     });
 
+    modal.sisa_modal -= selisih;
     await modal.save();
 
     res.json({
@@ -235,6 +259,13 @@ export const tambahBiayaOperasional = async (req, res) => {
     const modal = await ModalUtama.findOne();
     if (!modal) {
       return res.status(404).json({ message: "Modal utama belum dibuat." });
+    }
+
+    // Cek apakah sisa modal cukup
+    if (modal.sisa_modal < total) {
+      return res.status(400).json({ 
+        message: `Modal tidak cukup. Sisa modal: ${modal.sisa_modal}, dibutuhkan: ${total}.` 
+      });
     }
 
     modal.biaya_operasional.push({ nama, total });

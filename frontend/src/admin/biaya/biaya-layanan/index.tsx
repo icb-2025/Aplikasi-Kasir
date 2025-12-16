@@ -71,20 +71,6 @@ const BiayaLayanan: React.FC = () => {
     fetchSettings();
   }, [fetchSettings]);
 
-
-useEffect(() => {
-
-  if (saving) {
-    return;
-  }
-
-  const interval = setInterval(() => {
-    fetchSettings();
-  }, 3000);
-
-  return () => clearInterval(interval);
-}, [fetchSettings, saving]);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
@@ -216,10 +202,8 @@ const handleSaveSettings = async () => {
       SweetAlert.success('Pengaturan berhasil disimpan');
     }
     
-    // Hanya panggil fetchSettings sekali setelah penanganan respons
-    setTimeout(() => {
-      fetchSettings();
-    }, 500);
+    // Refresh data setelah penyimpanan berhasil
+    fetchSettings();
   } catch (error) {
     SweetAlert.close();
     SweetAlert.error(error instanceof Error ? error.message : 'Gagal menyimpan pengaturan');

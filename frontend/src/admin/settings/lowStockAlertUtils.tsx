@@ -42,7 +42,7 @@ export const updateLowStockAlert = async (value: number) => {
     // Emit event ke socket untuk update real-time
     try {
       const socket = getSocket();
-      socket.emit('settings:changed', { lowStockAlert: value });
+      socket.emit('settings:updated', { lowStockAlert: value });
     } catch (e) {
       console.warn('Socket init failed:', (e as Error).message);
     }

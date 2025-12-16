@@ -21,6 +21,9 @@ export const addOrUpdateBiaya = async (req, res) => {
     let biaya = await BiayaOperasional.findOne();
 
     if (biaya) {
+  // Hitung total lama sebelum update
+  const totalLama = biaya.rincian_biaya.reduce((acc, b) => acc + (Number(b.jumlah) || 0), 0);
+
   // Loop melalui setiap item baru yang dikirim
   for (const newItem of rincian_biaya) {
     // Cari apakah item dengan nama yang sama sudah ada di array
@@ -41,10 +44,19 @@ export const addOrUpdateBiaya = async (req, res) => {
 
   await biaya.save();
   // Hitung total baru dari semua rincian biaya
-const totalBaru = rincian_biaya.reduce((acc, b) => acc + (Number(b.jumlah) || 0), 0);
+  const totalBaru = biaya.rincian_biaya.reduce((acc, b) => acc + (Number(b.jumlah) || 0), 0);
 
-// Update ModalUtama (kurangi sisa modal)
-await kurangiModalUtama(totalBaru, "Pembayaran biaya operasional bulanan");
+  // Hitung selisih
+  const selisih = totalBaru - totalLama;
+
+  // Jika ada pengeluaran tambahan, kurangi modal
+  if (selisih > 0) {
+    try {
+      await kurangiModalUtama(selisih, "Pembayaran biaya operasional bulanan");
+    } catch (modalError) {
+      return res.status(400).json({ message: modalError.message });
+    }
+  }
 
   await updateAllBarangHargaFinal();
   res.json({ message: "Biaya operasional berhasil diperbarui!", data: biaya });
@@ -54,6 +66,19 @@ await kurangiModalUtama(totalBaru, "Pembayaran biaya operasional bulanan");
         rincian_biaya: rincian_biaya,
       });
       await newBiaya.save();
+
+      // Hitung total biaya dan kurangi modal untuk pertama kali
+      const totalBaru = rincian_biaya.reduce((acc, b) => acc + (Number(b.jumlah) || 0), 0);
+      if (totalBaru > 0) {
+        try {
+          await kurangiModalUtama(totalBaru, "Pembayaran biaya operasional bulanan");
+        } catch (modalError) {
+          // Jika modal tidak cukup, hapus biaya yang sudah dibuat
+          await BiayaOperasional.findByIdAndDelete(newBiaya._id);
+          return res.status(400).json({ message: modalError.message });
+        }
+      }
+
       await updateAllBarangHargaFinal();
       res.json({ message: "Biaya operasional pertama berhasil dibuat!", data: newBiaya });
     }

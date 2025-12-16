@@ -1,5 +1,6 @@
 import Settings from "../../../models/settings.js";
 import Barang from "../../../models/databarang.js";
+import { io } from "../../../server.js";
 
 export const updateGeneralSettings = async (req, res) => {
   try {
@@ -26,6 +27,13 @@ export const updateGeneralSettings = async (req, res) => {
       if (language !== undefined) settings.language = language;
       await settings.save();
       console.log('>>> Pengaturan berhasil disimpan');
+
+      // Emit event via socket untuk notifikasi real-time
+      try {
+        io.emit('settings:updated', { lowStockAlert: settings.lowStockAlert });
+      } catch (e) {
+        console.warn('Gagal emit settings:updated via socket:', e.message);
+      }
     }
 
     if (lowStockAlert !== undefined) {

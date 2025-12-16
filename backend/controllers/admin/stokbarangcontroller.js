@@ -168,7 +168,13 @@ export const createBarang = async (req, res) => {
 
     // Kurangi modal utama berdasarkan total bahan yang dipakai
     if (totalHargaBahan > 0) {
-      await kurangiModalUtama(totalHargaBahan, `Pembelian bahan baku untuk ${nama_barang}`);
+      try {
+        await kurangiModalUtama(totalHargaBahan, `Pembelian bahan baku untuk ${nama_barang}`);
+      } catch (modalError) {
+        // Jika modal tidak cukup, hapus barang yang sudah dibuat dan return error
+        await Barang.findByIdAndDelete(barang._id);
+        return res.status(400).json({ message: modalError.message });
+      }
     }
 
     // Update ke Firebase dengan validasi yang lebih baik
