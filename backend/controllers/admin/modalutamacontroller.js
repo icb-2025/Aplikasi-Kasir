@@ -1,4 +1,5 @@
 import ModalUtama from "../../models/modalutama.js";
+import BahanBaku from "../../models/bahanbaku.js";
 
 // ✅ Ambil semua data modal utama
 export const getModalUtama = async (req, res) => {
@@ -95,6 +96,36 @@ export const tambahBahanBaku = async (req, res) => {
     modal.sisa_modal -= totalBaru;
     await modal.save();
 
+    // Simpan produk lengkap ke koleksi Bahan-Baku
+    if (bahan && Array.isArray(bahan)) {
+      try {
+        // Hitung total_stok dari jumlah semua bahan
+        const total_stok = bahan.reduce((sum, b) => sum + (b.jumlah || 0), 0);
+
+        // Cek apakah produk dengan nama yang sama sudah ada di BahanBaku
+        const existingProduk = await BahanBaku.findOne({ nama: nama_produk });
+        
+        if (existingProduk) {
+          // Produk sudah ada - tambahkan bahan baru ke array bahan yang sudah ada
+          existingProduk.bahan.push(...bahan);
+          existingProduk.total_stok = existingProduk.bahan.reduce((sum, b) => sum + (b.jumlah || 0), 0);
+          await existingProduk.save();
+        } else {
+          // Produk baru - buat dokumen baru dengan nama produk dan semua bahan
+          const newBahanBaku = new BahanBaku({
+            nama: nama_produk,
+            bahan: bahan,
+            total_stok: total_stok,
+          });
+          
+          await newBahanBaku.save();
+        }
+      } catch (bahanError) {
+        console.error(`Error saving bahan baku untuk produk ${nama_produk}:`, bahanError);
+        // Lanjutkan tanpa menghentikan proses utama
+      }
+    }
+
     res.json({
       message: produk
         ? "Bahan baru berhasil ditambahkan ke produk yang sudah ada!"
@@ -121,9 +152,11 @@ export const editBahanBaku = async (req, res) => {
     if (!produk) {
       return res.status(404).json({ message: "Produk tidak ditemukan." });
     }
+    // Simpan nama lama untuk sinkronisasi koleksi BahanBaku
+    const oldName = produk.nama_produk;
 
     // Hitung total bahan lama
-    const totalLama = produk.bahan.reduce(
+    const totalLama = (Array.isArray(produk.bahan) ? produk.bahan : []).reduce(
       (sum, b) => sum + (b.harga || 0),
       0
     );
@@ -133,7 +166,7 @@ export const editBahanBaku = async (req, res) => {
     if (bahan && Array.isArray(bahan)) produk.bahan = bahan;
 
     // Hitung ulang total bahan baru
-    const totalBaru = produk.bahan.reduce(
+    const totalBaru = (Array.isArray(produk.bahan) ? produk.bahan : []).reduce(
       (sum, b) => sum + (b.harga || 0),
       0
     );
@@ -157,6 +190,32 @@ export const editBahanBaku = async (req, res) => {
 
     modal.sisa_modal -= selisih;
     await modal.save();
+
+    // Sinkronisasi ke koleksi Bahan-Baku: update atau buat dokumen produk
+    try {
+      const bahanArray = Array.isArray(produk.bahan) ? produk.bahan : [];
+      const total_stok = bahanArray.reduce((sum, b) => sum + (b.jumlah || 0), 0);
+
+      // Cari dokumen di BahanBaku berdasarkan nama lama atau nama baru
+      const existingProduk = await BahanBaku.findOne({ $or: [{ nama: oldName }, { nama: produk.nama_produk }] });
+
+      if (existingProduk) {
+        existingProduk.nama = produk.nama_produk;
+        existingProduk.bahan = bahanArray;
+        existingProduk.total_stok = total_stok;
+        await existingProduk.save();
+      } else {
+        const newBahanBaku = new BahanBaku({
+          nama: produk.nama_produk,
+          bahan: bahanArray,
+          total_stok,
+        });
+        await newBahanBaku.save();
+      }
+    } catch (syncErr) {
+      console.error(`Error syncing BahanBaku for edited product ${produk.nama_produk}:`, syncErr);
+      // don't fail the request because of sync issues
+    }
 
     res.json({
       message: "Bahan baku produk berhasil diperbarui!",
@@ -198,6 +257,13 @@ export const hapusBahanBaku = async (req, res) => {
 
     modal.sisa_modal += totalProduk;
     await modal.save();
+
+    // Hapus dokumen produk pada koleksi Bahan-Baku jika ada
+    try {
+      await BahanBaku.findOneAndDelete({ nama: produk.nama_produk });
+    } catch (syncErr) {
+      console.error(`Error deleting BahanBaku document for ${produk.nama_produk}:`, syncErr);
+    }
 
     res.json({
       message: "Produk bahan baku berhasil dihapus!",
@@ -241,6 +307,23 @@ export const hapusBahanDariProduk = async (req, res) => {
 
     modal.sisa_modal += totalBahan;
     await modal.save();
+
+    // Sinkronisasi dengan koleksi Bahan-Baku: hapus bahan yang sesuai dari dokumen produk
+    try {
+      const produkBaku = await BahanBaku.findOne({ nama: produk.nama_produk });
+      if (produkBaku) {
+        // Hapus bahan berdasarkan nama (karena _id subdoc mungkin berbeda)
+        produkBaku.bahan = (produkBaku.bahan || []).filter(b => b.nama !== bahan.nama);
+        produkBaku.total_stok = (produkBaku.bahan || []).reduce((sum, b) => sum + (b.jumlah || 0), 0);
+        if (produkBaku.bahan.length === 0) {
+          await BahanBaku.findByIdAndDelete(produkBaku._id);
+        } else {
+          await produkBaku.save();
+        }
+      }
+    } catch (syncErr) {
+      console.error(`Error syncing BahanBaku after deleting bahan ${bahan.nama} from ${produk.nama_produk}:`, syncErr);
+    }
 
     res.json({
       message: `Bahan "${bahan.nama}" berhasil dihapus dari ${produk.nama_produk}!`,

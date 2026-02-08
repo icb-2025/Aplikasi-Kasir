@@ -1,0 +1,43 @@
+import mongoose from "mongoose";
+import bcrypt from "bcrypt";
+import User from "../models/user.js";
+import connectDB from "../database/db.js";
+
+const createTestChef = async () => {
+  try {
+    await connectDB();
+    console.log("Connected to database");
+
+    // Check if test chef already exists
+    const existingChef = await User.findOne({ username: "testchef" });
+    if (existingChef) {
+      console.log("Test chef already exists");
+      return;
+    }
+
+    // Create test chef
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash("12345678", salt);
+
+    const testChef = new User({
+      nama_lengkap: "Test Chef",
+      username: "testchef",
+      password: hashedPassword,
+      status: "aktif",
+      role: "chef",
+      profilePicture: "https://example.com/chef.jpg"
+    });
+
+    await testChef.save();
+    console.log("Test chef created successfully");
+    console.log("Username: testchef");
+    console.log("Password: 12345678");
+
+    process.exit(0);
+  } catch (error) {
+    console.error("Error creating test chef:", error);
+    process.exit(1);
+  }
+};
+
+createTestChef();

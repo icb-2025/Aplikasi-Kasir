@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { X } from 'lucide-react';
 import type { Barang } from "../../admin/stok-barang";
 
 interface ProductCardProps {
@@ -10,6 +11,7 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   const handleImageError = () => {
     setImageError(true);
@@ -24,8 +26,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
     ? Math.round((1 - product.hargaFinal / product.hargaJual) * 100)
     : 0;
 
-  const stockStatus = product.stok > 10 ? 'Tersedia' : 
-                     product.stok > 0 ? `Stok ${product.stok}` : 'Habis';
+  // const stockStatus = product.stok > 10 ? 'Tersedia' : 
+  //                    product.stok > 0 ? `Stok ${product.stok}` : 'Habis';
 
   const getCategoryIcon = (category: string) => {
     const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
@@ -39,8 +41,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
   };
 
   return (
+    <>
     <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 sm:hover:-translate-y-1 flex flex-col h-full">
-      <div className="relative h-28 sm:h-32 bg-gradient-to-br from-amber-50 to-orange-50 overflow-hidden flex-shrink-0">
+      <div 
+        className="relative h-28 sm:h-32 bg-gradient-to-br from-amber-50 to-orange-50 overflow-hidden flex-shrink-0 cursor-pointer"
+        onClick={() => !imageError && product.gambarUrl && setShowDetailModal(true)}
+      >
         {!imageLoaded && (
           <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
             <div className="text-gray-400 text-xs">Memuat...</div>
@@ -57,12 +63,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
             <img
               src={product.gambarUrl}
               alt={product.nama}
-              className={`w-full h-full object-cover transition-transform duration-500 ${
+              className={`w-full h-full object-cover transition-transform duration-500 cursor-pointer pointer-events-none ${
                 imageLoaded ? 'scale-100' : 'scale-105'
               }`}
               onError={handleImageError}
               onLoad={handleImageLoad}
-              loading="lazy"
+              onClick={(e) => e.stopPropagation()}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
           </>
@@ -74,12 +80,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
           </div>
         )}
         
-        <div className={`absolute top-1.5 right-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-xs font-medium shadow-sm z-10 ${
+        {/* <div className={`absolute top-1.5 right-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-xs font-medium shadow-sm z-10 ${
           product.stok > 10 ? 'bg-green-500 hover:bg-green-600' : 
           product.stok > 0 ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-red-500 hover:bg-red-600'
         } text-white transition-colors`}>
           {stockStatus}
-        </div>
+        </div> */}
       </div>
       
       <div className="p-2 sm:p-3 flex flex-col flex-grow">
@@ -137,6 +143,54 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
         </div>
       </div>
     </div>
+    {showDetailModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div
+          className="absolute inset-0 bg-black/60"
+          onClick={() => setShowDetailModal(false)}
+        />
+
+        <div className="relative bg-white rounded-2xl shadow-xl w-[92%] max-w-lg mx-auto z-10 overflow-hidden">
+          <button
+            className="absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-white z-20"
+            onClick={() => setShowDetailModal(false)}
+            aria-label="Tutup"
+          >
+            <X className="w-5 h-5 text-gray-700" />
+          </button>
+
+          <div className="w-full h-64 bg-gray-100 flex items-center justify-center overflow-hidden">
+            {product.gambarUrl && !imageError ? (
+              <img src={product.gambarUrl} alt={product.nama} className="w-full h-full object-contain" />
+            ) : (
+              <div className="flex flex-col items-center justify-center p-4">
+                <span className="text-4xl">🍔</span>
+                <span className="text-sm text-gray-500 mt-2">Gambar tidak tersedia</span>
+              </div>
+            )}
+          </div>
+
+          <div className="p-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">{product.nama}</h3>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-sm text-gray-500">Kategori:</span>
+              <span className="inline-flex items-center bg-amber-50 text-amber-600 px-2 py-1 rounded-full text-sm">
+                <span className="mr-2">{getCategoryIcon(product.kategori)}</span>
+                {getCategoryName(product.kategori)}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500">Stok:</span>
+              <span className={`text-sm font-medium ${product.stok > 10 ? 'text-green-700' : product.stok > 0 ? 'text-yellow-800' : 'text-red-700'}`}>
+                {product.stok > 0 ? product.stok : '0'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   );
 };
 

@@ -19,7 +19,8 @@ import {
   Store,
   Wrench,
   ChevronDown,
-  Circle
+  Circle,
+  ChefHat
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -139,6 +140,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       path: '/admin/modal-bahanbaku',
     },
     {
+      name: 'Kitchen Process',
+      icon: <ChefHat size={20} />,
+      path: '/admin/process-memasak',
+    },
+    {
       name: 'Status Pesanan',
       icon: <ClipboardList size={20} />,
       path: '/admin/status-pesanan',
@@ -236,7 +242,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                       }`}>
                         {item.icon}
                       </div>
-                      <span className="font-medium text-orange-50 group-hover:text-white">
+                      <span className="font-bold text-orange-50 group-hover:text-white">
                         {item.name}
                       </span>
                     </div>
@@ -272,7 +278,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                           }`}>
                             {subItem.icon}
                           </div>
-                          <span className={`text-sm font-medium transition-colors duration-200 group-hover:text-white ${
+                          <span className={`text-sm font-bold transition-colors duration-200 group-hover:text-white ${
                             location.pathname === subItem.path ? 'text-yellow-300' : 'text-orange-100'
                           }`}>
                             {subItem.name}
@@ -299,7 +305,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   }`}>
                     {item.icon}
                   </div>
-                  <span className={`font-medium transition-colors duration-200 group-hover:text-white ${
+                  <span className={`font-bold transition-colors duration-200 group-hover:text-white ${
                     location.pathname === item.path ? 'text-yellow-300' : 'text-orange-50'
                   }`}>
                     {item.name}

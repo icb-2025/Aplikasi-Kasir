@@ -434,10 +434,10 @@ export default function StokBarangManager({
       {/* Filter Komponen - Hanya tampilkan jika server tidak mati */}
       {!serverMati && (
         <StokFilter
-          kategoriUnik={kategoriUnik}
-          onPencarianChange={setKataPencarian}
-          onKategoriChange={setFilterKategori}
-          onStatusStokChange={setFilterStatusStok}
+          uniqueCategories={kategoriUnik}
+          onSearchChange={setKataPencarian}
+          onCategoryChange={setFilterKategori}
+          onStockStatusChange={setFilterStatusStok}
         />
       )}
 

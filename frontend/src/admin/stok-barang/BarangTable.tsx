@@ -3,7 +3,7 @@ import React from "react";
 import type { Barang } from ".";
 import type { BahanBakuItem } from "./ModalBarang";
 import { portbe } from "../../../../backend/ngrokbackend";
-import { CheckCircle, AlertCircle, XCircle, Edit, Trash2, Package, Circle } from "lucide-react";
+import { Edit, Trash2, Package } from "lucide-react";
 const ipbe = import.meta.env.VITE_IPBE;
 
 const safeValue = <T,>(value: T | null | undefined, fallback: T): T => {
@@ -26,29 +26,25 @@ const formatCurrency = (value: number | string | null | undefined): string => {
   return `Rp ${formatNumber(numValue)}`;
 };
 
-const getStokClass = (status?: string): string => {
-  const statusMap: { [key: string]: string } = {
-    "aman": "bg-green-50 text-green-700 border border-green-200",
-    "hampir habis": "bg-yellow-50 text-yellow-700 border border-yellow-200",
-    "habis": "bg-red-50 text-red-700 border border-red-200",
-  };
-  return statusMap[status?.toLowerCase() || ""] || "bg-gray-50 text-gray-600 border border-gray-200";
-};
-
-// Komponen ikon status stok dengan Tailwind - tanpa animasi
-const StokIcon: React.FC<{ status?: string }> = ({ status }) => {
-  const statusLower = status?.toLowerCase() || "";
+// Komponen ikon status barang (pending/publish) - DEPRECATED: Diganti dengan toggle switch
+// const StatusBarangIcon: React.FC<{ status?: string }> = ({ status }) => {
+//   const statusLower = status?.toLowerCase() || "pending";
   
-  if (statusLower === "aman") {
-    return <CheckCircle className="w-5 h-5 text-green-500" />;
-  } else if (statusLower === "hampir habis") {
-    return <AlertCircle className="w-5 h-5 text-yellow-500" />;
-  } else if (statusLower === "habis") {
-    return <XCircle className="w-5 h-5 text-red-500" />;
-  } else {
-    return <Circle className="w-5 h-5 text-gray-400" />;
-  }
-};
+//   if (statusLower === "publish") {
+//     return <CheckCircle className="w-5 h-5 text-green-500" />;
+//   } else {
+//     return <AlertCircle className="w-5 h-5 text-orange-500" />;
+//   }
+// };
+
+// const getStatusBarangClass = (status?: string): string => {
+//   const statusLower = status?.toLowerCase() || "pending";
+//   if (statusLower === "publish") {
+//     return "bg-green-50 text-green-700 border border-green-200";
+//   } else {
+//     return "bg-orange-50 text-orange-700 border border-orange-200";
+//   }
+// };
 
 // Fungsi untuk mendapatkan warna progress bar
 const getProgressBarColor = (stok: number, stokMinimal: number = 5) => {
@@ -68,6 +64,7 @@ interface BarangTableProps {
   data: Barang[];
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onUpdateStatus: (id: string, status: string) => void;
   bahanBakuList?: BahanBakuItem[];
 }
 
@@ -75,6 +72,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
   data, 
   onEdit, 
   onDelete,
+  onUpdateStatus,
   bahanBakuList = []
 }) => {
   if (!data) {
@@ -173,7 +171,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
                 Stok
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                Status
+                Status Barang
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
                 Aksi
@@ -319,15 +317,18 @@ const BarangTable: React.FC<BarangTableProps> = ({
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        <StokIcon status={item.status} />
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStokClass(item.status)}`}
+                      <div className="flex items-center justify-center">
+                        <button
+                          onClick={() => item._id && onUpdateStatus(item._id, item.statusBarang === "publish" ? "pending" : "publish")}
+                          className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                            item.statusBarang === "publish"
+                              ? "bg-green-100 text-green-800 hover:bg-green-200 border border-green-300"
+                              : "bg-orange-100 text-orange-800 hover:bg-orange-200 border border-orange-300"
+                          }`}
+                          title={item.statusBarang === "publish" ? "Ubah ke Pending" : "Publish Barang"}
                         >
-                          {item.status
-                            ? item.status.charAt(0).toUpperCase() + item.status.slice(1)
-                            : "Tidak diketahui"}
-                        </span>
+                          {item.statusBarang === "publish" ? "Published" : "Pending"}
+                        </button>
                       </div>
                     </td>
 

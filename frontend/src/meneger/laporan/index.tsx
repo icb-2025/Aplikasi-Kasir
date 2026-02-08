@@ -5,7 +5,9 @@ import LoadingSpinner from "../../components/LoadingSpinner";
 import SummaryCards from './components/SummaryCards';
 import TransactionChart from './components/TransactionChart';
 import TransactionTable from './components/TransactionTable';
+import { portbe } from '../../../../backend/ngrokbackend';
 
+const ipbe = import.meta.env.VITE_IPBE;
 interface ProdukItem {
   nama_produk: string;
   jumlah_terjual: number;
@@ -39,6 +41,7 @@ interface FilterOptions {
   produk: string;
   sortBy: 'nama_produk' | 'jumlah_terjual' | 'hpp_total' | 'pendapatan' | 'laba_kotor';
   sortOrder: 'asc' | 'desc';
+  itemsPerPage: number;
 }
 
 const LaporanPage = () => {
@@ -48,13 +51,14 @@ const LaporanPage = () => {
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     produk: 'semua',
     sortBy: 'nama_produk',
-    sortOrder: 'asc'
+    sortOrder: 'asc',
+    itemsPerPage: 10
   });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('http://192.168.110.16:5000/api/admin/hpp-total');
+        const response = await fetch(`${ipbe}:${portbe}/api/admin/hpp-total`);
         if (!response.ok) {
           throw new Error("Failed to fetch data");
         }
@@ -112,7 +116,7 @@ const LaporanPage = () => {
     }
   });
 
-  const handleFilterChange = (key: keyof FilterOptions, value: string) => {
+  const handleFilterChange = (key: keyof FilterOptions, value: string | number) => {
     setFilterOptions(prev => ({
       ...prev,
       [key]: value
@@ -165,7 +169,7 @@ const LaporanPage = () => {
 
         <div className="bg-white p-6 rounded-xl shadow-md mb-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Filter Data</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Produk</label>
               <select
@@ -206,10 +210,23 @@ const LaporanPage = () => {
                 <option value="desc">Turun (Z-A)</option>
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Data per Halaman</label>
+              <select
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                value={filterOptions.itemsPerPage}
+                onChange={(e) => handleFilterChange('itemsPerPage', parseInt(e.target.value))}
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <TransactionTable tableData={tableData} />
+        <TransactionTable tableData={tableData} itemsPerPage={filterOptions.itemsPerPage} />
       </div>
     </MenegerLayout>
   );

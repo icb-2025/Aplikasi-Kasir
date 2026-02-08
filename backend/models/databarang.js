@@ -32,6 +32,7 @@ const barangSchema = new Schema(
     hargaFinal: { type: Number, default: 0 },
     use_discount: { type: Boolean, default: true },
     gambar_url: { type: String, default: "" },
+    status: { type: String, enum: ["pending", "publish"], default: "pending" },
   },
   { timestamps: true }
 );

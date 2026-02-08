@@ -41,7 +41,7 @@ async function generateUsers(count = 500) {
       password,
       googleId,
       status: Math.random() < 0.8 ? "aktif" : "nonaktif",
-      role: ["user", "admin", "kasir", "manajer"][Math.floor(Math.random() * 4)],
+      role: ["user", "admin", "kasir", "manajer", "chef"][Math.floor(Math.random() * 5)],
       profilePicture: faker.image.avatar(),
       profilePictureUpdates: [
         { updatedAt: faker.date.recent() },

@@ -14,8 +14,8 @@ import {
   AlertCircle,
   Loader2,
   X,
-  Printer,
-  Home,
+  // Printer,
+  // Home,
   FileText,
   QrCode
 } from "lucide-react";
@@ -100,6 +100,7 @@ interface TransactionModalProps {
   cartItems: CartItem[];
   total: number;
   onTransactionSuccess: (transactionData?: TransactionResponse) => void;
+  onRemoveItem?: (productId: string) => Promise<void> | void;
   transactionSuccess?: boolean;
   transactionData?: TransactionResponse;
   onOpenProsesTransaksi?: (data: {
@@ -108,7 +109,7 @@ interface TransactionModalProps {
     expiryTime?: string;
     token?: string;
   }) => void;
-}
+} 
 
 // Animation variants
 const backdropVariants: Variants = {
@@ -144,6 +145,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   cartItems,
   total,
   onTransactionSuccess,
+  onRemoveItem,
   transactionSuccess = false,
   transactionData = null,
   onOpenProsesTransaksi
@@ -259,10 +261,24 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
 
   // Handle remove item from cart
   const handleRemoveItem = async (itemId: string) => {
+    if (!onRemoveItem) {
+      // fallback: if parent didn't provide remove handler, keep old behavior
+      setRemovingItem(itemId);
+      await new Promise(resolve => setTimeout(resolve, 300));
+      onTransactionSuccess();
+      setRemovingItem(null);
+      return;
+    }
+
     setRemovingItem(itemId);
-    await new Promise(resolve => setTimeout(resolve, 300));
-    onTransactionSuccess();
-    setRemovingItem(null);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await onRemoveItem(itemId);
+    } catch (err) {
+      console.error('Failed to remove item from transaction modal:', err);
+    } finally {
+      setRemovingItem(null);
+    }
   };
 
   // Handle process transaction
@@ -505,9 +521,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     }
   };
 
-  const handlePrintReceipt = () => {
-    window.print();
-  };
+  // const handlePrintReceipt = () => {
+  //   window.print();
+  // };
 
   const formatCurrency = (value: number | undefined | null): string => {
     if (!value || isNaN(value)) return "Rp 0";
@@ -787,16 +803,16 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                           onClick={handleCloseModal}
                           className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2"
                         >
-                          <Home className="w-4 h-4" />
+                          {/* <Home className="w-4 h-4" /> */}
                           Tutup
                         </button>
-                        <button
+                        {/* <button
                           onClick={handlePrintReceipt}
                           className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
                         >
                           <Printer className="w-4 h-4" />
                           Cetak
-                        </button>
+                        </button> */}
                       </div>
                     </div>
                   </div>
@@ -830,12 +846,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
                         <div className="text-5xl mb-4">🛒</div>
                         <h3 className="text-xl font-bold text-gray-700 mb-2">Empty Cart</h3>
                         <p className="text-gray-500 mb-6">Add products to start a transaction</p>
-                        <button
+                        {/* <button
                           onClick={handleCloseModal}
                           className="px-6 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors"
                         >
                           Back to Home
-                        </button>
+                        </button> */}
                       </div>
                     ) : (
                       <div className="space-y-6">

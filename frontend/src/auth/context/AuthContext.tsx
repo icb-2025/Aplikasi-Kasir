@@ -10,7 +10,7 @@ interface User {
   _id?: string;
   nama_lengkap: string;
   username?: string;
-  role: 'admin' | 'manajer' | 'kasir' | 'user';
+  role: 'admin' | 'manajer' | 'kasir' | 'user' | 'chef';
   status: string;
   profilePicture?: string;
 }
@@ -36,7 +36,7 @@ interface AuthContextType {
   defaultProfilePicture: string;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  register: (nama_lengkap: string, username: string, password: string, role: 'admin' | 'manajer' | 'kasir' | 'user') => Promise<{ success: boolean; message?: string }>;
+  register: (nama_lengkap: string, username: string, password: string, role: 'admin' | 'manajer' | 'kasir' | 'user' | 'chef' ) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   updateProfilePicture: (profilePicture: File) => Promise<{ success: boolean; message?: string }>;
   updateProfile: (profileData: {
@@ -46,6 +46,7 @@ interface AuthContextType {
     newPassword?: string;
   }) => Promise<{ success: boolean; message?: string }>;
   getDefaultProfilePicture: () => Promise<{ success: boolean; defaultProfilePicture?: string; message?: string }>;
+  refreshUser: () => Promise<User | null>;
   setUser: (user: User | null) => void;
   setIsAuthenticated: (status: boolean) => void;
   handleGoogleToken: (token: string) => Promise<void>;
@@ -170,7 +171,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }
 }, []);
 
-  const register = useCallback(async (nama_lengkap: string, username: string, password: string, role: 'admin' | 'manajer' | 'kasir' | 'user'): Promise<{ success: boolean; message?: string }> => {
+  const register = useCallback(async (nama_lengkap: string, username: string, password: string, role: 'admin' | 'manajer' | 'kasir' | 'user' | 'chef'): Promise<{ success: boolean; message?: string }> => {
     setIsLoading(true);
 
     try {
@@ -213,7 +214,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const { data } = await axios.post<LogoutResponse>(`${API_BASE_URL}/auth/logout`, {}, {
           headers: {
             Authorization: `Bearer ${token}`,
-            'x-api-key': API_KEY
+            'x-api-key': API_KEY,
           }
         });
 
@@ -429,7 +430,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     updateProfilePicture,
     updateProfile,
     getDefaultProfilePicture: fetchDefaultProfilePicture,
-    fetchCurrentUser,
+    refreshUser: fetchCurrentUser,
     setUser,
     setIsAuthenticated,
     handleGoogleToken

@@ -15,7 +15,7 @@ import {
   Clock,
   XCircle,
   X,
-  Printer,
+  // Printer,
   ChevronLeft,
   ChevronRight,
   Filter,
@@ -98,6 +98,8 @@ const StatusPesananPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [settings, setSettings] = useState<Settings>({ receiptHeader: "", receiptFooter: "" });
   const [showDateFilter, setShowDateFilter] = useState(false); // Kontrol visibilitas filter tanggal
+  const [showPaymentFilter, setShowPaymentFilter] = useState(false); // Kontrol visibilitas filter metode pembayaran
+  const [filterPayment, setFilterPayment] = useState<string>("semua"); // Filter metode pembayaran
   const [totalBiayaLayanan, setTotalBiayaLayanan] = useState(0); // State untuk total biaya layanan
   const itemsPerPage = 10;
  
@@ -205,6 +207,13 @@ const StatusPesananPage = () => {
   };
 
   // Fungsi untuk memfilter pesanan berdasarkan tanggal
+  // Fungsi untuk mendapatkan metode pembayaran unik
+  const getUniquePaymentMethods = () => {
+    if (!Array.isArray(pesananList)) return [];
+    const methods = Array.from(new Set(pesananList.map(p => p.metode_pembayaran)));
+    return methods.sort();
+  };
+
   const filterByDate = (pesanan: Pesanan, filter: string) => {
     const today = new Date();
     const pesananDate = new Date(pesanan.createdAt);
@@ -278,7 +287,7 @@ const StatusPesananPage = () => {
   // Reset halaman saat filter atau pencarian berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStatus, searchTerm, filterDate]);
+  }, [filterStatus, searchTerm, filterDate, filterPayment]);
 
   // Filter pesanan berdasarkan status dan tanggal
   const filteredByStatus = filterStatus === "semua" 
@@ -290,9 +299,14 @@ const StatusPesananPage = () => {
     ? filteredByStatus.filter(pesanan => filterByDate(pesanan, filterDate))
     : [];
 
+  // Filter berdasarkan metode pembayaran
+  const filteredByPayment = filterPayment === "semua"
+    ? filteredByDate
+    : filteredByDate.filter(pesanan => pesanan.metode_pembayaran === filterPayment);
+
   // Filter berdasarkan pencarian
-  const searchedPesanan = Array.isArray(filteredByDate) 
-    ? filteredByDate.filter(
+  const searchedPesanan = Array.isArray(filteredByPayment) 
+    ? filteredByPayment.filter(
         (item) =>
           (item.order_id ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
           (item.metode_pembayaran ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -404,9 +418,9 @@ const StatusPesananPage = () => {
     setIsReceiptModalOpen(true);
   };
 
-  const handlePrintReceipt = () => {
-    window.print();
-  };
+  // const handlePrintReceipt = () => {
+  //   window.print();
+  // };
 
   // Animasi variants
   const backdropVariants: Variants = {
@@ -486,9 +500,7 @@ const StatusPesananPage = () => {
       </div>
 
       <div className="flex h-[calc(100vh-120px)] mt-4 gap-4">
-        <div className="w-64 bg-white rounded-2xl shadow-md overflow-hidden">
-          <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
-        </div>
+        <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
         
         <div className="flex-1 bg-white rounded-2xl shadow-md p-6 overflow-y-auto">
           <div className="flex justify-between items-center mb-6">
@@ -548,23 +560,37 @@ const StatusPesananPage = () => {
                 )}
               </div>
               
-              {/* Filter Tanggal */}
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-sm font-medium text-gray-700">Tanggal:</span>
-                <button 
-                  onClick={() => setShowDateFilter(!showDateFilter)}
-                  className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
-                >
-                  <CalendarDays className="h-4 w-4" />
-                  {filterDate === "hari-ini" && "Hari Ini"}
-                  {filterDate === "kemarin" && "Kemarin"}
-                  {filterDate === "7-hari" && "7 Hari Terakhir"}
-                  {filterDate === "30-hari" && "30 Hari Terakhir"}
-                  {filterDate === "bulan-ini" && "Bulan Ini"}
-                  {filterDate === "bulan-lalu" && "Bulan Lalu"}
-                  {filterDate === "semua" && "Semua Tanggal"}
-                  <Filter className="h-4 w-4" />
-                </button>
+              {/* Filter Tanggal dan Metode Pembayaran */}
+              <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">Tanggal:</span>
+                  <button 
+                    onClick={() => setShowDateFilter(!showDateFilter)}
+                    className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
+                  >
+                    <CalendarDays className="h-4 w-4" />
+                    {filterDate === "hari-ini" && "Hari Ini"}
+                    {filterDate === "kemarin" && "Kemarin"}
+                    {filterDate === "7-hari" && "7 Hari Terakhir"}
+                    {filterDate === "30-hari" && "30 Hari Terakhir"}
+                    {filterDate === "bulan-ini" && "Bulan Ini"}
+                    {filterDate === "bulan-lalu" && "Bulan Lalu"}
+                    {filterDate === "semua" && "Semua Tanggal"}
+                    <Filter className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">Metode Pembayaran:</span>
+                  <button 
+                    onClick={() => setShowPaymentFilter(!showPaymentFilter)}
+                    className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    {filterPayment === "semua" ? "Semua Metode" : filterPayment}
+                    <Filter className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -594,6 +620,43 @@ const StatusPesananPage = () => {
                       }`}
                     >
                       {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Dropdown Filter Metode Pembayaran */}
+            {showPaymentFilter && (
+              <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  <button
+                    onClick={() => {
+                      setFilterPayment("semua");
+                      setShowPaymentFilter(false);
+                    }}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      filterPayment === "semua"
+                        ? "bg-amber-500 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Semua Metode
+                  </button>
+                  {getUniquePaymentMethods().map((method) => (
+                    <button
+                      key={method}
+                      onClick={() => {
+                        setFilterPayment(method);
+                        setShowPaymentFilter(false);
+                      }}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        filterPayment === method
+                          ? "bg-amber-500 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {method}
                     </button>
                   ))}
                 </div>
@@ -925,13 +988,13 @@ const StatusPesananPage = () => {
                       >
                         Tutup
                       </button>
-                      <button
+                      {/* <button
                         onClick={handlePrintReceipt}
                         className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
                       >
                         <Printer className="w-4 h-4 mr-1" />
                         Cetak Struk
-                      </button>
+                      </button> */}
                     </div>
                   </div>
                 </div>

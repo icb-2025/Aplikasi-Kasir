@@ -19,6 +19,7 @@ interface BarangAPI {
   stok_awal: number;
   stok_minimal?: number;
   gambar_url?: string;
+  status?: string;
 }
 
 const API_URL = `${ipbe}:${portbe}/api/admin/stok-barang`;
@@ -44,7 +45,8 @@ function App() {
         stok_awal: item.stok_awal,
         stokMinimal: item.stok_minimal || 5,
         gambarUrl: item.gambar_url,
-        status: item.stok <= 0 ? "habis" : item.stok <= (item.stok_minimal || 5) ? "hampir habis" : "aman"
+        status: item.stok <= 0 ? "habis" : item.stok <= (item.stok_minimal || 5) ? "hampir habis" : "aman",
+        statusBarang: item.status || "pending"
       }));
 
       setDataBarang(mapped);

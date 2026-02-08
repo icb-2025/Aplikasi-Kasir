@@ -116,6 +116,7 @@ interface BarangInput {
   gambarUrl?: string;
   gambar_url?: string;
   status?: string;
+  statusBarang?: string;
 }
 
 const normalizeBarangData = (barang: BarangInput): Barang => {
@@ -131,7 +132,8 @@ const normalizeBarangData = (barang: BarangInput): Barang => {
     stokMinimal: barang.stokMinimal || barang.stok_minimal || 5,
     hargaFinal: barang.hargaFinal || 0,
     gambarUrl: barang.gambarUrl || barang.gambar_url || '',
-    status: barang.status || 'aman'
+    status: barang.status || 'aman',
+    statusBarang: barang.statusBarang || barang.status || 'pending'
   };
 };
 
@@ -139,6 +141,8 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
   const navigate = useNavigate();
   const authContext = useContext(AuthContext);
   const socketRef = useRef<Socket | null>(null);
+  // Track per-item in-flight add/update requests to avoid race conditions
+  const inFlightRef = useRef<Record<string, boolean>>({});
   
   if (!authContext) {
     throw new Error('AuthContext must be used within an AuthProvider');
@@ -268,7 +272,10 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
   };
   
   useEffect(() => {
-    setBarangList(dataBarang.map(normalizeBarangData));
+    setBarangList(dataBarang
+      .filter(barang => barang.statusBarang === "publish") // Filter hanya barang publish
+      .map(normalizeBarangData)
+    );
   }, [dataBarang]);
 
   useEffect(() => {
@@ -598,24 +605,39 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
     checkLoginAndProceed(async () => {
       const currentProduct = barangList.find(item => item._id === product._id);
       const currentStock = currentProduct ? currentProduct.stok : product.stok;
-      
+
       if (qty > currentStock) {
         showToast(`Insufficient stock! Available stock: ${currentStock}`, 'error', `stock-${product._id}`);
         return;
       }
-      
+
+      // Prevent concurrent requests for the same product
+      if (inFlightRef.current[product._id]) {
+        return;
+      }
+      inFlightRef.current[product._id] = true;
       setIsAnimating(true);
+
+      // Optimistic UI update: increment locally immediately
+      setCart(prev => {
+        const existing = prev.find(i => i._id === product._id);
+        if (existing) {
+          return prev.map(i => i._id === product._id ? { ...i, quantity: Math.min((i.quantity || 0) + qty, currentStock) } : i);
+        }
+        // Add minimal product shape to cart while waiting for server
+        return [{ ...product, quantity: qty }, ...prev];
+      });
+
       try {
         const existingItem = cart.find(item => item._id === product._id);
-        
+
         if (existingItem) {
           const newQty = existingItem.quantity + qty;
           if (newQty > currentStock) {
             showToast(`Quantity exceeds stock! Available stock: ${currentStock}`, 'error', `stock-${product._id}`);
-            setIsAnimating(false);
             return;
           }
-          
+
           await updateItemQuantity(product._id, newQty);
           const updatedCart = await fetchCart();
           setCart(updatedCart);
@@ -626,9 +648,18 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
           setCart(updatedCart);
           showToast(`${product.nama} added to cart`, 'success', `cart-${product._id}`);
         }
-      } catch {
+      } catch (err: unknown) {
+        console.error('addToCart error:', err);
+        // Reconcile on error by refetching cart
+        try {
+          const updatedCart = await fetchCart();
+          setCart(updatedCart);
+        } catch (fetchErr: unknown) {
+          console.error('fetchCart after addToCart error failed:', fetchErr);
+        }
         showToast('Failed to add item to cart', 'error', 'cart-error');
       } finally {
+        inFlightRef.current[product._id] = false;
         setSelectedProduct(null);
         setQuantity(1);
         setIsAnimating(false);
@@ -945,6 +976,7 @@ const Dashboard = ({ dataBarang }: DashboardProps) => {
         }))}
         total={totalCartValue}
         onTransactionSuccess={handleTransactionSuccess}
+        onRemoveItem={removeFromCart}
         transactionSuccess={transactionSuccess}
         transactionData={transactionData}
         onOpenProsesTransaksi={(data) => {

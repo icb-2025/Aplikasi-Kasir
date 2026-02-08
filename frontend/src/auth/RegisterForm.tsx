@@ -123,6 +123,7 @@ export default function RegisterForm() {
               <option value="manager">Manager</option>
               <option value="kasir">Kasir</option>
               <option value="admin">Admin</option>
+              <option value="chef">Chef</option>
             </select>
           </div>
 

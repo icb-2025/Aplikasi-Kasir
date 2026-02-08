@@ -18,6 +18,7 @@ import StatusPesananAdmin from '../status-pesanan';
 import UsersPage from '../users';
 import SettingsPage from '../settings';
 import Admin404 from '../notif/404notfound';
+import ProcessMemasak from '../process-memasak';
 import type { Barang } from '../stok-barang';
 
 interface AdminRouterProps {
@@ -49,6 +50,9 @@ const AdminRouter: React.FC<AdminRouterProps> = ({ dataBarang, setDataBarang }) 
         
         {/* Stok Barang Route */}
         <Route path="stok-barang" element={<StokBarangAdmin dataBarang={dataBarang} setDataBarang={setDataBarang} />} />
+        
+        {/* Process Memasak Route */}
+        <Route path="process-memasak" element={<ProcessMemasak />} />
         
         {/* Modal Bahan Baku Route */}
         <Route path="modal-bahanbaku" element={<ModalBahanBaku />} />

@@ -10,7 +10,7 @@ interface User {
   _id?: string;
   nama_lengkap: string;
   username?: string;
-  role: 'admin' | 'manajer' | 'kasir' | 'users';
+  role: 'admin' | 'manajer' | 'kasir' | 'user';
   status: string;
   profilePicture?: string;
 }
@@ -81,19 +81,19 @@ export default function ProfilePage() {
           }
         } else {
           // Jika user tidak tersedia, coba refresh data user
-          await auth.refreshUser();
+          const refreshedUser = await auth.refreshUser();
           
-          if (auth.user) {
+          if (refreshedUser) {
             setForm({
-              nama_lengkap: auth.user.nama_lengkap || '',
-              username: auth.user.username || '',
+              nama_lengkap: refreshedUser.nama_lengkap || '',
+              username: refreshedUser.username || '',
               currentPassword: '',
               newPassword: '',
               confirmPassword: ''
             });
             
-            if (auth.user.profilePicture) {
-              setPreviewUrl(auth.user.profilePicture);
+            if (refreshedUser.profilePicture) {
+              setPreviewUrl(refreshedUser.profilePicture);
             } else if (auth.defaultProfilePicture) {
               setPreviewUrl(auth.defaultProfilePicture);
             }
@@ -108,7 +108,7 @@ export default function ProfilePage() {
     };
     
     initializeForm();
-  }, [auth.user, auth.defaultProfilePicture, auth.refreshUser]);
+  }, [auth.user, auth.defaultProfilePicture]);
 
   // Update preview URL jika foto profil berubah
   useEffect(() => {

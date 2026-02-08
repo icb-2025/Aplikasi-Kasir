@@ -4,7 +4,9 @@ import User from "../../models/user.js";
 // Ambil semua user
 export const getUsers = async (req, res) => {
   try {
-    const users = await User.find();
+    const { role } = req.query;
+    const filter = role ? { role } : {};
+    const users = await User.find(filter);
     res.json(users);
   } catch (err) {
     res.status(500).json({ message: "Gagal mengambil data", error: err.message });

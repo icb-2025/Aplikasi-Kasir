@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import AuthContext from '../../auth/context/AuthContext';
 import { portbe } from '../../../../backend/ngrokbackend';
 import { 
-  BarChart3, 
+  Home, 
   FileText, 
   User, 
   LogOut, 
@@ -11,7 +11,7 @@ import {
   X
 } from 'lucide-react';
 const ipbe = import.meta.env.VITE_IPBE;
-
+  
 interface MenuItem {
   id: string;
   name: string;
@@ -56,7 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const { user, logout } = authContext;
   
   const menuItems: MenuItem[] = [
-    { id: 'dashboard', name: 'Dashboard', icon: <BarChart3 size={20} />, path: '/' },
+        { id: 'dashboard', name: 'Dashboard', icon: <Home size={20} />, path: '/' },
     { id: 'status-pesanan', name: 'Riwayat', icon: <FileText size={20} />, path: '/pesanan', authRequired: true },
     { id: 'profile', name: 'Profile', icon: <User size={20} />, path: '/profile', authRequired: true },
   ];
@@ -233,7 +233,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                   </>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-bold text-gray-900 truncate">
                     {userProfile?.nama_lengkap || user.nama_lengkap || 'Pengguna'}
                   </p>
                   <p className="text-xs text-gray-500 truncate">
@@ -263,7 +263,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                   }`}
                 >
                   {item.icon}
-                  <span className="font-medium">{item.name}</span>
+                  <span className="font-bold">{item.name}</span>
                 </button>
               ))}
               
@@ -273,7 +273,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                   className="w-full flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 text-gray-700 hover:bg-red-50"
                 >
                   <LogOut size={20} />
-                  <span className="font-medium">Logout</span>
+                  <span className="font-bold">Logout</span>
                 </button>
               ) : (
                 <button
@@ -290,7 +290,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                   }`}
                 >
                   <LogIn size={20} />
-                  <span className="font-medium">Login</span>
+                  <span className="font-bold">Login</span>
                 </button>
               )}
             </div>
@@ -306,7 +306,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
           </div>
           
           <div className="p-4 border-t border-gray-200 text-center">
-            <p className="text-xs text-gray-500">© 2025 KasirPlus</p>
+            <p className="text-xs text-gray-500">© 2026 KasirPlus</p>
           </div>
         </div>
       </div>

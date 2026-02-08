@@ -46,6 +46,7 @@ const UserFilter: React.FC<UserFilterProps> = ({ onFilter, onReset }) => {
               <option value="">Semua Role</option>
               <option value="kasir">Kasir</option>
               <option value="manajer">Manajer</option>
+              <option value="chef">Chef</option>
               <option value="admin">Admin</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">

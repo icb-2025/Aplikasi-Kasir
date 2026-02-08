@@ -24,6 +24,9 @@ import MenegerSettingsPage from "./meneger/settings";
 // Admin - Import router admin
 import AdminRouter from "./admin/router";
 
+// Chef - Import router chef
+import ChefRouter from "./chef/router";
+
 // Auth
 import LoginForm from "./auth/pages/login";
 import RegisterPage from "./auth/pages/register";
@@ -108,6 +111,16 @@ const AppRouter = ({ dataBarang, setDataBarang }: RouterProps) => {
                   <Route path="settings" element={<MenegerSettingsPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Chef - hanya bisa diakses oleh chef dan admin */}
+          <Route 
+            path="/chef/*" 
+            element={
+              <ProtectedRoute allowedRoles={['chef', 'admin']}>
+                <ChefRouter />
               </ProtectedRoute>
             } 
           />

@@ -18,13 +18,14 @@ interface TableDataItem {
 
 interface TransactionTableProps {
   tableData: TableDataItem[];
+  itemsPerPage?: number;
 }
 
 const TransactionTable: React.FC<TransactionTableProps> = ({ 
-  tableData = [] // Tambahkan default value untuk mencegah undefined
+  tableData = [], // Tambahkan default value untuk mencegah undefined
+  itemsPerPage = 10
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
   // Tambahkan pengecekan untuk mencegah error jika tableData undefined
   const safeTableData = Array.isArray(tableData) ? tableData : [];

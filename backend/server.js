@@ -29,6 +29,8 @@ import adminbiayaoperasional from "./routes/admin/biayaoperasional.js";
 import adminbiayalayanan from "./routes/admin/biayalayanan.js"
 import adminmodalutama from "./routes/admin/modalutama.js"
 import adminhpptotal from "./routes/admin/hpptotal.js"
+import adminBahanBaku from "./routes/admin/bahanbaku.js";
+import chefRoutes from "./routes/chef/chef.js";
 import userAuth from "./middleware/user.js";
 import session from "express-session";
 import passport from "./config/passportGoogle.js";
@@ -51,7 +53,6 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(debugTokenLogger); 
 
-
 app.use(express.json());
 app.use(cors());
 connectDB();
@@ -73,7 +74,6 @@ app.use("/api/manager/laporan", laporanManagerRoutes);
 app.use("/api/manager/biaya-operasional", biayaoperasional);
 app.use("/api/manager/settings", managerSettingsRoutes);
 
-
 // admin
 app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/admin/status-pesanan", adminStatusPesanan);
@@ -87,6 +87,10 @@ app.use("/api/admin/biaya-operasional", adminbiayaoperasional);
 app.use("/api/admin/biaya-layanan", adminbiayalayanan)
 app.use("/api/admin/modal-utama", adminmodalutama)
 app.use("/api/admin/hpp-total", adminhpptotal)
+app.use("/api/admin/bahan-baku", adminBahanBaku)
+
+// chef
+app.use("/api/chef", chefRoutes);
 
 app.use(cors())
 app.get("/", (req, res) => {

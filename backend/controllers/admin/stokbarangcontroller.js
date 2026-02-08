@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import cloudinary from "../../config/cloudinary.js";
 import BiayaOperasional from "../../models/biayaoperasional.js";
 import { kurangiModalUtama } from "./utils/updatemodalutama.js";
+import Production from "../../models/production.js";
 
 // Fungsi helper untuk menghitung status berdasarkan stok
 const calculateStatus = (stok, stokMinimal) => {
@@ -47,13 +48,13 @@ export const getAllBarang = async (req, res) => {
       const stokRTDB = stokMap[id];
       const stok = typeof stokRTDB === "number" ? stokRTDB : item.stok;
       
-      // Hitung status di backend dengan validasi yang lebih baik
-      const status = calculateStatus(stok, item.stok_minimal || lowStockAlert);
+      // JANGAN override status publish dengan status stok!
+      // const status = calculateStatus(stok, item.stok_minimal || lowStockAlert);
 
       return {
         ...item,
         stok,
-        status,
+        // status: status, // <-- DIHAPUS! Jangan override status publish
         hargaFinal: Math.round(item.hargaFinal),
         use_discount: item.use_discount, // Pastikan use_discount dikembalikan
       };
@@ -143,8 +144,8 @@ export const createBarang = async (req, res) => {
       gambarUrl = upload.secure_url;
     }
 
-    // Hitung status di backend dengan validasi yang lebih baik
-    const status = calculateStatus(stok, stok_minimal || lowStockAlert);
+    // Hitung status stok untuk Firebase (bukan untuk MongoDB status field)
+    const statusStok = calculateStatus(stok, stok_minimal || lowStockAlert);
 
     // Simpan barang baru
     const barang = new Barang({
@@ -160,7 +161,7 @@ export const createBarang = async (req, res) => {
       hargaFinal: Math.round(hargaFinal),
       total_harga_beli: Math.round(totalHargaBahan), // Ini total harga bahan
       gambar_url: gambarUrl,
-      status, // Simpan status yang sudah dihitung
+      status: "pending", // Status publish default untuk barang baru
       use_discount: use_discount === "true" || use_discount === true
     });
 
@@ -187,7 +188,7 @@ export const createBarang = async (req, res) => {
           harga_jual: barang.harga_jual || 0,
           harga_final: Math.round(hargaFinal) || 0,
           kategori: barang.kategori || "",
-          status: status || "aman", // Pastikan status tidak undefined
+          status: statusStok || "aman", // Status stok untuk Firebase
         };
         
         await db.ref(`/barang/${id}`).set(firebaseData);
@@ -303,7 +304,7 @@ export const updateBarang = async (req, res) => {
     // Hitung status di backend dengan validasi yang lebih baik
     const currentStok = stok !== undefined ? stok : barang.stok;
     const currentStokMinimal = stok_minimal !== undefined ? stok_minimal : barang.stok_minimal;
-    const status = calculateStatus(currentStok, currentStokMinimal || lowStockAlert);
+    const statusStok = calculateStatus(currentStok, currentStokMinimal || lowStockAlert);
 
     // Update data barang
     barang.kode_barang = kode_barang || barang.kode_barang;
@@ -318,7 +319,8 @@ export const updateBarang = async (req, res) => {
     barang.hargaFinal = Math.round(hargaFinal);
     // Tidak perlu update total_harga_beli
     barang.gambar_url = gambarUrl;
-    barang.status = status; // Update status yang sudah dihitung
+    // JANGAN update field status dengan status stok! Field status untuk publish/pending
+    // barang.status = statusStok; // <-- BARIS INI DIHAPUS
     barang.use_discount = use_discount === "true" || use_discount === true
 
     await barang.save();
@@ -333,7 +335,7 @@ export const updateBarang = async (req, res) => {
           harga_jual: barang.harga_jual || 0,
           harga_final: Math.round(hargaFinal) || 0,
           kategori: barang.kategori || "",
-          status: status || "aman", // Pastikan status tidak undefined
+          status: statusStok || "aman", // Status stok untuk Firebase
         };
         
         await db.ref(`/barang/${id}`).update(firebaseData);
@@ -442,6 +444,87 @@ export const decrementStock = async (req, res) => {
 
     res.json({ id, stok: newStock, status });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Create production for chef
+export const createProduction = async (req, res) => {
+  try {
+    const { bahan_baku, produk_jadi, chef_id } = req.body;
+
+    if (!bahan_baku || !produk_jadi || !chef_id) {
+      return res.status(400).json({ message: "Bahan baku, produk jadi, dan chef_id wajib diisi" });
+    }
+
+    const production = new Production({
+      bahan_baku,
+      produk_jadi,
+      chef_id,
+    });
+
+    await production.save();
+    res.json({ message: "Produksi berhasil dibuat", production });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get all productions for admin
+export const getAllProductions = async (req, res) => {
+  try {
+    const productions = await Production.find()
+      .populate("chef_id", "nama_lengkap username")
+      .populate("bahan_baku_id", "nama kategori satuan")
+      .sort({ createdAt: -1 });
+    res.json(productions);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Publish barang dari pending ke active (untuk dashboard users)
+export const publishBarang = async (req, res) => {
+  try {
+    const { productionId, chefId } = req.body;
+
+    if (!productionId || !chefId) {
+      return res.status(400).json({ message: "productionId dan chefId wajib diisi" });
+    }
+
+    // Cari production untuk mendapatkan informasi bahan baku
+    const production = await Production.findById(productionId).populate('bahan_baku_id');
+    if (!production) {
+      return res.status(404).json({ message: "Produksi tidak ditemukan" });
+    }
+
+    // Cari barang yang dibuat oleh chef ini dengan status pending
+    // Kita cari berdasarkan chef_id dan status pending, dan nama_barang yang match dengan bahan baku
+    const barangPending = await Barang.findOne({
+      'bahan_baku.nama_produk': production.bahan_baku_id?.nama,
+      status: 'pending'
+    }).sort({ createdAt: -1 }); // Ambil yang terbaru
+
+    if (!barangPending) {
+      return res.status(404).json({ message: "Barang pending tidak ditemukan" });
+    }
+
+    // Update status barang menjadi active
+    barangPending.status = 'active';
+    barangPending.updatedAt = new Date();
+    await barangPending.save();
+
+    // Update status production menjadi completed
+    production.status = 'completed';
+    await production.save();
+
+    res.json({
+      message: "Barang berhasil dipublish ke dashboard users",
+      barang: barangPending
+    });
+
+  } catch (error) {
+    console.error('Error publishing barang:', error);
     res.status(500).json({ message: error.message });
   }
 };

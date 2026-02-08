@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import type { CartItem } from '../../pages/Dashboard';
 
 interface CurrentOrderProps {
@@ -23,6 +23,7 @@ const CurrentOrder: React.FC<CurrentOrderProps> = ({
   const [processingItems, setProcessingItems] = useState<Record<string, boolean>>({});
   const [isCheckoutProcessing, setIsCheckoutProcessing] = useState(false);
   const [debounceTimers, setDebounceTimers] = useState<Record<string, NodeJS.Timeout>>({});
+  const lastQtyButtonClickRef = useRef<Record<string, number>>({});
 
   const handleRemoveItem = useCallback((productId: string) => {
     if (processingItems[productId]) return;
@@ -57,6 +58,17 @@ const CurrentOrder: React.FC<CurrentOrderProps> = ({
 
     setDebounceTimers(prev => ({ ...prev, [productId]: timer }));
   }, [onUpdateQuantity, debounceTimers]);
+
+  // Guard for +/- button clicks: ignore clicks within 500ms per-item
+  const handleQuantityButtonClick = useCallback((productId: string, newQuantity: number) => {
+    const now = Date.now();
+    const last = lastQtyButtonClickRef.current[productId] || 0;
+    if (now - last < 500) return; // ignore rapid clicks
+    lastQtyButtonClickRef.current[productId] = now;
+
+    // Call the same update handler (this one debounces input changes)
+    handleUpdateQuantity(productId, newQuantity);
+  }, [handleUpdateQuantity]);
 
   const handleCheckout = useCallback(() => {
     if (isCheckoutProcessing || cartItems.length === 0 || isLoading) return;
@@ -146,7 +158,7 @@ const CurrentOrder: React.FC<CurrentOrderProps> = ({
                     <div className="flex justify-between items-center">
                       <div className="flex items-center border border-gray-200 rounded-lg">
                         <button 
-                          onClick={() => handleUpdateQuantity(item._id, item.quantity - 1)} 
+                          onClick={() => handleQuantityButtonClick(item._id, item.quantity - 1)} 
                           disabled={item.quantity <= 1}
                           className={`px-2 py-1 text-gray-600 hover:bg-gray-100 rounded-l-lg ${
                             item.quantity <= 1 ? 'opacity-50 cursor-not-allowed' : ''
@@ -156,7 +168,7 @@ const CurrentOrder: React.FC<CurrentOrderProps> = ({
                         </button>
                         <span className="px-3 py-1 text-sm font-medium">{item.quantity}</span>
                         <button 
-                          onClick={() => handleUpdateQuantity(item._id, item.quantity + 1)} 
+                          onClick={() => handleQuantityButtonClick(item._id, item.quantity + 1)} 
                           className="px-2 py-1 text-gray-600 hover:bg-gray-100 rounded-r-lg"
                         >
                           +

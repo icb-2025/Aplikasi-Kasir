@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import BarangTable from "./BarangTable";
 import ModalBarang, { type BahanBakuItem } from "./ModalBarang";
 import ModalCategory from "./ModalCategory";
+import ModalProduction from "./ModalProduction";
 import type { BarangFormData } from "./ModalBarang";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { SweetAlert } from "../../components/SweetAlert";
@@ -10,6 +11,7 @@ import io, { Socket } from 'socket.io-client';
 import { portbe } from "../../../../backend/ngrokbackend";
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 const ipbe = import.meta.env.VITE_IPBE;
+
 
 export interface BarangAPI {
   _id: string;
@@ -52,6 +54,7 @@ export interface Barang {
   hargaFinal?: number;
   gambarUrl?: string;
   status?: string;
+  statusBarang?: string;
   useDiscount?: boolean;
   margin?: number;
   bahanBaku?: Array<{
@@ -115,6 +118,7 @@ const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang 
   const socketRef = useRef<Socket | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showProductionModal, setShowProductionModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -255,11 +259,39 @@ const fetchSettings = useCallback(async () => {
     }
   }, [formData.kategori]);
 
+  const fetchProductions = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${ipbe}:${portbe}/api/admin/stok-barang/productions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProductions(data);
+      }
+    } catch (error) {
+      console.error('Error fetching productions:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProductions();
+  }, [fetchProductions]);
+
   const fetchBarang = useCallback(async () => {
     setLoading(true);
     setServerError(false);
     try {
-      const res = await fetch(API_URL);
+      const token = localStorage.getItem('token')
+      const res = await fetch(API_URL, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data: BarangAPI[] = await res.json();
       
@@ -276,6 +308,7 @@ const fetchSettings = useCallback(async () => {
         hargaFinal: item.hargaFinal,
         gambarUrl: item.gambar_url,
         status: item.status,
+        statusBarang: item.status || "pending", // status barang dari API
         useDiscount: typeof item.use_discount !== 'undefined' ? item.use_discount : true,
         margin: item.margin,
         bahanBaku: item.bahan_baku || []
@@ -311,6 +344,7 @@ const fetchSettings = useCallback(async () => {
         hargaFinal: newBarang.hargaFinal,
         gambarUrl: newBarang.gambar_url,
         status: newBarang.status,
+        statusBarang: newBarang.status || "pending",
         useDiscount: typeof newBarang.use_discount !== 'undefined' ? newBarang.use_discount : true,
         margin: newBarang.margin,
         bahanBaku: newBarang.bahan_baku || []
@@ -333,6 +367,7 @@ const fetchSettings = useCallback(async () => {
         hargaFinal: updatedBarang.hargaFinal,
         gambarUrl: updatedBarang.gambar_url,
         status: updatedBarang.status,
+        statusBarang: updatedBarang.status || "pending",
         useDiscount: typeof updatedBarang.use_discount !== 'undefined' ? updatedBarang.use_discount : true,
         margin: updatedBarang.margin,
         bahanBaku: updatedBarang.bahan_baku || []
@@ -359,7 +394,8 @@ const fetchSettings = useCallback(async () => {
             return { 
               ...item, 
               stok: data.stok,
-              status: data.status || item.status
+              status: data.status || item.status,
+              statusBarang: data.status || item.statusBarang
             };
           }
           return item;
@@ -488,6 +524,40 @@ const handleEdit = (id: string) => {
     }
   };
 
+  const handleUpdateStatus = async (id: string, status: string) => {
+    try {
+      await SweetAlert.loading(`Mengubah status barang ke ${status}...`);
+      
+      const res = await fetch(`${API_URL}/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+      
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      
+      SweetAlert.close();
+      
+      // Update local state
+      setDataBarang(prevData => 
+        prevData.map(item => 
+          item._id === id 
+            ? { ...item, status: status, statusBarang: status } 
+            : item
+        )
+      );
+      
+      await SweetAlert.success(`Status barang berhasil diubah ke ${status}`);
+    } catch (err) {
+      console.error("Gagal update status:", err);
+      SweetAlert.close();
+      SweetAlert.error("Gagal mengubah status barang");
+    }
+  };
+
   const validateForm = () => {
     if (!formData.kode.trim()) {
       SweetAlert.error("Kode barang harus diisi");
@@ -537,12 +607,16 @@ const handleSubmit = async (e: React.FormEvent) => {
     payload.append("harga_beli", formData.hargaBeli);
     payload.append("harga_jual", formData.hargaJual);
     payload.append("stok", formData.stok);
-    payload.append("stok_minimal", lowStockAlert.toString());
-    payload.append("use_discount", formData.useDiscount ? "true" : "false"); // Pastikan ini dikirim
+    // payload.append("stok_minimal", lowStockAlert.toString()); // Hapus sementara
+    payload.append("use_discount", formData.useDiscount ? "true" : "false");
+    payload.append("margin", formData.margin?.toString() || "30");
     
-    // Tambahkan margin ke payload
-    if (formData.margin !== undefined) {
-      payload.append("margin", formData.margin.toString());
+    // Tambahkan status - untuk barang baru selalu "pending", untuk update gunakan status yang ada
+    if (isEditing && editId) {
+      const existingBarang = dataBarang.find(item => item._id === editId);
+      payload.append("status", existingBarang?.statusBarang || "pending");
+    } else {
+      payload.append("status", "pending");
     }
     
     // Perbaikan: Selalu kirim bahan_baku jika ada, bahkan saat update
@@ -570,8 +644,16 @@ const handleSubmit = async (e: React.FormEvent) => {
     }
 
     if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`HTTP error! status: ${res.status}, message: ${errorText}`);
+      let errorMessage = "Gagal menyimpan barang";
+      try {
+        const errorData = await res.json();
+        errorMessage = errorData.message || errorData.error || `HTTP ${res.status}: ${res.statusText}`;
+      } catch (parseError) {
+        // Jika bukan JSON, gunakan text response
+        const errorText = await res.text();
+        errorMessage = errorText || `HTTP ${res.status}: ${res.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     SweetAlert.close();
@@ -587,6 +669,28 @@ const handleSubmit = async (e: React.FormEvent) => {
     SweetAlert.error(error.message || "Gagal menyimpan barang");
   } finally {
     setActionLoading(false);
+  }
+};
+
+const handleCreateProduction = async (productionData: any) => {
+  try {
+    const response = await fetch(`${API_URL}/production`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify(productionData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create production');
+    }
+
+    await SweetAlert.success("Production berhasil dibuat");
+  } catch (error) {
+    console.error('Error creating production:', error);
+    SweetAlert.error("Gagal membuat production");
   }
 };
 
@@ -676,11 +780,12 @@ const handleSubmit = async (e: React.FormEvent) => {
               <p className="mt-4">Mengupdate data...</p>
             </div>
           ) : (
-            <>
+            <>                     
               <BarangTable
                 data={currentItems}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onUpdateStatus={handleUpdateStatus}
                 bahanBakuList={bahanBakuList}
               />
               
@@ -778,6 +883,12 @@ const handleSubmit = async (e: React.FormEvent) => {
           fetchKategori();
         }}
         onKategoriChange={fetchKategori}
+      />
+
+      <ModalProduction
+        isOpen={showProductionModal}
+        onClose={() => setShowProductionModal(false)}
+        onSubmit={handleCreateProduction}
       />
     </div>
   );

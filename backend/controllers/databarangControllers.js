@@ -8,7 +8,15 @@ import cloudinary from "../config/cloudinary.js";
 // Ambil semua barang, menggabungkan stok dari Firebase RTDB jika tersedia
 export const getAllBarang = async (req, res) => {
   try {
-    const barang = await Barang.find().lean();
+    const { status } = req.query;
+    let query = {};
+    
+    // Jika ada filter status, tambahkan ke query
+    if (status) {
+      query.status = status;
+    }
+
+    const barang = await Barang.find(query).lean();
 
     // get all RTDB barang once
     let stokMap = {};
@@ -51,7 +59,34 @@ export const getAllBarang = async (req, res) => {
 // Tambah barang: simpan ke MongoDB lalu set stok awal ke RTDB
 export const createBarang = async (req, res) => {
   try {
-    const barang = new Barang(req.body);
+    // Handle bahan_baku yang dikirim sebagai JSON string dari FormData
+    let bodyData = { ...req.body };
+    
+    // Convert string values to appropriate types
+    if (bodyData.use_discount === "true") bodyData.use_discount = true;
+    if (bodyData.use_discount === "false") bodyData.use_discount = false;
+    
+    if (bodyData.stok) bodyData.stok = parseInt(bodyData.stok);
+    if (bodyData.stok_minimal) bodyData.stok_minimal = parseInt(bodyData.stok_minimal);
+    if (bodyData.harga_beli) bodyData.harga_beli = parseFloat(bodyData.harga_beli);
+    if (bodyData.harga_jual) bodyData.harga_jual = parseFloat(bodyData.harga_jual);
+    if (bodyData.margin) bodyData.margin = parseFloat(bodyData.margin);
+
+    if (bodyData.bahan_baku && typeof bodyData.bahan_baku === 'string') {
+      try {
+        bodyData.bahan_baku = JSON.parse(bodyData.bahan_baku);
+      } catch (e) {
+        console.warn('Failed to parse bahan_baku JSON:', e.message);
+        bodyData.bahan_baku = [];
+      }
+    }
+
+    // Handle gambar upload
+    if (req.file) {
+      bodyData.gambar_url = `/uploads/${req.file.filename}`;
+    }
+
+    const barang = new Barang(bodyData);
     await barang.save();
 
     if (db) {
@@ -68,6 +103,7 @@ export const createBarang = async (req, res) => {
 
     res.status(201).json({ message: "Barang berhasil ditambahkan!", barang });
   } catch (error) {
+    console.error('Error creating barang:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -77,6 +113,26 @@ export const createBarang = async (req, res) => {
 export const updateBarang = async (req, res) => {
   try {
     let updateData = { ...req.body };
+
+    // Convert string values to appropriate types
+    if (updateData.use_discount === "true") updateData.use_discount = true;
+    if (updateData.use_discount === "false") updateData.use_discount = false;
+    
+    if (updateData.stok) updateData.stok = parseInt(updateData.stok);
+    if (updateData.stok_minimal) updateData.stok_minimal = parseInt(updateData.stok_minimal);
+    if (updateData.harga_beli) updateData.harga_beli = parseFloat(updateData.harga_beli);
+    if (updateData.harga_jual) updateData.harga_jual = parseFloat(updateData.harga_jual);
+    if (updateData.margin) updateData.margin = parseFloat(updateData.margin);
+
+    // Handle bahan_baku yang dikirim sebagai JSON string dari FormData
+    if (updateData.bahan_baku && typeof updateData.bahan_baku === 'string') {
+      try {
+        updateData.bahan_baku = JSON.parse(updateData.bahan_baku);
+      } catch (e) {
+        console.warn('Failed to parse bahan_baku JSON:', e.message);
+        updateData.bahan_baku = [];
+      }
+    }
 
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
@@ -102,6 +158,7 @@ export const updateBarang = async (req, res) => {
 
     res.json({ message: "Barang berhasil diperbarui!", barang });
   } catch (error) {
+    console.error('Error updating barang:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -165,6 +222,38 @@ export const decrementStock = async (req, res) => {
     }
 
     res.json({ id, stok: newStock });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Update status barang (pending -> publish)
+export const updateBarangStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["pending", "publish"].includes(status)) {
+      return res.status(400).json({ message: "Status tidak valid. Gunakan 'pending' atau 'publish'" });
+    }
+
+    const barang = await Barang.findByIdAndUpdate(
+      id, 
+      { status }, 
+      { new: true }
+    );
+
+    if (!barang) {
+      return res.status(404).json({ message: "Barang tidak ditemukan" });
+    }
+
+    // Emit socket event untuk update real-time
+    io.emit("barang:updated", barang);
+
+    res.json({ 
+      message: `Status barang berhasil diubah ke ${status}`, 
+      barang 
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

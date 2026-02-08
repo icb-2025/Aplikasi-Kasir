@@ -1,0 +1,24 @@
+import express from "express";
+import { 
+  getProductions, 
+  getAvailableBahanBaku, 
+  getAllBahanBaku,
+  ambilBahanBaku, 
+  updateProductionStatus
+} from "../../controllers/chef/chefcontroller.js";
+import authorize from "../../middleware/authorize.js";
+import verifyToken from "../../middleware/verifyToken.js";
+
+const router = express.Router();
+
+// All routes require authentication and chef role
+router.use(verifyToken);
+router.use(authorize(["chef"]));
+
+router.get("/productions", getProductions);
+router.get("/bahan-baku/available", getAvailableBahanBaku);
+router.get("/bahan-baku", getAllBahanBaku);
+router.post("/bahan-baku/ambil", ambilBahanBaku);
+router.put("/productions/:id/status", updateProductionStatus);
+
+export default router;
