@@ -360,7 +360,6 @@ export const updateBarang = async (req, res) => {
         diskon: `${discountRate}%`, // Gunakan discountRate, bukan globalDiscount
         biayaLayanan: `${serviceCharge}%`,
         hargaFinal,
-        status,
       },
     });
   } catch (error) {

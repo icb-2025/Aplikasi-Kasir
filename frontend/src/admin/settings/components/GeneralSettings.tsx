@@ -257,7 +257,7 @@ const GeneralSettings: React.FC<GeneralSettingsProps> = ({
       </div>
       
       <div>
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Gambar Profil Default</h2>
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Gambar Profile User Default</h2>
         
         {isEditingDefaultProfile ? (
           <div className="space-y-4">

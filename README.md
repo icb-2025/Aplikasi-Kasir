@@ -1,11 +1,11 @@
 # 🛒 Kasir Plus
 
-![KasirPlus Dashboard Preview](https://res.cloudinary.com/dmrpx33rn/image/upload/v1761725178/Screenshot_from_2025-10-29_15-04-26_pq5f4h.png)
+<!-- ![KasirPlus Dashboard Preview](https://res.cloudinary.com/dmrpx33rn/image/upload/v1761725178/Screenshot_from_2025-10-29_15-04-26_pq5f4h.png)
 
 [![Node.js](https://img.shields.io/badge/Node.js-v18-green)](https://nodejs.org/) 
 [![React](https://img.shields.io/badge/React-v18-blue)](https://reactjs.org/) 
 [![MongoDB](https://img.shields.io/badge/MongoDB-v6-green)](https://www.mongodb.com/) 
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v3-blue)](https://tailwindcss.com/) 
+[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v3-blue)](https://tailwindcss.com/)  -->
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 **Kasir Plus** adalah sistem Point of Sale (POS) modern yang memudahkan pengelolaan **transaksi penjualan, stok barang, dan laporan keuangan**.  

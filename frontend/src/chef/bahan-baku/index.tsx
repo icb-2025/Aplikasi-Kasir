@@ -1,9 +1,11 @@
 // src/chef/bahan-baku/index.tsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import type { SweetAlertOptions } from 'sweetalert2';
 import { portbe } from "../../../../backend/ngrokbackend";
 import { Package, ShoppingCart } from 'lucide-react';
+import { useAuth } from '../../auth/hooks/useAuth';
 
 interface BahanItem {
   nama: string;
@@ -24,6 +26,8 @@ const BahanBakuTersedia: React.FC = () => {
   const [bahanBaku, setBahanBaku] = useState<BahanBaku[]>([]);
   const [loading, setLoading] = useState(true);
   const [ambilLoading, setAmbilLoading] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchBahanBakuTersedia();
@@ -46,7 +50,7 @@ const BahanBakuTersedia: React.FC = () => {
         icon: 'error',
         title: 'Gagal',
         text: 'Gagal memuat data bahan baku',
-        confirmButtonColor: '#f97316'
+        confirmButtonColor: '#3b82f6'
       });
     } finally {
       setLoading(false);
@@ -74,7 +78,7 @@ const BahanBakuTersedia: React.FC = () => {
         class: 'swal2-input'
       },
       showCancelButton: true,
-      confirmButtonColor: '#f97316',
+      confirmButtonColor: '#3b82f6',
       cancelButtonColor: '#6b7280',
       confirmButtonText: 'Ambil',
       cancelButtonText: 'Batal',
@@ -109,23 +113,18 @@ const BahanBakuTersedia: React.FC = () => {
       });
 
       if (response.ok) {
-        const result = await response.json();
         await Swal.fire({
           icon: 'success',
           title: 'Berhasil!',
-          html: `
-            <div class="text-left">
-              <p>Bahan baku berhasil diambil!</p>
-              <div class="mt-3 bg-green-50 p-3 rounded">
-                <p class="text-sm"><strong>${namaBahan}</strong> - Jumlah: <strong>${jumlah}</strong></p>
-                ${result.jumlah_produk_dibuat > 0 ? `<p class="text-sm mt-2"><strong>Produk dibuat: ${result.jumlah_produk_dibuat} unit</strong></p>` : ''}
-              </div>
-              <p class="text-sm text-gray-600 mt-3">Silakan cek halaman Productions untuk memproses.</p>
-            </div>
-          `,
-          confirmButtonColor: '#f97316'
+          text: 'Bahan baku berhasil diambil.',
+          confirmButtonColor: ''
         });
-        
+
+        if (user?.role === 'admin') {
+          navigate('/admin/stok-barang');
+          return;
+        }
+
         // Refresh data untuk update UI stok
         await fetchBahanBakuTersedia();
       } else {
@@ -134,7 +133,7 @@ const BahanBakuTersedia: React.FC = () => {
           icon: 'error',
           title: 'Gagal',
           text: error.message || 'Terjadi kesalahan saat mengambil bahan baku',
-          confirmButtonColor: '#f97316'
+          confirmButtonColor: '#3b82f6'
         });
       }
     } catch (error) {
@@ -143,7 +142,7 @@ const BahanBakuTersedia: React.FC = () => {
         icon: 'error',
         title: 'Gagal',
         text: 'Terjadi kesalahan saat mengambil bahan baku',
-        confirmButtonColor: '#f97316'
+        confirmButtonColor: '#3b82f6'
       });
     } finally {
       setAmbilLoading(null);

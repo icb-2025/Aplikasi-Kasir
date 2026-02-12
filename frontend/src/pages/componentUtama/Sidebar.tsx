@@ -236,9 +236,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                   <p className="text-sm font-bold text-gray-900 truncate">
                     {userProfile?.nama_lengkap || user.nama_lengkap || 'Pengguna'}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {userProfile?.role || user.role || 'User'}
-                  </p>
                 </div>
               </div>
             </div>
