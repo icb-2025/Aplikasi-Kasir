@@ -17,7 +17,7 @@ Tersedia frontend interaktif dan backend API dengan **real-time update**, serta 
 ## 🎯 Fitur Utama
 
 ### 👤 Autentikasi Pengguna
-- Multi-role: Admin, Manajer, Kasir, User
+- Multi-role: Admin, Manajer, Kasir, User, Chef
 - Login & Logout + Login via Google
 
 ### 🛍️ Manajemen Produk
@@ -126,6 +126,7 @@ MIDTRANS_IS_PRODUCTION=false
 📈 Real-Time Update
 
 Socket.io digunakan untuk update stok & transaksi secara real-time antar user di frontend.
+
 
 
 
