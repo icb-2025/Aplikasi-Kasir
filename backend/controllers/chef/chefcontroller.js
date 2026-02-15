@@ -139,6 +139,25 @@ export const ambilBahanBaku = async (req, res) => {
         });
 
         await newBarang.save();
+        
+        // Update Firebase RTDB dengan data barang baru
+        try {
+          const db = (await import("../../config/firebaseAdmin.js")).default;
+          if (db) {
+            const barangId = newBarang._id.toString();
+            await db.ref(`/barang/${barangId}`).set({
+              stok: newBarang.stok || 0,
+              nama: newBarang.nama_barang || "",
+              harga_jual: newBarang.harga_jual || 0,
+              harga_final: Math.round(newBarang.hargaFinal) || 0,
+              kategori: newBarang.kategori || "",
+              status: "aman" // status stok di Firebase
+            });
+          }
+        } catch (e) {
+          console.warn("Gagal update Firebase saat create barang:", e.message || e);
+        }
+        
         console.log(`Barang ${produkData.nama_produk} berhasil dibuat dengan ${jumlahProduk} unit`);
       }
     }
@@ -231,15 +250,55 @@ export const updateProductionStatus = async (req, res) => {
           const existingBarang = await Barang.findOne({ nama_barang: produkNama });
 
           if (existingBarang) {
-            existingBarang.stok = (existingBarang.stok || 0) + jumlahProduk;
-            await existingBarang.save();
+            // 1️⃣ Validasi jumlah produk
+            if (!jumlahProduk || jumlahProduk <= 0) {
+              throw new Error("Jumlah produk tidak valid");
+            }
+          
+            // 2️⃣ Increment stok langsung di database (ATOMIC)
+            // Gunakan $inc untuk atomic increment, jangan gunakan .save() agar tidak trigger pre-save hook
+            await Barang.updateOne(
+              { _id: existingBarang._id },
+              { 
+                $inc: { stok: jumlahProduk },
+                $set: { 
+                  // Pastikan field status_publish dan status_stok ada (backward compat)
+                  status_publish: existingBarang.status_publish || existingBarang.status || "pending",
+                  status_stok: "aman" // default ke aman saat ada stok increment
+                }
+              }
+            );
+          
+            // 3️⃣ Ambil data terbaru setelah update
+            const updatedBarang = await Barang.findById(existingBarang._id);
+          
+            // 4️⃣ Update Firebase RTDB agar stok sinkron
+            try {
+              const db = (await import("../../config/firebaseAdmin.js")).default;
+              if (db) {
+                const barangId = updatedBarang._id.toString();
+                await db.ref(`/barang/${barangId}`).update({
+                  stok: updatedBarang.stok || 0,
+                  nama: updatedBarang.nama_barang || "",
+                  harga_jual: updatedBarang.harga_jual || 0,
+                  harga_final: Math.round(updatedBarang.hargaFinal) || 0,
+                  kategori: updatedBarang.kategori || "",
+                  status: "aman" // status stok di Firebase
+                });
+              }
+            } catch (e) {
+              console.warn("Gagal update Firebase saat approve:", e.message || e);
+            }
+          
+            // 5️⃣ Emit socket pakai data terbaru
             try {
               const { io } = await import("../../server.js");
-              io.emit("barang:updated", existingBarang);
+              io.emit("barang:updated", updatedBarang);
             } catch (e) {
-              console.warn('Gagal emit event barang:updated', e.message || e);
+              console.warn("Gagal emit event barang:updated", e.message || e);
             }
-          } else {
+          }
+          else {
             // Generate kode barang unik
             const timestamp = Date.now().toString().slice(-6);
             const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -267,10 +326,32 @@ export const updateProductionStatus = async (req, res) => {
               hargaFinal: 0,
               use_discount: false,
               gambar_url: "",
-              status: "pending"
+              // Tetap set `status` untuk backward compat; tambah `status_publish` dan `status_stok`
+              status: "pending",
+              status_publish: "pending",
+              status_stok: "aman"
             });
 
             await newBarang.save();
+            
+            // Update Firebase RTDB dengan data barang baru
+            try {
+              const db = (await import("../../config/firebaseAdmin.js")).default;
+              if (db) {
+                const barangId = newBarang._id.toString();
+                await db.ref(`/barang/${barangId}`).set({
+                  stok: newBarang.stok || 0,
+                  nama: newBarang.nama_barang || "",
+                  harga_jual: newBarang.harga_jual || 0,
+                  harga_final: Math.round(newBarang.hargaFinal) || 0,
+                  kategori: newBarang.kategori || "",
+                  status: "aman" // status stok di Firebase
+                });
+              }
+            } catch (e) {
+              console.warn("Gagal update Firebase saat create barang:", e.message || e);
+            }
+            
             try {
               const { io } = await import("../../server.js");
               io.emit("barang:created", newBarang);

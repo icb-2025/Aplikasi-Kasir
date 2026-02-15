@@ -20,6 +20,31 @@ const calculateStatus = (stok, stokMinimal) => {
   return "aman";
 };
 
+// Helper global: hitung harga jual berdasarkan TRUE margin
+const computeHargaJual = (hb, m) => {
+  const hargaBeliNum = Number(hb);
+  const marginNum = Number(m);
+
+  if (!isFinite(hargaBeliNum) || hargaBeliNum <= 0) {
+    return 0;
+  }
+
+  if (!isFinite(marginNum) || marginNum < 0 || marginNum >= 100) {
+    throw new Error("Margin tidak valid. Harus >= 0 dan < 100");
+  }
+
+  const denom = 1 - (marginNum / 100);
+
+  if (Math.abs(denom) < Number.EPSILON) {
+    throw new Error("Margin menyebabkan pembagian dengan nol");
+  }
+
+  const harga = hargaBeliNum / denom;
+
+  return Math.round(harga);
+};
+
+
 export const getAllBarang = async (req, res) => {
   try {
     const barangList = await Barang.find().lean();
@@ -119,8 +144,13 @@ export const createBarang = async (req, res) => {
     // Harga beli = modal per porsi (ini sudah benar)
     const hargaBeli = modalPerPorsi;
 
-    // Hitung harga jual berdasarkan margin (dalam persen)
-    const hargaJual = hargaBeli + (hargaBeli * (finalMargin / 100));
+    // Hitung harga jual berdasarkan true margin (gunakan helper global)
+    let hargaJual;
+    try {
+      hargaJual = computeHargaJual(hargaBeli, finalMargin);
+    } catch (err) {
+      return res.status(400).json({ message: err.message || 'Margin tidak valid' });
+    }
 
     // Ambil pengaturan pajak, diskon, dan biaya layanan dari Settings
     const settings = await Settings.findOne();
@@ -131,7 +161,7 @@ export const createBarang = async (req, res) => {
     const discountRate = use_discount === "true" || use_discount === true ? globalDiscount : 0;
 
     // Hitung harga final (harga jual + pajak + biaya - diskon)
-    const hargaSetelahDiskon = hargaJual - (hargaJual * globalDiscount / 100);
+    const hargaSetelahDiskon = hargaJual - (hargaJual * discountRate / 100);
     const hargaSetelahPajak = hargaSetelahDiskon + (hargaSetelahDiskon * taxRate / 100);
     const hargaFinal = hargaSetelahPajak + (hargaSetelahPajak * serviceCharge / 100);
 
@@ -161,7 +191,11 @@ export const createBarang = async (req, res) => {
       hargaFinal: Math.round(hargaFinal),
       total_harga_beli: Math.round(totalHargaBahan), // Ini total harga bahan
       gambar_url: gambarUrl,
-      status: "pending", // Status publish default untuk barang baru
+      // Tetap set field `status` untuk kompatibilitas lama (publish state),
+      // namun tambah `status_publish` (publish state) dan `status_stok` (stock state)
+      status: "pending", // Status publish default untuk barang baru (backward compat)
+      status_publish: "pending",
+      status_stok: statusStok,
       use_discount: use_discount === "true" || use_discount === true
     });
 
@@ -213,10 +247,10 @@ export const createBarang = async (req, res) => {
         margin: `${finalMargin}%`, // Gunakan finalMargin
         hargaJual,
         pajak: `${taxRate}%`,
-        diskon: `${globalDiscount}%`,
+        diskon: `${discountRate}%`,
         biayaLayanan: `${serviceCharge}%`,
         hargaFinal,
-        status,
+        status: statusStok,
       },
     });
   } catch (error) {
@@ -274,8 +308,13 @@ export const updateBarang = async (req, res) => {
       hargaBeli = barang.harga_beli;
     }
 
-    // Harga jual = harga beli + margin%
-    const hargaJual = hargaBeli + (hargaBeli * (finalMargin / 100));
+    // Harga jual = dihitung dari true margin
+    let hargaJual;
+    try {
+      hargaJual = computeHargaJual(hargaBeli, finalMargin);
+    } catch (err) {
+      return res.status(400).json({ message: err.message || 'Margin tidak valid' });
+    }
 
     // Ambil setting global (pajak, diskon, service)
     const settings = await Settings.findOne();
@@ -317,6 +356,8 @@ export const updateBarang = async (req, res) => {
     barang.harga_beli = Math.round(hargaBeli); // Gunakan hargaBeli yang sudah ada di database
     barang.harga_jual = Math.round(hargaJual);
     barang.hargaFinal = Math.round(hargaFinal);
+    // Update stock status field separately; jangan overwrite publish status.
+    barang.status_stok = statusStok;
     // Tidak perlu update total_harga_beli
     barang.gambar_url = gambarUrl;
     // JANGAN update field status dengan status stok! Field status untuk publish/pending
@@ -420,9 +461,10 @@ export const decrementStock = async (req, res) => {
     // Hitung status di backend dengan validasi yang lebih baik
     const status = calculateStatus(newStock, barang.stok_minimal || lowStockAlert);
     
+    // Update hanya stok dan status_stok (pisahkan dari field publish)
     await Barang.findByIdAndUpdate(id, { 
       stok: newStock,
-      status // Update status yang sudah dihitung
+      status_stok: status // Update status_stok yang sudah dihitung
     });
     
     // Update status di Firebase dengan validasi yang lebih baik
@@ -527,3 +569,4 @@ export const publishBarang = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
