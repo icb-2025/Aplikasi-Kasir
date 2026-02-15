@@ -18,6 +18,11 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
   const [newProduk, setNewProduk] = useState<string>('');
   const [newBahanList, setNewBahanList] = useState<Bahan[]>([{ nama: '', harga: 0, jumlah: 1 }]);
 
+  // Fungsi untuk mendapatkan token dari localStorage
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
+
   // Handle tambah field bahan baru
   const handleAddBahanField = () => {
     const newBahan = { nama: '', harga: 0, jumlah: 1 };
@@ -92,11 +97,18 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
         }
         
         // Update produk dengan semua bahan
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/modal-utama/bahan-baku/${produkId}`, {
+        const token = getToken();
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku/${produkId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify({
             nama_produk: newProduk,
             bahan: existingBahan
@@ -113,11 +125,18 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
           bahan: newBahanList
         };
         
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/modal-utama/bahan-baku`, {
+        const token = getToken();
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify(payload),
         });
         

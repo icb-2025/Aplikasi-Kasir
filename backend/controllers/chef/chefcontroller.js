@@ -48,6 +48,7 @@ export const getAllBahanBaku = async (req, res) => {
 export const ambilBahanBaku = async (req, res) => {
   try {
     const { bahan_baku_id, jumlah_diproses } = req.body;
+    const qty = parseInt(jumlah_diproses) || 0;
     const chefId = req.user.id;
 
     // Check if bahan baku exists
@@ -58,7 +59,7 @@ export const ambilBahanBaku = async (req, res) => {
 
     // Check stok - gunakan total_stok dari struktur baru
     const stokTersedia = bahanBaku.total_stok || 0;
-    if (stokTersedia < jumlah_diproses) {
+    if (stokTersedia < qty) {
       return res.status(400).json({ 
         message: `Stok ${bahanBaku.nama} tidak cukup. Stok tersedia: ${stokTersedia}` 
       });
@@ -68,15 +69,15 @@ export const ambilBahanBaku = async (req, res) => {
     const production = new Production({
       bahan_baku_id,
       chef_id: chefId,
-      jumlah_diproses: parseInt(jumlah_diproses),
+      jumlah_diproses: qty,
       status: "pending"
     });
 
     await production.save();
 
     // Kurangi stok bahan baku (update total_stok)
-    bahanBaku.total_stok = Math.max(0, bahanBaku.total_stok - parseInt(jumlah_diproses));
-    await bahanBaku.save();
+    const newTotal = Math.max(0, (bahanBaku.total_stok || 0) - qty);
+    await BahanBaku.updateOne({ _id: bahanBaku._id }, { $set: { total_stok: newTotal } });
 
     // Buat barang baru dari bahan baku yang diambil
     const ModalUtama = (await import("../../models/modalutama.js")).default;
@@ -125,7 +126,7 @@ export const ambilBahanBaku = async (req, res) => {
           margin: 50,
           bahan_baku: [{
             nama_produk: produkData.nama_produk,
-            bahan: (Array.isArray(produk.bahan) ? produk.bahan : []).map(b => ({
+            bahan: (Array.isArray(produkData.bahan) ? produkData.bahan : []).map(b => ({
               nama: b.nama,
               harga: b.harga || 0
             }))
@@ -149,7 +150,7 @@ export const ambilBahanBaku = async (req, res) => {
       message: "Bahan baku berhasil diambil dan produk siap diproses", 
       production,
       jumlah_produk_dibuat: jumlahProduk,
-      stok_tersisa: bahanBaku.total_stok
+      stok_tersisa: typeof newTotal !== 'undefined' ? newTotal : bahanBaku.total_stok
     });
   } catch (error) {
     console.error('Error in ambilBahanBaku:', error);
@@ -181,12 +182,105 @@ export const updateProductionStatus = async (req, res) => {
     if (status === "approved") {
       production.waktu_mulai = new Date(); // Set waktu mulai ketika chef approve
       
-      // Update bahan baku menjadi bahan siap
+      // Update bahan baku menjadi bahan siap (gunakan updateOne untuk menghindari pre-save hook yang reset total_stok)
       if (production.bahan_baku_id) {
-        production.bahan_baku_id.is_bahan_siapp = true;
-        production.bahan_baku_id.chef_id = chefId;
-        production.bahan_baku_id.waktu_proses = new Date();
-        await production.bahan_baku_id.save();
+        await BahanBaku.updateOne(
+          { _id: production.bahan_baku_id._id },
+          {
+            $set: {
+              is_bahan_siapp: true,
+              chef_id: chefId,
+              waktu_proses: new Date()
+            }
+          }
+        );
+      }
+      
+      // Buat barang di stok-barang dengan status 'pending' (jika memungkinkan)
+      try {
+        const ModalUtama = (await import("../../models/modalutama.js")).default;
+        const modalUtama = await ModalUtama.findOne();
+
+        let produkData = null;
+        let totalPorsi = 0;
+
+        if (modalUtama && modalUtama.bahan_baku) {
+          for (const produk of modalUtama.bahan_baku) {
+            if (produk.nama_produk === production.bahan_baku_id?.nama) {
+              produkData = produk;
+              totalPorsi = (Array.isArray(produk.bahan) ? produk.bahan : []).reduce((sum, b) => sum + (b.jumlah || 0), 0);
+              break;
+            }
+          }
+        }
+
+        // Tentukan jumlah produk yang dibuat: jika ada produkData gunakan perhitungan berdasarkan totalPorsi,
+        // jika tidak ada (atau totalPorsi == 0) gunakan jumlah_diproses sebagai stok langsung.
+        const jumlahDiproses = production.jumlah_diproses || 0;
+        let jumlahProduk = 0;
+        if (produkData && totalPorsi > 0) {
+          jumlahProduk = Math.floor(jumlahDiproses / totalPorsi);
+        } else {
+          jumlahProduk = jumlahDiproses;
+        }
+
+        if (jumlahProduk > 0) {
+          const produkNama = produkData ? produkData.nama_produk : (production.bahan_baku_id?.nama || `Produk-${production._id}`);
+
+          // Jika barang sudah ada di stok admin, tambahkan stoknya, jangan buat duplikat
+          const existingBarang = await Barang.findOne({ nama_barang: produkNama });
+
+          if (existingBarang) {
+            existingBarang.stok = (existingBarang.stok || 0) + jumlahProduk;
+            await existingBarang.save();
+            try {
+              const { io } = await import("../../server.js");
+              io.emit("barang:updated", existingBarang);
+            } catch (e) {
+              console.warn('Gagal emit event barang:updated', e.message || e);
+            }
+          } else {
+            // Generate kode barang unik
+            const timestamp = Date.now().toString().slice(-6);
+            const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            const kodeBarang = `BRG${timestamp}${random}`;
+
+            // Buat barang baru dengan data minimal; status default 'pending'
+            const newBarang = new Barang({
+              kode_barang: kodeBarang,
+              nama_barang: produkNama,
+              kategori: "-",
+              harga_beli: 0,
+              harga_jual: 0,
+              stok: jumlahProduk,
+              stok_awal: 0,
+              stok_minimal: 0,
+              margin: 0,
+              bahan_baku: produkData ? [{
+                nama_produk: produkData.nama_produk,
+                bahan: (Array.isArray(produkData.bahan) ? produkData.bahan : []).map(b => ({
+                  nama: b.nama,
+                  harga: b.harga || 0
+                }))
+              }] : [],
+              total_harga_beli: 0,
+              hargaFinal: 0,
+              use_discount: false,
+              gambar_url: "",
+              status: "pending"
+            });
+
+            await newBarang.save();
+            try {
+              const { io } = await import("../../server.js");
+              io.emit("barang:created", newBarang);
+            } catch (e) {
+              console.warn('Gagal emit event barang:created', e.message || e);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error creating barang on approve:', err);
       }
     } else if (status === "cancelled") {
       production.waktu_selesai = new Date();

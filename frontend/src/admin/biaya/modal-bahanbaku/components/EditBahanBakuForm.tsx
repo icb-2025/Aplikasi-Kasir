@@ -22,6 +22,11 @@ const EditBahanBakuForm: React.FC<EditBahanBakuFormProps> = ({
   const [editBahanData, setEditBahanData] = useState<Bahan>({ nama: '', harga: 0, jumlah: 1 });
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  // Fungsi untuk mendapatkan token dari localStorage
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
+
   useEffect(() => {
     setEditBahanData(bahan);
   }, [bahan]);
@@ -54,7 +59,7 @@ const EditBahanBakuForm: React.FC<EditBahanBakuFormProps> = ({
 
       // Logging untuk debugging
       const produkId = produk._id || '';
-      const apiUrl = `${ipbe}:${portbe}/api/admin/modal-utama/bahan-baku/${produkId}`;
+      const apiUrl = `${ipbe}:${portbe}/api/admin/bahan-baku/${produkId}`;
       console.log('API URL:', apiUrl);
       console.log('Request data:', {
         nama_produk: produk.nama_produk,
@@ -62,11 +67,18 @@ const EditBahanBakuForm: React.FC<EditBahanBakuFormProps> = ({
       });
       
       // Kirim update ke API - update seluruh produk
+      const token = getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(apiUrl, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           nama_produk: produk.nama_produk,
           bahan: updatedBahanList

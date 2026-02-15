@@ -31,13 +31,10 @@ export const createBahanBaku = async (req, res) => {
       }
     }
 
-    // Hitung total_stok dari jumlah semua bahan
-    const total_stok = bahan.reduce((sum, item) => sum + item.jumlah, 0);
-
+    // Buat dokumen baru, pre-save hook otomatis menghitung total_stok, total_harga, modal_per_porsi
     const bahanBaku = new BahanBaku({
       nama: nama_produk,
-      bahan,
-      total_stok,
+      bahan
     });
 
     await bahanBaku.save();
@@ -69,22 +66,14 @@ export const updateBahanBaku = async (req, res) => {
       }
     }
 
-    // Hitung total_stok dari jumlah semua bahan
-    const total_stok = bahan.reduce((sum, item) => sum + item.jumlah, 0);
+    // Gunakan findById + save() supaya pre-save hook jalan
+    const bahanBaku = await BahanBaku.findById(id);
+    if (!bahanBaku) return res.status(404).json({ message: "Bahan baku tidak ditemukan" });
 
-    const bahanBaku = await BahanBaku.findByIdAndUpdate(
-      id,
-      {
-        nama: nama_produk,
-        bahan,
-        total_stok,
-      },
-      { new: true }
-    );
+    bahanBaku.nama = nama_produk;
+    bahanBaku.bahan = bahan;
 
-    if (!bahanBaku) {
-      return res.status(404).json({ message: "Bahan baku tidak ditemukan" });
-    }
+    await bahanBaku.save(); // pre-save hook otomatis menghitung total_harga & modal_per_porsi
 
     res.json({ message: "Bahan baku berhasil diperbarui", bahanBaku });
   } catch (error) {
@@ -113,15 +102,12 @@ export const updateBahanBakuStatus = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const bahanBaku = await BahanBaku.findByIdAndUpdate(
-      id,
-      {},
-      { new: true }
-    );
+    const bahanBaku = await BahanBaku.findById(id);
+    if (!bahanBaku) return res.status(404).json({ message: "Bahan baku tidak ditemukan" });
 
-    if (!bahanBaku) {
-      return res.status(404).json({ message: "Bahan baku tidak ditemukan" });
-    }
+    // Bisa tambah logic status publish/pending di sini
+    // contoh: bahanBaku.status = req.body.status;
+    // await bahanBaku.save();
 
     res.json({ message: "Status bahan baku berhasil diperbarui", bahanBaku });
   } catch (error) {

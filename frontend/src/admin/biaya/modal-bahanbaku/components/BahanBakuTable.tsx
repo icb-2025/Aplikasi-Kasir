@@ -89,7 +89,7 @@ const BahanBakuTable: React.FC<BahanBakuTableProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-blue-50 p-3 rounded-lg">
                     <p className="text-xs text-blue-600 font-medium">Total Harga Bahan</p>
-                    <p className="font-semibold">Rp {produk.total_harga_bahan?.toLocaleString('id-ID') || '0'}</p>
+                    <p className="font-semibold">Rp {produk.total_harga?.toLocaleString('id-ID') || '0'}</p>
                   </div>
                   <div className="bg-green-50 p-3 rounded-lg">
                     <p className="text-xs text-green-600 font-medium">Total Porsi</p>
@@ -139,7 +139,7 @@ const BahanBakuTable: React.FC<BahanBakuTableProps> = ({
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <p className="text-sm text-blue-600 font-medium">Total Harga Bahan</p>
-                  <p className="text-lg font-bold">Rp {selectedProduk.total_harga_bahan?.toLocaleString('id-ID') || '0'}</p>
+                  <p className="text-lg font-bold">Rp {selectedProduk.total_harga?.toLocaleString('id-ID') || '0'}</p>
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg">
                   <p className="text-sm text-green-600 font-medium">Total Porsi</p>
@@ -157,16 +157,13 @@ const BahanBakuTable: React.FC<BahanBakuTableProps> = ({
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Bahan
+                        Nama Bahan
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Harga
+                        Harga Per Porsi
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Stok
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Harga per Porsi
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Aksi
@@ -175,12 +172,6 @@ const BahanBakuTable: React.FC<BahanBakuTableProps> = ({
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {Array.isArray(selectedProduk.bahan) && selectedProduk.bahan.map((bahan, bahanIndex) => {
-                      const bahanDenganHargaPorsi = Array.isArray(selectedProduk.bahan_dengan_harga_porsi) && 
-                                                selectedProduk.bahan_dengan_harga_porsi[bahanIndex];
-                      
-                      const hasHargaPorsi = bahanDenganHargaPorsi && 
-                                           typeof bahanDenganHargaPorsi === 'object' && 
-                                           'harga_porsi' in bahanDenganHargaPorsi;
                       
                       return (
                         <tr key={bahan._id || bahan.nama}>
@@ -192,11 +183,6 @@ const BahanBakuTable: React.FC<BahanBakuTableProps> = ({
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{bahan.jumlah}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {hasHargaPorsi 
-                              ? `Rp ${(bahanDenganHargaPorsi as {harga_porsi: number}).harga_porsi.toLocaleString('id-ID')}`
-                              : '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex items-center space-x-2">

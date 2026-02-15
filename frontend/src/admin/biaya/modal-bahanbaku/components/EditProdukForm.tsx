@@ -17,6 +17,11 @@ const EditProdukForm: React.FC<EditProdukFormProps> = ({
 }) => {
   const [editProdukData, setEditProdukData] = useState<ProdukBahan>(produk);
 
+  // Fungsi untuk mendapatkan token dari localStorage
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
+
   // Handle update produk
   const handleUpdateProduk = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,11 +42,18 @@ const EditProdukForm: React.FC<EditProdukFormProps> = ({
       // Pastikan bahan adalah array
       const bahanList = Array.isArray(editProdukData.bahan) ? [...editProdukData.bahan] : [];
       
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/modal-utama/bahan-baku/${produkId}`, {
+      const token = getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku/${produkId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           nama_produk: editProdukData.nama_produk,
           bahan: bahanList
@@ -118,7 +130,7 @@ const EditProdukForm: React.FC<EditProdukFormProps> = ({
                 Produk ini memiliki {Array.isArray(editProdukData.bahan) ? editProdukData.bahan.length : 0} bahan
               </p>
               <p className="text-sm text-blue-700 mt-1">
-                Total Harga Bahan: Rp {editProdukData.total_harga_bahan?.toLocaleString('id-ID') || '0'}
+                Total Harga Bahan: Rp {editProdukData.total_harga?.toLocaleString('id-ID') || '0'}
               </p>
             </div>
           </div>

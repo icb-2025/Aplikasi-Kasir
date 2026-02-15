@@ -25,7 +25,7 @@ export interface ProdukBahan {
   _id?: string;
   margin?: number;
   bahan_dengan_harga_porsi?: Bahan[];
-  total_harga_bahan?: number;
+  total_harga?: number;
   total_porsi?: number;
   modal_per_porsi?: number;
   harga_jual_per_porsi?: number;
@@ -65,20 +65,52 @@ const ModalBahanBaku: React.FC = () => {
   const [editingBahan, setEditingBahan] = useState<{produkIndex: number, bahanIndex: number} | null>(null);
   const [editBahanData, setEditBahanData] = useState<Bahan>({ nama: '', harga: 0, jumlah: 1 });
 
+  // Fungsi untuk mendapatkan token dari localStorage
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
+
   // Fetch data bahan baku dari API
   useEffect(() => {
     const fetchBahanBaku = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/modal-utama`);
+        const token = getToken();
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+        
+        // Tambahkan token ke header jika ada
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        // Fetch dari endpoint bahan-baku yang memiliki field total_harga, modal_per_porsi
+        const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku`, {
+          headers
+        });
         
         if (!response.ok) {
           throw new Error('Gagal memuat data bahan baku');
         }
         
-        const data: ModalUtamaResponse = await response.json();
-        // Pastikan bahan_baku adalah array
-        const bahanBakuData = Array.isArray(data.bahan_baku) ? data.bahan_baku : [];
+        const data = await response.json() as Array<{
+          _id: string;
+          nama: string;
+          bahan: Bahan[];
+          total_harga?: number;
+          total_stok?: number;
+          modal_per_porsi?: number;
+        }>;
+        // Transform data dari koleksi BahanBaku ke format ProdukBahan
+        const bahanBakuData: ProdukBahan[] = (Array.isArray(data) ? data : []).map(item => ({
+          _id: item._id,
+          nama_produk: item.nama,
+          bahan: item.bahan || [],
+          total_harga: item.total_harga || 0,
+          total_porsi: item.total_stok || 0,
+          modal_per_porsi: item.modal_per_porsi || 0
+        }));
         setBahanBaku(bahanBakuData);
         setLoading(false);
       } catch (err) {
@@ -98,15 +130,41 @@ const ModalBahanBaku: React.FC = () => {
   // Refresh data dari server
   const refreshData = async () => {
     try {
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/modal-utama`);
+      const token = getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Tambahkan token ke header jika ada
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku`, {
+        headers
+      });
       
       if (!response.ok) {
         throw new Error('Gagal memperbarui data');
       }
       
-      const data: ModalUtamaResponse = await response.json();
-      // Pastikan bahan_baku adalah array
-      const bahanBakuData = Array.isArray(data.bahan_baku) ? data.bahan_baku : [];
+      const data = await response.json() as Array<{
+        _id: string;
+        nama: string;
+        bahan: Bahan[];
+        total_harga?: number;
+        total_stok?: number;
+        modal_per_porsi?: number;
+      }>;
+      // Transform data dari koleksi BahanBaku ke format ProdukBahan
+      const bahanBakuData: ProdukBahan[] = (Array.isArray(data) ? data : []).map(item => ({
+        _id: item._id,
+        nama_produk: item.nama,
+        bahan: item.bahan || [],
+        total_harga: item.total_harga || 0,
+        total_porsi: item.total_stok || 0,
+        modal_per_porsi: item.modal_per_porsi || 0
+      }));
       setBahanBaku(bahanBakuData);
     } catch (err) {
       const error = err as ApiError;
@@ -125,13 +183,20 @@ const ModalBahanBaku: React.FC = () => {
     try {
       const produk = bahanBaku[produkIndex];
       const produkId = produk._id || '';
+      const token = getToken();
       
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/modal-utama/bahan-baku/${produkId}`, {
+      // Gunakan endpoint /api/admin/bahan-baku/:id untuk hapus dengan Authorization header
+      const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku/${produkId}`, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       
       if (!response.ok) {
-        throw new Error('Gagal menghapus produk');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal menghapus produk');
       }
       
       // Update state
@@ -151,7 +216,7 @@ const ModalBahanBaku: React.FC = () => {
       Swal.fire({
         icon: 'error',
         title: 'Gagal',
-        text: error.response?.data?.message || error.message || 'Gagal menghapus produk',
+        text: error.message || error.response?.data?.message || 'Gagal menghapus produk',
         confirmButtonColor: '#3b82f6'
       });
     }
@@ -161,19 +226,10 @@ const ModalBahanBaku: React.FC = () => {
   const handleDeleteBahan = async (produkIndex: number, bahanIndex: number) => {
     try {
       const produk = bahanBaku[produkIndex];
-      const bahan = produk.bahan[bahanIndex];
       const produkId = produk._id || '';
-      const bahanId = bahan._id || '';
+      const token = getToken();
       
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/modal-utama/bahan-baku/${produkId}/bahan/${bahanId}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Gagal menghapus bahan');
-      }
-      
-      // Update state
+      // Update state lokal terlebih dahulu dengan menghapus bahan dari array
       const updatedBahanBaku = [...bahanBaku];
       
       // Pastikan bahan adalah array
@@ -183,6 +239,37 @@ const ModalBahanBaku: React.FC = () => {
         // Jika produk tidak memiliki bahan lagi, hapus produk juga
         if (updatedBahanBaku[produkIndex].bahan.length === 0) {
           updatedBahanBaku.splice(produkIndex, 1);
+          // Hapus produk keseluruhan
+          const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku/${produkId}`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            }
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Gagal menghapus bahan');
+          }
+        } else {
+          // Update produk dengan bahan yang sudah dihapus
+          const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku/${produkId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+              nama_produk: updatedBahanBaku[produkIndex].nama_produk,
+              bahan: updatedBahanBaku[produkIndex].bahan
+            }),
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Gagal menghapus bahan');
+          }
         }
       }
       
@@ -200,7 +287,7 @@ const ModalBahanBaku: React.FC = () => {
       Swal.fire({
         icon: 'error',
         title: 'Gagal',
-        text: error.response?.data?.message || error.message || 'Gagal menghapus bahan',
+        text: error.message || error.response?.data?.message || 'Gagal menghapus bahan',
         confirmButtonColor: '#3b82f6'
       });
     }
