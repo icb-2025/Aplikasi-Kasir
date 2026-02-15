@@ -567,10 +567,11 @@ const handleEdit = (id: string) => {
       SweetAlert.error("Nama barang harus diisi");
       return false;
     }
-    if (!formData.kategori) {
-      SweetAlert.error("Kategori harus dipilih");
-      return false;
-    }
+    // Kategori bisa kosong untuk barang yang baru dibuat dari chef (akan diisi admin kemudian)
+    // if (!formData.kategori) {
+    //   SweetAlert.error("Kategori harus dipilih");
+    //   return false;
+    // }
     if (!formData.hargaBeli || isNaN(Number(formData.hargaBeli)) || Number(formData.hargaBeli) <= 0) {
       SweetAlert.error("Harga beli harus berupa angka yang valid");
       return false;
@@ -583,10 +584,11 @@ const handleEdit = (id: string) => {
       SweetAlert.error("Stok harus berupa angka yang valid");
       return false;
     }
-    if (!isEditing && !formData.gambar) {
-      SweetAlert.error("Gambar barang harus diunggah untuk barang baru");
-      return false;
-    }
+    // Gambar bisa kosong untuk barang yang baru dibuat dari chef (akan diupload admin kemudian)
+    // if (!isEditing && !formData.gambar) {
+    //   SweetAlert.error("Gambar barang harus diunggah untuk barang baru");
+    //   return false;
+    // }
     return true;
   };
 

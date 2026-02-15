@@ -223,27 +223,39 @@ export const updateProductionStatus = async (req, res) => {
         let produkData = null;
         let totalPorsi = 0;
 
+        console.log("🔍 DEBUG updateProductionStatus:");
+        console.log("   production._id:", production._id);
+        console.log("   production.jumlah_diproses:", production.jumlah_diproses);
+        console.log("   production.bahan_baku_id?.nama:", production.bahan_baku_id?.nama);
+        console.log("   production.bahan_baku_id?.modal_per_porsi:", production.bahan_baku_id?.modal_per_porsi);
+        console.log("   modalUtama bahan_baku count:", modalUtama?.bahan_baku?.length);
+
         if (modalUtama && modalUtama.bahan_baku) {
+          console.log("   Searching for produk with nama:", production.bahan_baku_id?.nama);
           for (const produk of modalUtama.bahan_baku) {
+            console.log("     - Comparing:", produk.nama_produk, "===", production.bahan_baku_id?.nama, "?", produk.nama_produk === production.bahan_baku_id?.nama);
             if (produk.nama_produk === production.bahan_baku_id?.nama) {
               produkData = produk;
               totalPorsi = (Array.isArray(produk.bahan) ? produk.bahan : []).reduce((sum, b) => sum + (b.jumlah || 0), 0);
+              console.log("   ✅ Produk found! totalPorsi:", totalPorsi);
               break;
             }
           }
+          if (!produkData) {
+            console.log("   ❌ Produk NOT found dalam ModalUtama");
+          }
+        } else {
+          console.log("   ⚠️  ModalUtama atau bahan_baku kosong");
         }
 
-        // Tentukan jumlah produk yang dibuat: jika ada produkData gunakan perhitungan berdasarkan totalPorsi,
-        // jika tidak ada (atau totalPorsi == 0) gunakan jumlah_diproses sebagai stok langsung.
+        // Tentukan jumlah produk yang dibuat: gunakan jumlah_diproses langsung (tidak perlu bagi dengan totalPorsi)
+        // totalPorsi di sini adalah untuk referensi, tapi jumlah_diproses sudah final
         const jumlahDiproses = production.jumlah_diproses || 0;
-        let jumlahProduk = 0;
-        if (produkData && totalPorsi > 0) {
-          jumlahProduk = Math.floor(jumlahDiproses / totalPorsi);
-        } else {
-          jumlahProduk = jumlahDiproses;
-        }
+        let jumlahProduk = jumlahDiproses; // Langsung gunakan jumlah_diproses sebagai stok
+        console.log("   Using jumlahDiproses directly as jumlahProduk:", jumlahProduk, "(totalPorsi ref:", totalPorsi, ")");
 
         if (jumlahProduk > 0) {
+          console.log("   ✅ jumlahProduk > 0, creating/updating barang...");
           const produkNama = produkData ? produkData.nama_produk : (production.bahan_baku_id?.nama || `Produk-${production._id}`);
 
           // Jika barang sudah ada di stok admin, tambahkan stoknya, jangan buat duplikat
@@ -304,17 +316,41 @@ export const updateProductionStatus = async (req, res) => {
             const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
             const kodeBarang = `BRG${timestamp}${random}`;
 
-            // Buat barang baru dengan data minimal; status default 'pending'
+            // Ambil modal_per_porsi dari bahan baku yang di-approve
+            const modalPerPorsi = production.bahan_baku_id?.modal_per_porsi || 0;
+            
+            // Hitung harga jual dengan margin default 35%
+            const defaultMargin = 35;
+            let hargaJual = 0;
+            if (modalPerPorsi > 0) {
+              const denom = 1 - (defaultMargin / 100);
+              hargaJual = Math.round(modalPerPorsi / denom);
+            }
+
+            // Ambil pengaturan pajak, diskon, dan biaya layanan dari Settings
+            const Settings = (await import("../../models/settings.js")).default;
+            const settings = await Settings.findOne();
+            const taxRate = settings?.taxRate ?? 0;
+            const globalDiscount = settings?.globalDiscount ?? 0;
+            const serviceCharge = settings?.serviceCharge ?? 0;
+            const discountRate = globalDiscount || 0;
+
+            // Hitung harga final (harga jual + pajak + biaya - diskon)
+            const hargaSetelahDiskon = hargaJual - (hargaJual * discountRate / 100);
+            const hargaSetelahPajak = hargaSetelahDiskon + (hargaSetelahDiskon * taxRate / 100);
+            const hargaFinal = hargaSetelahPajak + (hargaSetelahPajak * serviceCharge / 100);
+
+            // Buat barang baru dengan data dari bahan baku yang di-approve; status default 'pending'
             const newBarang = new Barang({
               kode_barang: kodeBarang,
               nama_barang: produkNama,
-              kategori: "-",
-              harga_beli: 0,
-              harga_jual: 0,
+              kategori: "Defaults", // Default kategori, admin bisa ubah kemudian
+              harga_beli: Math.round(modalPerPorsi),
+              harga_jual: hargaJual,
               stok: jumlahProduk,
               stok_awal: 0,
               stok_minimal: 0,
-              margin: 0,
+              margin: defaultMargin,
               bahan_baku: produkData ? [{
                 nama_produk: produkData.nama_produk,
                 bahan: (Array.isArray(produkData.bahan) ? produkData.bahan : []).map(b => ({
@@ -322,10 +358,10 @@ export const updateProductionStatus = async (req, res) => {
                   harga: b.harga || 0
                 }))
               }] : [],
-              total_harga_beli: 0,
-              hargaFinal: 0,
+              total_harga_beli: Math.round(modalPerPorsi * jumlahProduk),
+              hargaFinal: Math.round(hargaFinal),
               use_discount: false,
-              gambar_url: "",
+              gambar_url: "", // Gambar kosong, admin harus upload manual
               // Tetap set `status` untuk backward compat; tambah `status_publish` dan `status_stok`
               status: "pending",
               status_publish: "pending",
@@ -361,7 +397,8 @@ export const updateProductionStatus = async (req, res) => {
           }
         }
       } catch (err) {
-        console.error('Error creating barang on approve:', err);
+        console.error('❌ Error creating barang on approve:', err);
+        console.error('   Error message:', err.message);
       }
     } else if (status === "cancelled") {
       production.waktu_selesai = new Date();
