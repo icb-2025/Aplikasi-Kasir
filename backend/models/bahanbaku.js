@@ -9,6 +9,7 @@ const bahanBakuSchema = new Schema(
     bahan: [
       {
         nama: { type: String, required: true },
+        satuan: { type: String, required: false, default: '' },
         harga: { type: Number, required: true },
         jumlah: { type: Number, required: true }
       }

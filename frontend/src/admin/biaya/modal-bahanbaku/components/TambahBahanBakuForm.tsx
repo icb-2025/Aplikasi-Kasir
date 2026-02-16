@@ -1,8 +1,27 @@
-import React, { useState } from 'react';
+// src/admin/bahan-baku/TambahBahanBakuForm.tsx
+
+import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { portbe } from '../../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
-import type { ProdukBahan, Bahan } from '../index';
+import type { ProdukBahan } from '../index';
+
+// Definisikan tipe Bahan secara lokal di sini untuk memastikan inklusi 'satuan'
+interface Bahan {
+  nama: string;
+  satuan: string; // Tambahkan field satuan
+  harga: number;
+  jumlah: number;
+}
+
+interface DataSatuan {
+  _id?: string;
+  nama: string;
+  kode: string;
+  tipe?: string;
+  deskripsi?: string;
+  isActive?: boolean;
+}
 
 interface TambahBahanBakuFormProps {
   bahanBaku: ProdukBahan[];
@@ -16,20 +35,41 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
   refreshData
 }) => {
   const [newProduk, setNewProduk] = useState<string>('');
-  const [newBahanList, setNewBahanList] = useState<Bahan[]>([{ nama: '', harga: 0, jumlah: 1 }]);
+  // Perbarui state awal untuk menyertakan field 'satuan'
+  const [newBahanList, setNewBahanList] = useState<Bahan[]>([{ nama: '', satuan: '', harga: 0, jumlah: 1 }]);
+  const [satuanOptions, setSatuanOptions] = useState<{ nama: string; kode: string }[]>([]);
 
-  // Fungsi untuk mendapatkan token dari localStorage
+  useEffect(() => {
+    const fetchSatuan = async () => {
+      try {
+        const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan`);
+        if (!res.ok) return;
+        const json = await res.json();
+        if (Array.isArray(json)) {
+          const data = json as DataSatuan[];
+          const opts = data.map((s) => ({ nama: s.nama, kode: s.kode }));
+          setSatuanOptions(opts);
+          // set default on initial bahan if empty
+          setNewBahanList(prev => prev.map(b => ({ ...b, satuan: b.satuan || (opts[0]?.kode || '') })));
+        }
+      } catch (err) {
+        console.error('fetch satuan options', err);
+      }
+    };
+    fetchSatuan();
+  }, []);
+
   const getToken = () => {
     return localStorage.getItem('token');
   };
 
-  // Handle tambah field bahan baru
   const handleAddBahanField = () => {
-    const newBahan = { nama: '', harga: 0, jumlah: 1 };
+    // Tambahkan field 'satuan' saat menambah bahan baru
+    const defaultSatuan = satuanOptions.length ? satuanOptions[0].kode : '';
+    const newBahan = { nama: '', satuan: defaultSatuan, harga: 0, jumlah: 1 };
     setNewBahanList(prevList => [...prevList, newBahan]);
   };
 
-  // Handle hapus field bahan
   const handleRemoveBahanField = (index: number) => {
     if (newBahanList.length > 1) {
       const updatedList = [...newBahanList];
@@ -38,7 +78,6 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
     }
   };
 
-  // Handle perubahan data bahan
   const handleBahanChange = (index: number, field: keyof Bahan, value: string | number) => {
     const updatedList = [...newBahanList];
     updatedList[index] = {
@@ -48,7 +87,6 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
     setNewBahanList(updatedList);
   };
 
-  // Handle tambah bahan baku baru
   const handleAddBahanBaku = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -62,13 +100,13 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
       return;
     }
 
-    // Validasi semua bahan
+    // Perbarui validasi untuk memeriksa field 'satuan'
     for (const bahan of newBahanList) {
-      if (!bahan.nama || bahan.harga <= 0 || bahan.jumlah <= 0) {
+      if (!bahan.nama || !bahan.satuan || bahan.harga <= 0 || bahan.jumlah <= 0) {
         Swal.fire({
           icon: 'warning',
           title: 'Validasi Gagal',
-          text: 'Semua field bahan harus diisi dengan benar',
+          text: 'Semua field bahan (nama, satuan, harga, jumlah) harus diisi dengan benar',
           confirmButtonColor: '#3b82f6'
         });
         return;
@@ -76,27 +114,29 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
     }
 
     try {
-      // Cek apakah produk sudah ada
+      // Ensure payload bahan items always have satuan (fallback to first kode)
+      if (satuanOptions.length) {
+        newBahanList.forEach((b, i) => {
+          if (!b.satuan) newBahanList[i].satuan = satuanOptions[0].kode;
+        });
+      }
       const existingProdukIndex = bahanBaku.findIndex(p => p.nama_produk === newProduk);
       
       if (existingProdukIndex !== -1) {
-        // Produk sudah ada, tambahkan bahan-bahan baru ke produk tersebut
         const existingProduk = bahanBaku[existingProdukIndex];
         const produkId = existingProduk._id || '';
-        
-        // Pastikan existingProduk.bahan adalah array
         const existingBahan = Array.isArray(existingProduk.bahan) ? [...existingProduk.bahan] : [];
         
-        // Tambahkan setiap bahan baru satu per satu
+        // Pastikan untuk menambahkan 'satuan' ke bahan yang ada
         for (const bahan of newBahanList) {
           existingBahan.push({
             nama: bahan.nama,
+            satuan: bahan.satuan, // Kirim satuan
             harga: bahan.harga,
             jumlah: bahan.jumlah
           });
         }
         
-        // Update produk dengan semua bahan
         const token = getToken();
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
@@ -119,10 +159,9 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
           throw new Error('Gagal memperbarui produk');
         }
       } else {
-        // Produk baru - kirim semua bahan dalam satu request
         const payload = {
           nama_produk: newProduk,
-          bahan: newBahanList
+          bahan: newBahanList // Payload sekarang sudah termasuk 'satuan' (kode)
         };
         
         const token = getToken();
@@ -146,12 +185,11 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
         }
       }
 
-      // Refresh data dari server
       await refreshData();
       
-      // Reset form
+      // Reset form untuk menyertakan 'satuan'
       setNewProduk('');
-      setNewBahanList([{ nama: '', harga: 0, jumlah: 1 }]);
+      setNewBahanList([{ nama: '', satuan: '', harga: 0, jumlah: 1 }]);
       setShowAddForm(false);
       
       Swal.fire({
@@ -173,8 +211,9 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
   };
 
   return (
+    // PERUBAHAN: Tingkatkan lebar maksimum form dari max-w-2xl menjadi max-w-5xl
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-auto max-h-[95vh] overflow-hidden border border-gray-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-auto max-h-[95vh] overflow-hidden border border-gray-200">
         {/* Header */}
         <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center justify-between">
@@ -209,7 +248,6 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
                 required
               />
               
-              {/* Tampilkan produk yang sudah ada */}
               {bahanBaku.length > 0 && (
                 <div className="mt-2">
                   <p className="text-xs text-gray-500 mb-1">Produk yang sudah ada:</p>
@@ -252,7 +290,7 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
                 {newBahanList.map((bahan, index) => (
                   <div key={index} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                     <div className="flex justify-between items-center mb-3">
-                      <h3 className="font-medium text-gray-800">Bahan #{index + 1}</h3>
+                      <h3 className="font-medium text-gray-800">Bahan {index + 1}</h3>
                       {newBahanList.length > 1 && (
                         <button
                           type="button"
@@ -266,7 +304,8 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
                       )}
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* PERUBAHAN: Ubah grid menjadi 4 kolom agar semua field sejajar */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <label className="block text-xs font-medium text-gray-600">Nama Bahan</label>
                         <input
@@ -279,7 +318,21 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-medium text-gray-600">Harga</label>
+                        <label className="block text-xs font-medium text-gray-600">Satuan</label>
+                        <select
+                          value={bahan.satuan}
+                          onChange={(e) => handleBahanChange(index, 'satuan', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white text-sm"
+                          required
+                        >
+                          <option value="">Pilih satuan...</option>
+                          {satuanOptions.map((opt) => (
+                            <option key={opt.kode} value={opt.kode}>{opt.nama} ({opt.kode})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-medium text-gray-600">Harga Per Satuan</label>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">Rp</span>
                           <input
@@ -294,7 +347,7 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-xs font-medium text-gray-600">Jumlah</label>
+                        <label className="block text-xs font-medium text-gray-600">Stok</label>
                         <input
                           type="number"
                           value={bahan.jumlah || ''}

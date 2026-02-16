@@ -30,6 +30,7 @@ import adminbiayalayanan from "./routes/admin/biayalayanan.js"
 import adminmodalutama from "./routes/admin/modalutama.js"
 import adminhpptotal from "./routes/admin/hpptotal.js"
 import adminBahanBaku from "./routes/admin/bahanbaku.js";
+import adminDataSatuan from "./routes/admin/datasatuanRoutes.js";
 import chefRoutes from "./routes/chef/chef.js";
 import userAuth from "./middleware/user.js";
 import session from "express-session";
@@ -88,6 +89,7 @@ app.use("/api/admin/biaya-layanan", adminbiayalayanan)
 app.use("/api/admin/modal-utama", adminmodalutama)
 app.use("/api/admin/hpp-total", adminhpptotal)
 app.use("/api/admin/bahan-baku", adminBahanBaku)
+app.use("/api/admin/data-satuan", adminDataSatuan)
 
 // chef
 app.use("/api/chef", chefRoutes);

@@ -6,13 +6,16 @@ import BahanBakuTable from './components/BahanBakuTable';
 import TambahBahanBakuForm from './components/TambahBahanBakuForm';
 import EditProdukForm from './components/EditProdukForm';
 import EditBahanBakuForm from './components/EditBahanBakuForm';
-import { Plus } from 'lucide-react'; // Tambahkan Edit dan Trash2
+import Tabs from './components/tabs';
+import SatuanTabs from './Data-Satuan/SatuanTabs'
+import { Plus } from 'lucide-react';
 import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
 export interface Bahan {
   nama: string;
   harga: number;
+  satuan: string;
   jumlah: number;
   _id?: string;
   id?: string;
@@ -63,8 +66,12 @@ const ModalBahanBaku: React.FC = () => {
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [editingProduk, setEditingProduk] = useState<ProdukBahan | null>(null);
   const [editingBahan, setEditingBahan] = useState<{produkIndex: number, bahanIndex: number} | null>(null);
-  const [editBahanData, setEditBahanData] = useState<Bahan>({ nama: '', harga: 0, jumlah: 1 });
-
+  const [editBahanData, setEditBahanData] = useState<Bahan>({ nama: '', satuan: '', harga: 0, jumlah: 1 });
+  const [activeTab, setActiveTab] = useState<string>('BahanBaku');
+  const [showAddSatuanForm, setShowAddSatuanForm] = useState<boolean>(false);
+  const pageTitle = activeTab === 'BahanBaku' ? 'Modal Bahan Baku' : 'Data Satuan';
+  const isFormVisible = activeTab === 'BahanBaku' ? showAddForm : showAddSatuanForm;
+  const buttonText = isFormVisible ? 'Batal' : `Tambah ${activeTab === 'BahanBaku' ? 'Bahan Baku' : 'Satuan'}`;
   // Fungsi untuk mendapatkan token dari localStorage
   const getToken = () => {
     return localStorage.getItem('token');
@@ -329,9 +336,18 @@ const ModalBahanBaku: React.FC = () => {
     }
   };
 
+  const handleButtonClick = () => {
+    if (activeTab === 'BahanBaku') {
+      setShowAddForm(!showAddForm);
+    } else {
+      setShowAddSatuanForm(!showAddSatuanForm);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6">
+        <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
         <h1 className="text-2xl font-bold mb-6">Modal Bahan Baku</h1>
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-center items-center h-64">
@@ -345,6 +361,7 @@ const ModalBahanBaku: React.FC = () => {
   if (error) {
     return (
       <div className="p-6">
+        <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
         <h1 className="text-2xl font-bold mb-6">Modal Bahan Baku</h1>
         <div className="bg-white rounded-lg shadow p-6">
           <div className="bg-red-50 border border-red-200 rounded-md p-4">
@@ -362,53 +379,67 @@ const ModalBahanBaku: React.FC = () => {
 
   return (
     <div className="p-6">
+      {/* Tambahkan komponen Tabs di sini */}
+      <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
+      
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Modal Bahan Baku</h1>
+        {/* Gunakan variabel pageTitle */}
+        <h1 className="text-2xl font-bold">{pageTitle}</h1>
         <button 
-          onClick={() => setShowAddForm(!showAddForm)}
+          onClick={handleButtonClick}
           className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition flex items-center"
         >
           <Plus className="h-5 w-5 mr-2" />
-          {showAddForm ? 'Batal' : 'Tambah Bahan Baku'}
+          {/* Gunakan variabel buttonText */}
+          {buttonText}
         </button>
       </div>
 
-      {/* Form Tambah Bahan Baku */}
-      {showAddForm && (
-        <TambahBahanBakuForm 
-          bahanBaku={bahanBaku}
-          setShowAddForm={setShowAddForm}
-          refreshData={refreshData}
-        />
-      )}
+      {/* Tampilkan konten berdasarkan tab yang aktif */}
+      {activeTab === 'BahanBaku' && (
+        <>
+          {/* Form Tambah Bahan Baku */}
+          {showAddForm && (
+            <TambahBahanBakuForm 
+              bahanBaku={bahanBaku}
+              setShowAddForm={setShowAddForm}
+              refreshData={refreshData}
+            />
+          )}
 
-      {/* Form Edit Produk */}
-      {editingProduk && (
-        <EditProdukForm 
-          produk={editingProduk}
-          setEditingProduk={setEditingProduk}
-          refreshData={refreshData}
-        />
-      )}
+          {/* Form Edit Produk */}
+          {editingProduk && (
+            <EditProdukForm 
+              produk={editingProduk}
+              setEditingProduk={setEditingProduk}
+              refreshData={refreshData}
+            />
+          )}
 
-      {/* Form Edit Bahan - PERBAIKAN DI SINI */}
-      {editingBahan && (
-        <EditBahanBakuForm 
-          bahan={editBahanData}
-          produk={bahanBaku[editingBahan.produkIndex]}
-          bahanIndex={editingBahan.bahanIndex}
-          setEditingBahan={setEditingBahan}
-          refreshData={refreshData}
-        />
-      )}
+          {/* Form Edit Bahan - PERBAIKAN DI SINI */}
+          {editingBahan && (
+            <EditBahanBakuForm 
+              bahan={editBahanData}
+              produk={bahanBaku[editingBahan.produkIndex]}
+              bahanIndex={editingBahan.bahanIndex}
+              setEditingBahan={setEditingBahan}
+              refreshData={refreshData}
+            />
+          )}
 
-      {/* Tabel Bahan Baku */}
-      <BahanBakuTable 
-        bahanBaku={bahanBaku}
-        setEditingProduk={setEditingProduk}
-        openEditBahanForm={openEditBahanForm}
-        showDeleteConfirmation={showDeleteConfirmation}
-      />
+          {/* Tabel Bahan Baku */}
+          <BahanBakuTable 
+            bahanBaku={bahanBaku}
+            setEditingProduk={setEditingProduk}
+            openEditBahanForm={openEditBahanForm}
+            showDeleteConfirmation={showDeleteConfirmation}
+          />
+        </>
+      )}
+      
+      {activeTab === 'Satuan' && (
+        <SatuanTabs showAddForm={showAddSatuanForm} setShowAddForm={setShowAddSatuanForm} />
+      )}
     </div>
   );
 };

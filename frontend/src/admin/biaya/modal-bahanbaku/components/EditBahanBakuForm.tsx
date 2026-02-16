@@ -19,8 +19,18 @@ const EditBahanBakuForm: React.FC<EditBahanBakuFormProps> = ({
   setEditingBahan,
   refreshData
 }) => {
-  const [editBahanData, setEditBahanData] = useState<Bahan>({ nama: '', harga: 0, jumlah: 1 });
+  const [editBahanData, setEditBahanData] = useState<Bahan>({ nama: '', satuan: '', harga: 0, jumlah: 1 });
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [satuanOptions, setSatuanOptions] = useState<{ nama: string; kode: string }[]>([]);
+
+  interface DataSatuan {
+    _id?: string;
+    nama: string;
+    kode: string;
+    tipe?: string;
+    deskripsi?: string;
+    isActive?: boolean;
+  }
 
   // Fungsi untuk mendapatkan token dari localStorage
   const getToken = () => {
@@ -31,11 +41,31 @@ const EditBahanBakuForm: React.FC<EditBahanBakuFormProps> = ({
     setEditBahanData(bahan);
   }, [bahan]);
 
+  useEffect(() => {
+    const fetchSatuan = async () => {
+      try {
+        const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan`);
+        if (!res.ok) return;
+        const json = await res.json();
+        if (Array.isArray(json)) {
+          const data = json as DataSatuan[];
+          const opts = data.map((s) => ({ nama: s.nama, kode: s.kode }));
+          setSatuanOptions(opts);
+          // ensure editBahanData has a satuan value
+          setEditBahanData(prev => ({ ...prev, satuan: prev.satuan || opts[0]?.kode || '' }));
+        }
+      } catch (err) {
+        console.error('fetch satuan options', err);
+      }
+    };
+    fetchSatuan();
+  }, []);
+
   // Handle update bahan
   const handleUpdateBahan = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!editBahanData.nama || editBahanData.harga <= 0 || editBahanData.jumlah <= 0) {
+    if (!editBahanData.nama || !editBahanData.satuan || editBahanData.harga <= 0 || editBahanData.jumlah <= 0) {
       Swal.fire({
         icon: 'warning',
         title: 'Validasi Gagal',
@@ -53,6 +83,7 @@ const EditBahanBakuForm: React.FC<EditBahanBakuFormProps> = ({
       updatedBahanList[bahanIndex] = {
         ...updatedBahanList[bahanIndex],
         nama: editBahanData.nama,
+        satuan: editBahanData.satuan,
         harga: editBahanData.harga,
         jumlah: editBahanData.jumlah
       };
@@ -176,7 +207,7 @@ const EditBahanBakuForm: React.FC<EditBahanBakuFormProps> = ({
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">
-                Nama Bahan <span className="text-red-500">*</span>
+                Nama Bahan
               </label>
               <input
                 type="text"
@@ -188,10 +219,10 @@ const EditBahanBakuForm: React.FC<EditBahanBakuFormProps> = ({
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-gray-700">
-                  Harga <span className="text-red-500">*</span>
+                  Harga Per Satuan 
                 </label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">Rp</span>
@@ -209,7 +240,7 @@ const EditBahanBakuForm: React.FC<EditBahanBakuFormProps> = ({
               
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-gray-700">
-                  Stok <span className="text-red-500">*</span>
+                  Stok
                 </label>
                 <input
                   type="number"
@@ -221,15 +252,22 @@ const EditBahanBakuForm: React.FC<EditBahanBakuFormProps> = ({
                   disabled={isSubmitting}
                 />
               </div>
-            </div>
-            
-            {/* Debug info */}
-            <div className="bg-gray-50 p-3 rounded-lg text-xs">
-              <p className="font-medium text-gray-700">Debug Info:</p>
-              <p>Produk: {produk.nama_produk}</p>
-              <p>Produk ID: {produk._id}</p>
-              <p>Bahan Index: {bahanIndex}</p>
-              <p className="mt-2 text-blue-600">Mengupdate seluruh produk dengan array bahan yang diperbarui</p>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">Satuan</label>
+                <select
+                  value={editBahanData.satuan}
+                  onChange={(e) => setEditBahanData({...editBahanData, satuan: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                  required
+                  disabled={isSubmitting}
+                >
+                  <option value="">Pilih satuan...</option>
+                  {satuanOptions.map(opt => (
+                    <option key={opt.kode} value={opt.kode}>{opt.nama} ({opt.kode})</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 

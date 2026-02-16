@@ -33,7 +33,7 @@ interface User {
 interface ModalProductionProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: ProductionFormData) => void;
+  onSubmit: (data: ProductionFormData) => Promise<void> | void;
 }
 
 const ModalProduction: React.FC<ModalProductionProps> = ({ isOpen, onClose, onSubmit }) => {

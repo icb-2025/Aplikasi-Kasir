@@ -114,6 +114,13 @@ interface BahanBakuAPI {
   }>;
 }
 
+// Production form type (matches ModalProduction)
+interface ProductionFormData {
+  bahan_baku: Array<{ nama: string; jumlah: number; harga: number }>;
+  produk_jadi: { nama_barang: string; kode_barang: string; jumlah_produksi: number };
+  chef_id: string;
+}
+
 const StokBarangAdmin: React.FC<ListBarangProps> = ({ dataBarang, setDataBarang }) => {
   const socketRef = useRef<Socket | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -269,8 +276,8 @@ const fetchSettings = useCallback(async () => {
         },
       });
       if (response.ok) {
-        const data = await response.json();
-        setProductions(data);
+        // productions fetched but not stored in state because it's unused
+        await response.json();
       }
     } catch (error) {
       console.error('Error fetching productions:', error);
@@ -650,7 +657,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       try {
         const errorData = await res.json();
         errorMessage = errorData.message || errorData.error || `HTTP ${res.status}: ${res.statusText}`;
-      } catch (parseError) {
+      } catch {
         // Jika bukan JSON, gunakan text response
         const errorText = await res.text();
         errorMessage = errorText || `HTTP ${res.status}: ${res.statusText}`;
@@ -674,7 +681,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 };
 
-const handleCreateProduction = async (productionData: any) => {
+const handleCreateProduction = async (productionData: ProductionFormData) => {
   try {
     const response = await fetch(`${API_URL}/production`, {
       method: 'POST',
@@ -688,8 +695,9 @@ const handleCreateProduction = async (productionData: any) => {
     if (!response.ok) {
       throw new Error('Failed to create production');
     }
-
     await SweetAlert.success("Production berhasil dibuat");
+    // refresh productions list
+    fetchProductions();
   } catch (error) {
     console.error('Error creating production:', error);
     SweetAlert.error("Gagal membuat production");

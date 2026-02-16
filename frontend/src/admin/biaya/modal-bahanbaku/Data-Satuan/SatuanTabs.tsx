@@ -1,0 +1,92 @@
+// src/admin/bahan-baku/Data-Satuan/SatuanTabs.tsx
+import React, { useEffect, useState } from 'react';
+import SatuanTable from './SatuanTable';
+import TambahSatuanForm from './TambahSatuanForm';
+import EditSatuanForm from './EditSatuanForm';
+import SweetAlert from '../../../../components/SweetAlert';
+import { portbe } from '../../../../../../backend/ngrokbackend';
+const ipbe = import.meta.env.VITE_IPBE;
+
+export interface DataSatuanItem {
+  _id: string;
+  nama: string;
+  kode: string;
+  tipe: string;
+  deskripsi?: string;
+  isActive?: boolean;
+}
+
+interface SatuanTabsProps {
+  showAddForm: boolean;
+  setShowAddForm: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const SatuanTabs: React.FC<SatuanTabsProps> = ({ showAddForm, setShowAddForm }) => {
+  const [data, setData] = useState<DataSatuanItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<DataSatuanItem | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan`);
+      const json = await res.json();
+      setData(Array.isArray(json) ? json : []);
+    } catch (err) {
+      console.error('fetch data satuan', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  return (
+    <div>
+      {showAddForm && <TambahSatuanForm onClose={() => { setShowAddForm(false); fetchData(); }} />}
+      {editing && <EditSatuanForm item={editing} onClose={() => { setEditing(null); fetchData(); }} />}
+      <SatuanTable
+        loading={loading}
+        data={data}
+        onEdit={(item) => setEditing(item)}
+        onDelete={async (id: string) => {
+          try {
+            const result = await SweetAlert.confirmDelete();
+            if (!result.isConfirmed) return;
+            await SweetAlert.loading('Menghapus satuan...');
+            const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan/${id}`, { method: 'DELETE' });
+            SweetAlert.close();
+            if (!res.ok) {
+              await SweetAlert.error('Gagal menghapus');
+              return;
+            }
+            await SweetAlert.success('Satuan berhasil dihapus');
+            fetchData();
+          } catch (err) {
+            console.error(err);
+            SweetAlert.close();
+            await SweetAlert.error('Gagal menghapus');
+          }
+        }}
+        onToggleStatus={async (id: string, newStatus: boolean) => {
+          try {
+            const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan/${id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ isActive: newStatus })
+            });
+            if (!res.ok) throw new Error('Gagal memperbarui status');
+            fetchData();
+          } catch (err) {
+            console.error(err);
+            alert('Gagal memperbarui status');
+          }
+        }}
+      />
+    </div>
+  );
+};
+
+export default SatuanTabs;

@@ -2,12 +2,23 @@
 import React, { useState, useEffect } from 'react';
 import type { ProdukBahan } from '../index';
 import { Edit, Trash2 } from 'lucide-react'; // Mengganti Pencil dengan Edit
+import { portbe } from '../../../../../../backend/ngrokbackend';
+const ipbe = import.meta.env.VITE_IPBE;
 
 interface BahanBakuTableProps {
   bahanBaku: ProdukBahan[];
   setEditingProduk: (produk: ProdukBahan | null) => void;
   openEditBahanForm: (produkIndex: number, bahanIndex: number) => void;
   showDeleteConfirmation: (type: 'produk' | 'bahan', produkIndex: number, bahanIndex?: number) => Promise<void>;
+}
+
+interface DataSatuan {
+  _id?: string;
+  nama: string;
+  kode: string;
+  tipe?: string;
+  deskripsi?: string;
+  isActive?: boolean;
 }
 
 const BahanBakuTable: React.FC<BahanBakuTableProps> = ({ 
@@ -17,6 +28,7 @@ const BahanBakuTable: React.FC<BahanBakuTableProps> = ({
   showDeleteConfirmation 
 }) => {
   const [selectedProduk, setSelectedProduk] = useState<ProdukBahan | null>(null);
+  const [satuanMap, setSatuanMap] = useState<Record<string, string>>({});
 
   // useEffect untuk memperbarui selectedProduk ketika bahanBaku berubah
   useEffect(() => {
@@ -29,6 +41,25 @@ const BahanBakuTable: React.FC<BahanBakuTableProps> = ({
       }
     }
   }, [bahanBaku, selectedProduk]);
+
+  useEffect(() => {
+    const fetchSatuan = async () => {
+      try {
+        const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan`);
+        if (!res.ok) return;
+        const json = await res.json();
+        if (Array.isArray(json)) {
+          const data = json as DataSatuan[];
+          const map: Record<string, string> = {};
+          data.forEach(s => { map[s.kode] = s.nama; });
+          setSatuanMap(map);
+        }
+      } catch (err) {
+        console.error('fetch satuan map', err);
+      }
+    };
+    fetchSatuan();
+  }, []);
 
   const openModal = (produk: ProdukBahan) => {
     setSelectedProduk(produk);
@@ -160,7 +191,10 @@ const BahanBakuTable: React.FC<BahanBakuTableProps> = ({
                         Nama Bahan
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Harga Per Porsi
+                        Satuan
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Harga Per Satuan
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Stok
@@ -177,6 +211,9 @@ const BahanBakuTable: React.FC<BahanBakuTableProps> = ({
                         <tr key={bahan._id || bahan.nama}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">{bahan.nama}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{satuanMap[bahan.satuan] ?? bahan.satuan ?? '-'}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">Rp {bahan.harga.toLocaleString('id-ID')}</div>
