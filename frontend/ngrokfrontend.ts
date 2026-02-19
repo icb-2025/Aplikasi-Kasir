@@ -1,4 +1,4 @@
-import {ngrokUrl} from "../backend/ngrokbackend.ts";
+import {ngrokUrl} from "../backend/ngrokbackend.js";
 
 export function ngrokBackend() {
   return ngrokUrl;

@@ -1,6 +1,5 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import connectDB from "./database/db.js";
@@ -34,12 +33,50 @@ import adminDataSatuan from "./routes/admin/datasatuanRoutes.js";
 import chefRoutes from "./routes/chef/chef.js";
 import userAuth from "./middleware/user.js";
 import session from "express-session";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
 import passport from "./config/passportGoogle.js";
 import googleAuthRoutes from "./routes/googleAuthRoutes.js";
-import { debugTokenLogger } from "./middleware/debugTokenLogger.js"; //debug all for frontend
+import { debugTokenLogger } from "./middleware/debugTokenLogger.js";
 
-dotenv.config();
 const app = express();
+app.set('trust proxy', 1); 
+app.use(helmet()); 
+app.disable("x-powered-by");
+
+const limiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 100,
+  message: { message: "Stop Spam, I see you!" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use("/api/", limiter);
+
+const trapRoutes = [
+  "/.env", 
+  "/wp-admin", 
+  "/.git", 
+  "/phpmyadmin", 
+  "/nice%20ports%2C/Tri%6Eity.txt%2ebak"
+];
+
+app.use((req, res, next) => {
+  if (trapRoutes.includes(req.originalUrl)) {
+    console.log(`\x1b[41m\x1b[37m[!!!] HONEYPOT TRIGGERED BY IP: ${req.ip}\x1b[0m`);
+    console.log(`\x1b[31m[Target Path]: ${req.originalUrl}\x1b[0m`);
+    setTimeout(() => {
+      return res.status(418).json({ 
+        status: "error", 
+        message: "Stop scanning, I see you!",
+        detected_ip: req.ip 
+      });
+    }, 3000); 
+    return;
+  }
+  next();
+});
+
 const port = portbe;
 
 app.use(
@@ -94,7 +131,6 @@ app.use("/api/admin/data-satuan", adminDataSatuan)
 // chef
 app.use("/api/chef", chefRoutes);
 
-app.use(cors())
 app.get("/", (req, res) => {
   res.json({ message: "Welcome To API" });
 });
