@@ -1,5 +1,7 @@
 import Transaksi from "../../models/datatransaksi.js";
 import Laporan from "../../models/datalaporan.js";
+import Barang from "../../models/databarang.js";
+import Kategori from "../../models/kategori.js";
 
 export const getDashboardOmzet = async (req, res) => {
   try {
@@ -58,7 +60,23 @@ export const getTransaksi = async (req, res) => {
 
 export const getTopBarang = async (req, res) => {
   try {
-    const transaksiSelesai = await Transaksi.find({ status: "selesai" });
+    const { bulan } = req.query; // Opsional: 'bulan_ini' atau 'kumulatif' (default: bulan_ini)
+
+    let transaksiSelesai;
+
+    if (bulan === 'kumulatif') {
+      transaksiSelesai = await Transaksi.find({ status: "selesai" });
+    } else {
+      // Default: bulan ini
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+      transaksiSelesai = await Transaksi.find({
+        status: "selesai",
+        tanggal_transaksi: { $gte: startOfMonth, $lte: endOfMonth }
+      });
+    }
 
     const barangCounter = {};
     transaksiSelesai.forEach(trx => {
@@ -66,16 +84,20 @@ export const getTopBarang = async (req, res) => {
         if (!barangCounter[item.nama_barang]) {
           barangCounter[item.nama_barang] = 0;
         }
-        barangCounter[item.nama_barang] += item.jumlah;
+        // Hitung berdasarkan pendapatan (subtotal)
+        barangCounter[item.nama_barang] += item.subtotal;
       });
     });
 
     const barangTerlaris = Object.entries(barangCounter)
-      .map(([nama_barang, jumlah]) => ({ nama_barang, jumlah }))
-      .sort((a, b) => b.jumlah - a.jumlah)
+      .map(([nama_barang, pendapatan]) => ({ nama_barang, pendapatan }))
+      .sort((a, b) => b.pendapatan - a.pendapatan)
       .slice(0, 5);
 
-    res.json({ barang_terlaris: barangTerlaris });
+    res.json({ 
+      barang_terlaris: barangTerlaris,
+      mode: bulan === 'kumulatif' ? 'kumulatif' : 'bulan_ini'
+    });
   } catch (error) {
     console.error("Error getTopBarang:", error);
     res.status(500).json({ message: error.message });
@@ -137,6 +159,89 @@ export const getLatestTransaksi = async (req, res) => {
     res.json(transaksi);
   } catch (error) {
     console.error("Error getLatestTransaksi:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateBestSellerCategory = async (req, res) => {
+  try {
+    const { bulan } = req.query; // Opsional: 'bulan_ini' atau 'kumulatif' (default: bulan_ini)
+
+    // Pastikan kategori "Best Seller" ada
+    let bestSellerKategori = await Kategori.findOne({ nama: "Best Seller ⭐" });
+    if (!bestSellerKategori) {
+      bestSellerKategori = new Kategori({
+        nama: "Best Seller ⭐",
+        deskripsi: "Kategori untuk produk Best Seller berdasarkan pendapatan"
+      });
+      await bestSellerKategori.save();
+    }
+
+    let transaksiSelesai;
+
+    if (bulan === 'kumulatif') {
+      transaksiSelesai = await Transaksi.find({ status: "selesai" });
+    } else {
+      // Default: bulan ini
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+      transaksiSelesai = await Transaksi.find({
+        status: "selesai",
+        tanggal_transaksi: { $gte: startOfMonth, $lte: endOfMonth }
+      });
+    }
+
+    // Hitung barang terlaris berdasarkan pendapatan
+    const barangCounter = {};
+    transaksiSelesai.forEach(trx => {
+      trx.barang_dibeli.forEach(item => {
+        if (!barangCounter[item.nama_barang]) {
+          barangCounter[item.nama_barang] = 0;
+        }
+        // Hitung berdasarkan pendapatan (subtotal)
+        barangCounter[item.nama_barang] += item.subtotal;
+      });
+    });
+
+    // Ambil top 5 barang terlaris berdasarkan pendapatan
+    const topBarang = Object.entries(barangCounter)
+      .map(([nama_barang, pendapatan]) => ({ nama_barang, pendapatan }))
+      .sort((a, b) => b.pendapatan - a.pendapatan)
+      .slice(0, 5);
+
+    // Reset kategori produk yang sebelumnya Best Seller (opsional, jika ingin dinamis)
+    if (bulan === 'bulan_ini') {
+      // Cari produk yang kategori-nya "Best Seller ⭐" dan ubah ke kategori lama jika ada
+      // Tapi ini rumit, mungkin skip dulu
+    }
+
+    // Untuk setiap barang terlaris, update kategori menjadi "Best Seller"
+    const updatedBarang = [];
+    for (const item of topBarang) {
+      const barang = await Barang.findOneAndUpdate(
+        { nama_barang: item.nama_barang },
+        { kategori: "Best Seller ⭐" },
+        { new: true }
+      );
+      if (barang) {
+        updatedBarang.push({
+          nama_barang: item.nama_barang,
+          pendapatan: item.pendapatan,
+          kategori_baru: "Best Seller ⭐"
+        });
+      }
+    }
+
+    res.json({
+      message: bulan === 'kumulatif' ? "Kategori Best Seller kumulatif berhasil diperbarui" : "Kategori Best Seller bulan ini berhasil diperbarui",
+      mode: bulan === 'kumulatif' ? 'kumulatif' : 'bulan_ini',
+      top_barang: topBarang,
+      updated_barang: updatedBarang
+    });
+  } catch (error) {
+    console.error("Error updateBestSellerCategory:", error);
     res.status(500).json({ message: error.message });
   }
 };

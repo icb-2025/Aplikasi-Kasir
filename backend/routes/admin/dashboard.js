@@ -1,6 +1,6 @@
 // routes/admin/dashboard.js
 import express from "express";
-import { getDashboardOmzet, getTransaksi, getTopBarang, getLaporanPenjualan, getBreakdownMetodePembayaran, getLatestTransaksi} from "../../controllers/admin/dashboardcontroller.js";
+import { getDashboardOmzet, getTransaksi, getTopBarang, getLaporanPenjualan, getBreakdownMetodePembayaran, getLatestTransaksi, updateBestSellerCategory} from "../../controllers/admin/dashboardcontroller.js";
 
 const router = express.Router();
 
@@ -10,5 +10,6 @@ router.get("/top-barang", getTopBarang);
 router.get("/laporan-penjualan/:jenis", getLaporanPenjualan);
 router.get("/breakdown-pembayaran", getBreakdownMetodePembayaran)
 router.get("/transaksi/terakhir", getLatestTransaksi)
+router.post("/update-best-seller", updateBestSellerCategory)
 
 export default router;
