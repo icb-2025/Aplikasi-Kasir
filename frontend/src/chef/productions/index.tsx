@@ -1,6 +1,5 @@
 // src/chef/productions/index.tsx
 import React, { useState, useEffect } from 'react';
-import { portbe } from "../../../../backend/ngrokbackend";
 import { CheckCircle, Clock, XCircle } from 'lucide-react';
 
 interface BahanBaku {
@@ -23,7 +22,7 @@ interface Production {
   createdAt: Date;
 }
 
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 
 const Productions: React.FC = () => {
   const [productions, setProductions] = useState<Production[]>([]);
@@ -35,7 +34,7 @@ const Productions: React.FC = () => {
 
   const fetchProductions = async () => {
     try {
-      const response = await fetch(`${ipbe}:${portbe}/api/chef/productions`, {
+      const response = await fetch(`${API_URL}/api/chef/productions`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -53,7 +52,7 @@ const Productions: React.FC = () => {
 
   const updateStatus = async (id: string, status: 'approved' | 'cancelled', catatan?: string) => {
     try {
-      const response = await fetch(`${ipbe}:${portbe}/api/chef/productions/${id}/status`, {
+      const response = await fetch(`${API_URL}/api/chef/productions/${id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

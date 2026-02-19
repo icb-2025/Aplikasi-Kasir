@@ -2,7 +2,6 @@
 // import React, { useState, useEffect, useCallback } from 'react';
 // import SweetAlert from '../../../components/SweetAlert';
 // import LoadingSpinner from '../../../components/LoadingSpinner';
-// import { portbe } from '../../../../../backend/ngrokbackend';
 // const ipbe = import.meta.env.VITE_IPBE;
 // const ApiKey = import.meta.env.VITE_API_KEY;
 
@@ -39,7 +38,7 @@
 //     total: 0,
 //   });
 
-//   const BASE_API_URL = `${ipbe}:${portbe}/api/admin/biaya-operasional`;
+//   const BASE_API_URL = `${ipbe}/api/admin/biaya-operasional`;
 //   const API_KEY = `${ApiKey}`;
 
 //   // Fungsi untuk mendapatkan token dari localStorage

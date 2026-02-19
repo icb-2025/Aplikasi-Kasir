@@ -5,9 +5,7 @@ import LoadingSpinner from "../../components/LoadingSpinner";
 import SummaryCards from './components/SummaryCards';
 import TransactionChart from './components/TransactionChart';
 import TransactionTable from './components/TransactionTable';
-import { portbe } from '../../../../backend/ngrokbackend';
-
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 interface ProdukItem {
   nama_produk: string;
   jumlah_terjual: number;
@@ -58,7 +56,7 @@ const LaporanPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/hpp-total`);
+        const response = await fetch(`${API_URL}/api/admin/hpp-total`);
         if (!response.ok) {
           throw new Error("Failed to fetch data");
         }

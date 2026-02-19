@@ -5,9 +5,8 @@ import SweetAlert from '../../components/SweetAlert';
 import UserModal from './component/usermodal';
 import UserTable from './component/usertable';
 import UserFilter from './component/userfilter';
-import { portbe } from '../../../../backend/ngrokbackend';
 import { ChevronLeft, ChevronRight } from 'lucide-react'; // Tambahkan import ini
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 
 
 interface User {
@@ -57,13 +56,13 @@ const UsersPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(10);
 
-  const API_URL = `${ipbe}:${portbe}/api/admin/users`;
+  const API_URL_USERS = `${API_URL}/api/admin/users`;
 
   // Fetch users from API
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(API_URL);
+      const response = await fetch(API_URL_USERS);
       if (!response.ok) {
         throw new Error('Gagal mengambil data user');
       }
@@ -80,7 +79,7 @@ const UsersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters, API_URL]);
+  }, [filters, API_URL_USERS]);
 
   // Apply filters to users
   const applyFilters = (userList: User[], currentFilters: { role: string; status: string }) => {
@@ -148,7 +147,7 @@ const UsersPage: React.FC = () => {
       let response;
       if (editingUser) {
         // Update existing user
-        response = await fetch(`${API_URL}/${editingUser._id}`, {
+        response = await fetch(`${API_URL_USERS}/${editingUser._id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -157,7 +156,7 @@ const UsersPage: React.FC = () => {
         });
       } else {
         // Create new user
-        response = await fetch(`${API_URL}/create`, {
+        response = await fetch(`${API_URL_USERS}/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -190,7 +189,7 @@ const UsersPage: React.FC = () => {
       try {
         SweetAlert.loading('Menghapus user...');
         
-        const response = await fetch(`${API_URL}/${id}`, {
+        const response = await fetch(`${API_URL_USERS}/${id}`, {
           method: 'DELETE',
         });
 

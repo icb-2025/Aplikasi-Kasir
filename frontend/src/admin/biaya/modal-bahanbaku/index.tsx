@@ -9,8 +9,7 @@ import EditBahanBakuForm from './components/EditBahanBakuForm';
 import Tabs from './components/tabs';
 import SatuanTabs from './Data-Satuan/SatuanTabs'
 import { Plus } from 'lucide-react';
-import { portbe } from '../../../../../backend/ngrokbackend';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../../config/api';
 
 export interface Bahan {
   nama: string;
@@ -93,7 +92,7 @@ const ModalBahanBaku: React.FC = () => {
         }
         
         // Fetch dari endpoint bahan-baku yang memiliki field total_harga, modal_per_porsi
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku`, {
+        const response = await fetch(`${API_URL}/api/admin/bahan-baku`, {
           headers
         });
         
@@ -147,7 +146,7 @@ const ModalBahanBaku: React.FC = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku`, {
+      const response = await fetch(`${API_URL}/api/admin/bahan-baku`, {
         headers
       });
       
@@ -193,7 +192,7 @@ const ModalBahanBaku: React.FC = () => {
       const token = getToken();
       
       // Gunakan endpoint /api/admin/bahan-baku/:id untuk hapus dengan Authorization header
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku/${produkId}`, {
+      const response = await fetch(`${API_URL}/api/admin/bahan-baku/${produkId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -247,7 +246,7 @@ const ModalBahanBaku: React.FC = () => {
         if (updatedBahanBaku[produkIndex].bahan.length === 0) {
           updatedBahanBaku.splice(produkIndex, 1);
           // Hapus produk keseluruhan
-          const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku/${produkId}`, {
+          const response = await fetch(`${API_URL}/api/admin/bahan-baku/${produkId}`, {
             method: 'DELETE',
             headers: {
               'Content-Type': 'application/json',
@@ -261,7 +260,7 @@ const ModalBahanBaku: React.FC = () => {
           }
         } else {
           // Update produk dengan bahan yang sudah dihapus
-          const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku/${produkId}`, {
+          const response = await fetch(`${API_URL}/api/admin/bahan-baku/${produkId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',

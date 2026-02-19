@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import axios from 'axios';
-import { portbe } from '../../../../backend/ngrokbackend';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 const ApiKey = import.meta.env.VITE_API_KEY;
 
 
@@ -55,7 +54,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const _meta = import.meta as { env?: { VITE_API_BASE_URL?: string; VITE_API_KEY?: string } };
-const API_BASE_URL = _meta.env?.VITE_API_BASE_URL ?? `${ipbe}:${portbe}`;
+const API_BASE_URL = _meta.env?.VITE_API_BASE_URL ?? API_URL;
 const API_KEY = _meta.env?.VITE_API_KEY ?? `${ApiKey}`;
 
 function isAxiosError(error: unknown): error is { isAxiosError: true; response?: { data?: ErrorResponse }; message?: string } {

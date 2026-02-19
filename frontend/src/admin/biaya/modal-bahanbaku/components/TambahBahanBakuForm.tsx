@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
-import { portbe } from '../../../../../../backend/ngrokbackend';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../../../config/api';
 import type { ProdukBahan } from '../index';
 
 // Definisikan tipe Bahan secara lokal di sini untuk memastikan inklusi 'satuan'
@@ -42,7 +41,7 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
   useEffect(() => {
     const fetchSatuan = async () => {
       try {
-        const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan`);
+        const res = await fetch(`${API_URL}/api/admin/data-satuan`);
         if (!res.ok) return;
         const json = await res.json();
         if (Array.isArray(json)) {
@@ -146,7 +145,7 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
           headers['Authorization'] = `Bearer ${token}`;
         }
         
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku/${produkId}`, {
+        const response = await fetch(`${API_URL}/api/admin/bahan-baku/${produkId}`, {
           method: 'PUT',
           headers,
           body: JSON.stringify({
@@ -173,7 +172,7 @@ const TambahBahanBakuForm: React.FC<TambahBahanBakuFormProps> = ({
           headers['Authorization'] = `Bearer ${token}`;
         }
         
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku`, {
+        const response = await fetch(`${API_URL}/api/admin/bahan-baku`, {
           method: 'POST',
           headers,
           body: JSON.stringify(payload),

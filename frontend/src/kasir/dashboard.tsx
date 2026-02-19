@@ -2,12 +2,11 @@ import type { Barang } from "../admin/stok-barang";
 import MainLayout from "./layout";
 import { useState, useEffect, useRef, useCallback } from "react";
 import io, { Socket } from 'socket.io-client';
-import { portbe } from '../../../backend/ngrokbackend';
 import LoadingSpinner from "../components/LoadingSpinner";
 import { Search, Package, DollarSign, AlertTriangle, CheckCircle, XCircle, TrendingUp, TrendingDown, Minus, FileText, FolderOpen, Box, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { API_URL } from '../config/api';
 
-const ipbe = import.meta.env.VITE_IPBE;
-const API_BASE_URL = `${ipbe}:${portbe}`;
+const API_BASE_URL = `${API_URL}`;
 
 // Define interfaces for socket data
 interface SocketBarangData {

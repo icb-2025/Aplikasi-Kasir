@@ -15,8 +15,7 @@ import VirtualAccountPayment from "./components/PaymentMethodDetails/VirtualAcco
 import QRISPayment from "./components/PaymentMethodDetails/QRISPayment";
 import CashPayment from "./components/PaymentMethodDetails/CashPayment";
 import FooterActions from "./components/FooterActions";
-import { portbe } from "../../../../../backend/ngrokbackend";
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../../config/api';
 
 
 interface BarangDibeli {
@@ -178,7 +177,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     try {
       
       
-      const baseUrl = `${ipbe}:${portbe}`;
+      const baseUrl = `${API_URL}`;
       const tokenLocal = localStorage.getItem('token');
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
@@ -535,7 +534,7 @@ const ProsesTransaksiModal: React.FC<ProsesTransaksiModalProps> = ({
     try {
       
       
-      const baseUrl = `${ipbe}:${portbe}`;
+      const baseUrl = `${API_URL}`;
       const tokenLocal = localStorage.getItem('token');
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'

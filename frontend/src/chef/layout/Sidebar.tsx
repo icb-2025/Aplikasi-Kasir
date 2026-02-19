@@ -1,7 +1,6 @@
 // src/admin/layout/Sidebar.tsx
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { portbe } from "../../../../backend/ngrokbackend";
 import {
   TrendingUp,
   ShoppingCart,
@@ -33,7 +32,7 @@ interface SettingsResponse {
   storeLogo: string;
 }
 
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -46,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     const fetchStoreLogo = async () => {
       try {
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/settings`);
+        const response = await fetch(`${API_URL}/api/admin/settings`);
         if (!response.ok) {
           throw new Error('Failed to fetch store logo');
         }

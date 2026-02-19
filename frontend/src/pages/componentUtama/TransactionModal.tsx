@@ -2,8 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
-import { portbe } from "../../../../backend/ngrokbackend";
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 
 import { 
   ShoppingCart, 
@@ -183,7 +182,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       try {
         const token = localStorage.getItem('token');
         
-        const res = await fetch(`${ipbe}:${portbe}/api/admin/settings`, {
+        const res = await fetch(`${API_URL}/api/admin/settings`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -215,7 +214,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     
     const fetchReceiptSettings = async () => {
       try {
-        const res = await fetch(`${ipbe}:${portbe}/api/manager/settings`);
+        const res = await fetch(`${API_URL}/api/manager/settings`);
         if (res.ok) {
           const data: SettingsReceipt = await res.json();
           setReceiptSettings(data);
@@ -229,7 +228,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
     const fetchTotalBiayaLayanan = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/biaya-layanan`, {
+        const response = await fetch(`${API_URL}/api/admin/biaya-layanan`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -396,7 +395,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       // Log the request data for debugging
       console.log("Sending transaction data:", JSON.stringify(bodyData, null, 2));
       
-      const res = await fetch(`${ipbe}:${portbe}/api/transaksi`, {
+      const res = await fetch(`${API_URL}/api/transaksi`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

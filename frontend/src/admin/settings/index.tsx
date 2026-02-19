@@ -10,8 +10,7 @@ import ReceiptSettings from './components/ReceiptSettings';
 import PaymentSettings from './components/PaymentSettings';
 // import BiayaOperasionalSettings from './components/biaya-operasional';
 // import AdvancedSettings from './components/AdvancedSettings';
-import { portbe } from '../../../../backend/ngrokbackend';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 const ApiKey = import.meta.env.VITE_API_KEY;
 // Import interface with type-only import
 // import type { BiayaOperasionalData } from './components/biaya-operasional';
@@ -78,8 +77,8 @@ const SettingsPage: React.FC = () => {
     payment_methods: [],
   });
 
-  const BASE_API_URL = `${ipbe}:${portbe}/api/admin/settings`;
-  // const BIAYA_OPERASIONAL_API_URL = `${ipbe}:${portbe}/api/admin/biaya-operasional`;
+  const BASE_API_URL = `${API_URL}/api/admin/settings`;
+  // const BIAYA_OPERASIONAL_API_URL = `${ipbe}/api/admin/biaya-operasional`;
   const API_KEY = `${ApiKey}`; // Ganti dengan API key yang sesuai
 
   // Fungsi untuk mendapatkan token dari localStorage

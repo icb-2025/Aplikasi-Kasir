@@ -6,10 +6,9 @@ import Tabs from './components/tabs';
 import BiayaOperasional from './components/biaya-operasional';
 import BiayaLanjutan from './components/biaya-lanjutan';
 import BiayaService from './components/biaya-service';
-import { portbe } from '../../../../../backend/ngrokbackend';
 import type { BiayaOperasionalData } from './components/biaya-operasional';
+import { API_URL } from '../../../config/api';
 
-const ipbe = import.meta.env.VITE_IPBE;
 const ApiKey = import.meta.env.VITE_API_KEY;
 
 const BiayaLayanan: React.FC = () => {
@@ -23,8 +22,8 @@ const BiayaLayanan: React.FC = () => {
   const [totalBiayaOperasional, setTotalBiayaOperasional] = useState<number>(0);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
-  const BASE_API_URL = `${ipbe}:${portbe}/api/admin/settings`;
-  const BIAYA_OPERASIONAL_API_URL = `${ipbe}:${portbe}/api/admin/biaya-operasional`;
+  const BASE_API_URL = `${API_URL}/api/admin/settings`;
+  const BIAYA_OPERASIONAL_API_URL = `${API_URL}/api/admin/biaya-operasional`;
   const API_KEY = `${ApiKey}`;
 
   // Fungsi untuk mendapatkan token dari localStorage

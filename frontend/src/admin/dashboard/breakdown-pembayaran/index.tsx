@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, TrendingUp, CreditCard, Wallet, Landmark } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, type PieLabel } from 'recharts';
 import LoadingSpinner from '../../../components/LoadingSpinner'; // Adjust path as needed
-import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 interface PaymentBreakdown {
   [key: string]: number;
@@ -89,7 +88,7 @@ const BreakdownPembayaran: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/dashboard/breakdown-pembayaran`);
+        const response = await fetch(`${ipbe}/api/admin/dashboard/breakdown-pembayaran`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

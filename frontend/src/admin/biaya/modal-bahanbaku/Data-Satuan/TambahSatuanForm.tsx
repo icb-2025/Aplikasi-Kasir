@@ -1,8 +1,7 @@
 // src/admin/bahan-baku/Data-Satuan/TambahSatuanForm.tsx
 import React, { useState, useEffect } from 'react';
-import { portbe } from '../../../../../../backend/ngrokbackend';
 import GroupedSelect from './GroupedSelect';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../../../config/api';
 
 interface Props {
   onClose: () => void;
@@ -43,7 +42,7 @@ const TambahSatuanForm: React.FC<Props> = ({ onClose }) => {
       return;
     }
     try {
-      const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan`, {
+      const res = await fetch(`${API_URL}/api/admin/data-satuan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nama, kode, tipe, deskripsi })

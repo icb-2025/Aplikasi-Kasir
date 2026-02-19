@@ -7,7 +7,6 @@ import DetailModal from "./DetailModal";
 import StokSummary from "./StokSummary";
 import StokFilter from "./StokFilter";
 import io, { Socket } from 'socket.io-client';
-import { portbe } from "../../../../backend/ngrokbackend";
 import { 
   Package, 
   Search, 
@@ -16,9 +15,9 @@ import {
   ChevronLeft, 
   ChevronRight 
 } from 'lucide-react';
+import { API_URL } from '../../config/api';
 
-const ipbe = import.meta.env.VITE_IPBE;
-const API_BASE_URL = `${ipbe}:${portbe}`;
+const API_BASE_URL = `${API_URL}`;
 
 // Definisikan tipe untuk data yang diterima dari API
 interface ApiBarang {

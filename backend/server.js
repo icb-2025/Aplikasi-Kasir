@@ -3,7 +3,6 @@ import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import connectDB from "./database/db.js";
-import { portbe } from "./ngrokbackend.ts"
 import barangRoutes from "./routes/BarangRoutes.js";
 import transaksiRoutes from "./routes/TransaksiRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -39,14 +38,17 @@ import passport from "./config/passportGoogle.js";
 import googleAuthRoutes from "./routes/googleAuthRoutes.js";
 import { debugTokenLogger } from "./middleware/debugTokenLogger.js";
 
+
 const app = express();
+const port = process.env.PORT || 5000;
+app.use(cors());
 app.set('trust proxy', 1); 
 app.use(helmet()); 
 app.disable("x-powered-by");
 
 const limiter = rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 100,
+  max: 1000,
   message: { message: "Stop Spam, I see you!" },
   standardHeaders: true,
   legacyHeaders: false,
@@ -77,8 +79,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const port = portbe;
-
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "secret",
@@ -93,7 +93,6 @@ app.use(debugTokenLogger);
 
 app.use(express.json());
 app.use(cors());
-connectDB();
 
 // pelanggan, kasir
 app.use("/api/auth/google", googleAuthRoutes);
@@ -160,6 +159,12 @@ io.on("connection", (socket) => {
 
 export { io };
 
-httpServer.listen(port, "0.0.0.0", () => {
-  console.log(`Server running at http://0.0.0.0:${port}`);
-});
+const startServer = async () => {
+  await connectDB();
+
+  httpServer.listen(port, "0.0.0.0", () => {
+    console.log(`Server running at http://0.0.0.0:${port}`);
+  });
+};
+
+startServer();

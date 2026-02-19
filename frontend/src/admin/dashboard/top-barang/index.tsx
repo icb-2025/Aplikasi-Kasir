@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { Crown, Medal, Award, Star, TrendingUp, Package, DollarSign, BarChart3, PieChart } from 'lucide-react';
-import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
 // Interface untuk produk dari API
@@ -70,7 +69,7 @@ const TopBarang: React.FC = () => {
       try {
         setLoading(true);
         // PERBAIKAN: Gunakan endpoint /summary
-        const endpoint = `${ipbe}:${portbe}/api/admin/hpp-total/summary`;
+        const endpoint = `${ipbe}/api/admin/hpp-total/summary`;
         
         const response = await fetch(endpoint);
         
@@ -136,7 +135,7 @@ const TopBarang: React.FC = () => {
     const fetchProdukList = async () => {
       try {
         setLoadingProduk(true);
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/stok-barang`);
+        const response = await fetch(`${ipbe}/api/admin/stok-barang`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

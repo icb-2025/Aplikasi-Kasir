@@ -1,6 +1,5 @@
 // src/admin/dashboard/input-penjualan/index.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { portbe } from "../../../../../backend/ngrokbackend";
 
 interface Produk {
   nama_produk: string;
@@ -47,7 +46,7 @@ const InputPenjualan: React.FC = () => {
 
   const fetchHppData = useCallback(async () => {
     try {
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/hpp-total`);
+      const response = await fetch(`${ipbe}/api/admin/hpp-total`);
       const data: HppResponse = await response.json();
       
       if (response.ok) {
@@ -64,7 +63,7 @@ const InputPenjualan: React.FC = () => {
     const fetchProduk = async () => {
       try {
         setLoadingProduk(true);
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/hpp-total`);
+        const response = await fetch(`${ipbe}/api/admin/hpp-total`);
         const data: HppResponse = await response.json();
         
         if (response.ok && data.data) {
@@ -107,7 +106,7 @@ const InputPenjualan: React.FC = () => {
     setSuccess(false);
     
     try {
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/hpp-total`, {
+      const response = await fetch(`${ipbe}/api/admin/hpp-total`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

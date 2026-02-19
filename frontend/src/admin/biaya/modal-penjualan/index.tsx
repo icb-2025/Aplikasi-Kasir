@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { portbe } from '../../../../../backend/ngrokbackend';
 import { ChevronLeft, ChevronRight, Wallet, TrendingUp, CreditCard, Package, ShoppingCart, TrendingDown } from 'lucide-react';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../../config/api';
 import { exportToExcel, exportToPDF } from './utils';
 import type { ModalUtama, AddModalResponse } from './types';
 
@@ -32,7 +31,7 @@ const PenjualanPage: React.FC = () => {
   useEffect(() => {
     const fetchModalData = async () => {
       try {
-        const response = await axios.get<ModalUtama>(`${ipbe}:${portbe}/api/admin/modal-utama`);
+        const response = await axios.get<ModalUtama>(`${API_URL}/api/admin/modal-utama`);
         setModalData(response.data);
       } catch (err) {
         setError('Gagal memuat data modal');
@@ -76,7 +75,7 @@ const PenjualanPage: React.FC = () => {
 
     try {
       await axios.post<AddModalResponse>(
-        `${ipbe}:${portbe}/api/admin/modal-utama/tambah-modal`,
+        `${API_URL}/api/admin/modal-utama/tambah-modal`,
         {
           jumlah: Number(formData.jumlah),
           keterangan: formData.keterangan,
@@ -87,7 +86,7 @@ const PenjualanPage: React.FC = () => {
       setFormData({ jumlah: '', keterangan: '' });
       
       // Refresh data setelah menambah modal
-      const refreshResponse = await axios.get<ModalUtama>(`${ipbe}:${portbe}/api/admin/modal-utama`);
+      const refreshResponse = await axios.get<ModalUtama>(`${API_URL}/api/admin/modal-utama`);
       setModalData(refreshResponse.data);
     } catch (err) {
       setSubmitError('Gagal menambah penjualan');

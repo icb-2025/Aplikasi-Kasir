@@ -3,7 +3,6 @@ import PesananTable from "./PesananTable";
 import StatusModal from "./StatusModal";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { SweetAlert } from "../../components/SweetAlert";
-import { portbe } from "../../../../backend/ngrokbackend";
 const ipbe = import.meta.env.VITE_IPBE;
 
 export interface BarangDibeli {
@@ -53,8 +52,8 @@ interface StokBarang {
   // tambahkan properti lain sesuai kebutuhan
 }
 
-const API_URL = `${ipbe}:${portbe}/api/admin/status-pesanan`;
-const STOK_BARANG_URL = `${ipbe}:${portbe}/api/admin/stok-barang`;
+const API_URL = `${ipbe}/api/admin/status-pesanan`;
+const STOK_BARANG_URL = `${ipbe}/api/admin/stok-barang`;
 
 const StatusPesananAdmin: React.FC = () => {
   const [pesananData, setPesananData] = useState<Pesanan[]>([]);

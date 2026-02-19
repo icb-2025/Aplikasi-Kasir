@@ -3,7 +3,6 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, type PieLabe
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { exportPdf, exportExcel } from './utils';
 import { Landmark, Wallet, TrendingUp, CreditCard, ChevronLeft, ChevronRight, Package, DollarSign, ShoppingCart, TrendingDown } from 'lucide-react';
-import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
 // Interfaces
@@ -140,7 +139,7 @@ const LaporanPenjualan: React.FC = () => {
     const fetchDaftarBulan = async () => {
       try {
         setLoadingBulan(true);
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/laporan/bulan`);
+        const response = await fetch(`${ipbe}/api/admin/laporan/bulan`);
         
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
@@ -167,7 +166,7 @@ const LaporanPenjualan: React.FC = () => {
     
     try {
       setLoading(true);
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/hpp-total/summary?bulan=${selectedBulan}`);
+      const response = await fetch(`${ipbe}/api/admin/hpp-total/summary?bulan=${selectedBulan}`);
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       

@@ -1,7 +1,6 @@
 // src/admin/layout/Sidebar.tsx
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { portbe } from "../../../../backend/ngrokbackend";
 import {
   LayoutDashboard,
   Package,
@@ -59,7 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     const fetchStoreLogo = async () => {
       try {
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/settings`);
+        const response = await fetch(`${ipbe}/api/admin/settings`);
         if (!response.ok) {
           throw new Error('Failed to fetch store logo');
         }

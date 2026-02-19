@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Swal from 'sweetalert2';
-import { portbe } from '../../../../../../backend/ngrokbackend';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../../../config/api';
 import type { ProdukBahan } from '../index';
 
 interface EditProdukFormProps {
@@ -51,7 +50,7 @@ const EditProdukForm: React.FC<EditProdukFormProps> = ({
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/bahan-baku/${produkId}`, {
+      const response = await fetch(`${API_URL}/api/admin/bahan-baku/${produkId}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({

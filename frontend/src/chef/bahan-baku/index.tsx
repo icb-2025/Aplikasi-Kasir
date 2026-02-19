@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import type { SweetAlertOptions } from 'sweetalert2';
-import { portbe } from "../../../../backend/ngrokbackend";
 import { Package, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../../auth/hooks/useAuth';
 
@@ -20,7 +19,7 @@ interface BahanBaku {
   total_stok: number;
 }
 
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 
 const BahanBakuTersedia: React.FC = () => {
   const [bahanBaku, setBahanBaku] = useState<BahanBaku[]>([]);
@@ -35,7 +34,7 @@ const BahanBakuTersedia: React.FC = () => {
 
   const fetchBahanBakuTersedia = async () => {
     try {
-      const response = await fetch(`${ipbe}:${portbe}/api/chef/bahan-baku`, {
+      const response = await fetch(`${API_URL}/api/chef/bahan-baku`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -100,7 +99,7 @@ const BahanBakuTersedia: React.FC = () => {
 
     setAmbilLoading(bahanBakuId);
     try {
-      const response = await fetch(`${ipbe}:${portbe}/api/chef/bahan-baku/ambil`, {
+      const response = await fetch(`${API_URL}/api/chef/bahan-baku/ambil`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

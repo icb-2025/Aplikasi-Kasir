@@ -2,8 +2,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { FaUser, FaLock, FaUserShield } from "react-icons/fa";
-import { portbe } from "../../../backend/ngrokbackend";
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../config/api';
 
 
 export default function RegisterForm() {
@@ -25,7 +24,7 @@ export default function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${ipbe}:${portbe}/auth/register`, {
+      const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

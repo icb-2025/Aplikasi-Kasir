@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import type { Variants } from "framer-motion";
 import logologin from '../../images/logologin.jpg';
 import googleLogo from '../../images/google.jpg';
-import {ngrokBackend} from '../../../ngrokfrontend.ts'
+import { API_URL } from '../../config/api';
 
 export default function LoginForm() {
   const [form, setForm] = useState({ username: "", password: "" });
@@ -19,7 +19,6 @@ export default function LoginForm() {
   const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const ngfb = ngrokBackend()
 
   // Cleanup useEffect untuk mereset status loading saat komponen unmount
   useEffect(() => {
@@ -97,7 +96,7 @@ export default function LoginForm() {
     // Simpan URL saat ini untuk redirect setelah login
     sessionStorage.setItem('redirectAfterLogin', location.pathname);
     // Arahkan ke endpoint Google OAuth
-    window.location.href = `${ngfb}/api/auth/google`;
+    window.location.href = `${API_URL}/api/auth/google`;
   };
 
   const containerVariants: Variants = {

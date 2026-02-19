@@ -3,8 +3,7 @@ import { useLocation } from "react-router-dom";
 import MainLayout from "../layout";
 import { getSocket } from "../../utils/socket";
 import { Landmark, Wallet, TrendingUp, CreditCard, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
-import { portbe } from "../../../../backend/ngrokbackend";
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 const ApiKey = import.meta.env.VITE_API_KEY;
 
 interface BarangDibeli {
@@ -105,7 +104,7 @@ const PesananKasirPage = () => {
             throw new Error('Token tidak ditemukan. Silakan login terlebih dahulu.');
           }
           
-          const usersUrl = `${ipbe}:${portbe}/api/admin/users`;
+          const usersUrl = `${API_URL}/api/admin/users`;
           console.debug("Fetching kasir user info", { url: usersUrl, tokenPresent: !!token });
 
           const res = await fetch(usersUrl, {
@@ -150,7 +149,7 @@ const PesananKasirPage = () => {
     const fetchProdukList = async () => {
       try {
         setLoadingProduk(true);
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/stok-barang`);
+        const response = await fetch(`${API_URL}/api/admin/stok-barang`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -181,7 +180,7 @@ const PesananKasirPage = () => {
       }
 
       // PERBAIKAN: Menggunakan page parameter instead of offset
-      const url = `${ipbe}:${portbe}/api/transaksi?kasir_id=${kasirId}&page=${currentPage}&limit=${itemsPerPage}&sort=-tanggal_transaksi`;
+      const url = `${API_URL}/api/transaksi?kasir_id=${kasirId}&page=${currentPage}&limit=${itemsPerPage}&sort=-tanggal_transaksi`;
       const headers = {
         'Authorization': `Bearer ${token}`,
         'x-api-key': ApiKey || ''

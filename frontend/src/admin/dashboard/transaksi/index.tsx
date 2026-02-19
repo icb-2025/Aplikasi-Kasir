@@ -1,7 +1,6 @@
 // src/admin/dashboard/transaksi/index.tsx
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
-import { portbe } from '../../../../../backend/ngrokbackend';
 import { Landmark, Wallet, TrendingUp, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const ipbe = import.meta.env.VITE_IPBE;
@@ -56,8 +55,8 @@ const Transaksi: React.FC = () => {
         setLoading(true);
         
         const [transaksiResponse, stokResponse] = await Promise.all([
-          fetch(`${ipbe}:${portbe}/api/admin/dashboard/transaksi/terakhir`),
-          fetch(`${ipbe}:${portbe}/api/admin/stok-barang`)
+          fetch(`${ipbe}/api/admin/dashboard/transaksi/terakhir`),
+          fetch(`${ipbe}/api/admin/stok-barang`)
         ]);
         
         if (!transaksiResponse.ok || !stokResponse.ok) {

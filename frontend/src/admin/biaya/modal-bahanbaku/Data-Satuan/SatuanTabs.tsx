@@ -4,8 +4,7 @@ import SatuanTable from './SatuanTable';
 import TambahSatuanForm from './TambahSatuanForm';
 import EditSatuanForm from './EditSatuanForm';
 import SweetAlert from '../../../../components/SweetAlert';
-import { portbe } from '../../../../../../backend/ngrokbackend';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../../../config/api';
 
 export interface DataSatuanItem {
   _id: string;
@@ -29,7 +28,7 @@ const SatuanTabs: React.FC<SatuanTabsProps> = ({ showAddForm, setShowAddForm }) 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan`);
+      const res = await fetch(`${API_URL}/api/admin/data-satuan`);
       const json = await res.json();
       setData(Array.isArray(json) ? json : []);
     } catch (err) {
@@ -56,7 +55,7 @@ const SatuanTabs: React.FC<SatuanTabsProps> = ({ showAddForm, setShowAddForm }) 
             const result = await SweetAlert.confirmDelete();
             if (!result.isConfirmed) return;
             await SweetAlert.loading('Menghapus satuan...');
-            const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${API_URL}/api/admin/data-satuan/${id}`, { method: 'DELETE' });
             SweetAlert.close();
             if (!res.ok) {
               await SweetAlert.error('Gagal menghapus');
@@ -72,7 +71,7 @@ const SatuanTabs: React.FC<SatuanTabsProps> = ({ showAddForm, setShowAddForm }) 
         }}
         onToggleStatus={async (id: string, newStatus: boolean) => {
           try {
-            const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan/${id}`, {
+            const res = await fetch(`${API_URL}/api/admin/data-satuan/${id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ isActive: newStatus })

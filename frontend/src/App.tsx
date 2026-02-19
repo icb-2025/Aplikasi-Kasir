@@ -2,9 +2,8 @@ import { useState, useEffect } from "react";
 import AppRouter from "./router";
 import type { Barang } from "./admin/stok-barang";
 import { initializeSocket } from './utils/socket';
-import { portbe }from "../../backend/ngrokbackend"
+import { API_URL } from "./config/api";
 // Inisialisasi socket ketika aplikasi dimulai
-const ipbe = import.meta.env.VITE_IPBE;
 initializeSocket();
 
 interface BarangAPI {
@@ -22,14 +21,14 @@ interface BarangAPI {
   status?: string;
 }
 
-const API_URL = `${ipbe}:${portbe}/api/admin/stok-barang`;
+const STOK_BARANG_URL = `${API_URL}/api/admin/stok-barang`;
 
 function App() {
   const [dataBarang, setDataBarang] = useState<Barang[]>([]);
 
   const fetchBarang = async () => {
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch(STOK_BARANG_URL);
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data: BarangAPI[] = await res.json();
 

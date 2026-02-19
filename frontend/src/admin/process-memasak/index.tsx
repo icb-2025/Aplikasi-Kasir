@@ -1,10 +1,8 @@
 // src/admin/process-memasak/index.tsx
 import { useState, useEffect } from 'react';
-import { portbe } from '../../../../backend/ngrokbackend';
 import { CheckCircle, Clock, XCircle } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
-
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 
 interface Production {
   _id: string;
@@ -40,7 +38,7 @@ const ProcessMemasak = () => {
       setLoading(true);
 
       // Fetch productions - use admin endpoint to see all productions
-      const prodResponse = await fetch(`${ipbe}:${portbe}/api/admin/stok-barang/productions`, {
+      const prodResponse = await fetch(`${API_URL}/api/admin/stok-barang/productions`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },

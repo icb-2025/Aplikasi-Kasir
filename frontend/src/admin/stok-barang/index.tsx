@@ -8,9 +8,8 @@ import type { BarangFormData } from "./ModalBarang";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { SweetAlert } from "../../components/SweetAlert";
 import io, { Socket } from 'socket.io-client';
-import { portbe } from "../../../../backend/ngrokbackend";
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 
 
 export interface BarangAPI {
@@ -94,10 +93,9 @@ export interface BahanBakuFormData {
   }>;
 }
 
-const API_URL = `${ipbe}:${portbe}/api/admin/stok-barang`;
-const KATEGORI_API_URL = `${ipbe}:${portbe}/api/admin/kategori`;
-const SETTINGS_API_URL = `${ipbe}:${portbe}/api/admin/settings`;
-const BAHAN_BAKU_API_URL = `${ipbe}:${portbe}/api/admin/modal-utama`;
+const KATEGORI_API_URL = `${API_URL}/api/admin/kategori`;
+const SETTINGS_API_URL = `${API_URL}/api/admin/settings`;
+const BAHAN_BAKU_API_URL = `${API_URL}/api/admin/modal-utama`;
 
 interface ApiError extends Error {
   message: string;
@@ -269,7 +267,7 @@ const fetchSettings = useCallback(async () => {
   const fetchProductions = useCallback(async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/stok-barang/productions`, {
+      const response = await fetch(`${API_URL}/api/admin/stok-barang/productions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -293,7 +291,7 @@ const fetchSettings = useCallback(async () => {
     setServerError(false);
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(API_URL, {
+      const res = await fetch(`${API_URL}/api/admin/stok-barang`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -335,7 +333,7 @@ const fetchSettings = useCallback(async () => {
   useEffect(() => {
     if (!settingsLoaded) return;
     
-    socketRef.current = io(`${ipbe}:${portbe}`);
+    socketRef.current = io(`${API_URL}`);
     
     socketRef.current.on('barang:created', (newBarang: BarangAPI) => {
       const mappedBarang: Barang = {
@@ -514,7 +512,7 @@ const handleEdit = (id: string) => {
       if (result.isConfirmed) {
         await SweetAlert.loading("Menghapus barang...");
         
-        const res = await fetch(`${API_URL}/${id}`, {
+        const res = await fetch(`${API_URL}/api/admin/stok-barang/${id}`, {
           method: "DELETE"
         });
         
@@ -535,7 +533,7 @@ const handleEdit = (id: string) => {
     try {
       await SweetAlert.loading(`Mengubah status barang ke ${status}...`);
       
-      const res = await fetch(`${API_URL}/${id}/status`, {
+      const res = await fetch(`${API_URL}/api/admin/stok-barang/${id}/status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -641,12 +639,12 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     let res: Response;
     if (isEditing && editId) {
-      res = await fetch(`${API_URL}/${editId}`, {
+      res = await fetch(`${API_URL}/api/admin/stok-barang/${editId}`, {
         method: "PUT",
         body: payload,
       });
     } else {
-      res = await fetch(API_URL, {
+      res = await fetch(`${API_URL}/api/admin/stok-barang`, {
         method: "POST",
         body: payload,
       });
@@ -683,7 +681,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
 const handleCreateProduction = async (productionData: ProductionFormData) => {
   try {
-    const response = await fetch(`${API_URL}/production`, {
+    const response = await fetch(`${API_URL}/api/admin/stok-barang/production`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

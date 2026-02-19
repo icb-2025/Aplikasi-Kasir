@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import PesananTable from "./PesananTable";
 import StatusModal from "./StatusModal";
 import LoadingSpinner from "../../../components/LoadingSpinner";
-import { portbe } from "../../../../../backend/ngrokbackend";
 import { SweetAlert } from "../../../components/SweetAlert";
 const ipbe = import.meta.env.VITE_IPBE;
 
@@ -43,7 +42,7 @@ export interface Pesanan {
   updatedAt: string;
 }
 
-const API_URL = `${ipbe}:${portbe}/api/admin/status-pesanan`;
+const API_URL = `${ipbe}/api/admin/status-pesanan`;
 
 const StatusPesananAdmin: React.FC = () => {
   const [pesananData, setPesananData] = useState<Pesanan[]>([]);

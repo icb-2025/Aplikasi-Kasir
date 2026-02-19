@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import MenegerLayout from "../layout";
 import LoadingSpinner from "../../components/LoadingSpinner";
-import { portbe } from "../../../../backend/ngrokbackend";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 
 interface BarangDibeli {
   kode_barang: string;
@@ -86,7 +84,7 @@ const MenegerRiwayatPage = () => {
       setLoading(true);
       
       // Fetch stok barang data
-      const stokUrl = `${ipbe}:${portbe}/api/admin/stok-barang`;
+      const stokUrl = `${API_URL}/api/admin/stok-barang`;
       const stokResponse = await fetch(stokUrl);
       
       const stokMap: Record<string, string> = {};
@@ -103,7 +101,7 @@ const MenegerRiwayatPage = () => {
       }
       
       // Fetch riwayat data
-      const response = await fetch(`${ipbe}:${portbe}/api/manager/riwayat`);
+      const response = await fetch(`${API_URL}/api/manager/riwayat`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

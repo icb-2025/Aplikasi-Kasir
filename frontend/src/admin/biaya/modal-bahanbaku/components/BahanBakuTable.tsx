@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import type { ProdukBahan } from '../index';
 import { Edit, Trash2 } from 'lucide-react'; // Mengganti Pencil dengan Edit
-import { portbe } from '../../../../../../backend/ngrokbackend';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../../../config/api';
 
 interface BahanBakuTableProps {
   bahanBaku: ProdukBahan[];
@@ -45,7 +44,7 @@ const BahanBakuTable: React.FC<BahanBakuTableProps> = ({
   useEffect(() => {
     const fetchSatuan = async () => {
       try {
-        const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan`);
+        const res = await fetch(`${API_URL}/api/admin/data-satuan`);
         if (!res.ok) return;
         const json = await res.json();
         if (Array.isArray(json)) {

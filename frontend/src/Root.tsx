@@ -1,14 +1,12 @@
 import React, { useEffect } from "react";
 import App from "./App";
-import { portbe } from "../../backend/ngrokbackend";
-
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from "./config/api";
 
 const Root: React.FC = () => {
   useEffect(() => {
     const getStoreSettings = async () => {
       try {
-        const res = await fetch(`${ipbe}:${portbe}/api/admin/settings`);
+        const res = await fetch(`${API_URL}/api/admin/settings`);
         const data = await res.json();
 
         if (data.storeName) document.title = data.storeName;

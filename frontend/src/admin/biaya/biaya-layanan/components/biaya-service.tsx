@@ -3,9 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import SweetAlert from '../../../../components/SweetAlert';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import { Edit, Trash2, Plus } from 'lucide-react'; // Mengganti Pencil dengan Edit
-import { portbe } from '../../../../../../backend/ngrokbackend';
+import { API_URL } from '../../../../config/api';
 
-const ipbe = import.meta.env.VITE_IPBE;
 const ApiKey = import.meta.env.VITE_API_KEY;
 
 export interface BiayaServiceItem {
@@ -35,7 +34,7 @@ const BiayaService: React.FC<BiayaServiceProps> = ({ refreshTrigger }) => {
     deskripsi: ''
   });
 
-  const BASE_API_URL = `${ipbe}:${portbe}/api/admin/biaya-layanan`;
+  const BASE_API_URL = `${API_URL}/api/admin/biaya-layanan`;
   const API_KEY = `${ApiKey}`;
 
   // Fungsi untuk mendapatkan token dari localStorage

@@ -2,9 +2,8 @@
 import React from "react";
 import type { Barang } from ".";
 import type { BahanBakuItem } from "./ModalBarang";
-import { portbe } from "../../../../backend/ngrokbackend";
 import { Edit, Trash2, Package } from "lucide-react";
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 
 const safeValue = <T,>(value: T | null | undefined, fallback: T): T => {
   if (value === null || value === undefined) return fallback;
@@ -95,7 +94,7 @@ const BarangTable: React.FC<BarangTableProps> = ({
     }
     
     // Jika URL relative, tambahkan base URL
-    return `${ipbe}:${portbe}${gambarUrl.startsWith('/') ? '' : '/'}${gambarUrl}`;
+    return `${API_URL}${gambarUrl.startsWith('/') ? '' : '/'}${gambarUrl}`;
   };
 
   const getBahanBakuInfo = (barang: Barang): BahanBakuItem | null => {

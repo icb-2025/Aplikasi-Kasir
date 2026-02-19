@@ -23,4 +23,4 @@ router.put("/:id", upload.single("gambar"), updateBahanBaku);
 router.delete("/:id", deleteBahanBaku);
 router.put("/:id/status", updateBahanBakuStatus);
 
-export default router;
+export default router;  

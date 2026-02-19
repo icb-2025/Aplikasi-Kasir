@@ -7,7 +7,6 @@ import OmzetTable from './components/OmzetTable';
 // import OmzetSummary from './components/OmzetSummary';
 import { exportOmzetToCsv, exportOmzetToExcel, exportOmzetToPdf } from '../../utils/OmzetExport';
 import { formatRupiah } from '../../utils/formatRupiah';
-import { portbe } from '../../../../../backend/ngrokbackend';
 const ipbe = import.meta.env.VITE_IPBE;
 
 // Interface untuk produk dari API
@@ -71,7 +70,7 @@ const OmzetPage: React.FC = () => {
       setLoading(true);
       
       // Ambil data dari API
-      const response = await fetch(`${ipbe}:${portbe}/api/admin/hpp-total`);
+      const response = await fetch(`${ipbe}/api/admin/hpp-total`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

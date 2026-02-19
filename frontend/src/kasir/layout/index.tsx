@@ -12,8 +12,7 @@ import {
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/hooks/useAuth";
-import { portbe } from "../../../../backend/ngrokbackend";
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 export default function MainLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -54,7 +53,7 @@ function Sidebar({
   useEffect(() => {
     const fetchStoreLogo = async () => {
       try {
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/settings`);
+        const response = await fetch(`${API_URL}/api/admin/settings`);
         if (!response.ok) throw new Error('Failed to fetch store logo');
         const data = await response.json();
         if (data.storeLogo) setStoreLogo(data.storeLogo);

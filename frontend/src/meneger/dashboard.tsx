@@ -1,8 +1,7 @@
 import MenegerLayout from "./layout";
 import { useState, useEffect } from "react";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { portbe } from "../../../backend/ngrokbackend";
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../config/api';
 
 import {
   DollarSign,
@@ -46,7 +45,7 @@ const MenegerDashboard = () => {
         setLoading(true);
         setError(null);
         
-        const dashboardUrl = `${ipbe}:${portbe}/api/manager/dashboard`;
+        const dashboardUrl = `${API_URL}/api/manager/dashboard`;
         const dashboardResponse = await fetch(dashboardUrl);
         
         if (!dashboardResponse.ok) {
@@ -55,7 +54,7 @@ const MenegerDashboard = () => {
         
         const dashboardData = await dashboardResponse.json();
         
-        const stokUrl = `${ipbe}:${portbe}/api/admin/stok-barang`;
+        const stokUrl = `${API_URL}/api/admin/stok-barang`;
         const stokResponse = await fetch(stokUrl);
         
         if (stokResponse.ok) {

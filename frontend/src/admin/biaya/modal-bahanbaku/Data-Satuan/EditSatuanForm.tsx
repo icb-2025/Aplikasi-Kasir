@@ -1,10 +1,8 @@
 // src/admin/bahan-baku/Data-Satuan/EditSatuanForm.tsx
 import React, { useState, useEffect } from 'react';
 import type { DataSatuanItem } from './SatuanTabs';
-import { portbe } from '../../../../../../backend/ngrokbackend';
 import GroupedSelect from './GroupedSelect';
-
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../../../config/api';
 
 interface Props {
   item: DataSatuanItem;
@@ -51,7 +49,7 @@ const EditSatuanForm: React.FC<Props> = ({ item, onClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan/${item._id}`, {
+      const res = await fetch(`${API_URL}/api/admin/data-satuan/${item._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nama, kode, tipe, deskripsi, isActive })

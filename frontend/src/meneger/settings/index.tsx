@@ -6,8 +6,7 @@ import SweetAlert from "../../components/SweetAlert";
 import GeneralSettings from './GeneralSettings';
 import ReceiptSettings from './ReceiptSettings';
 import PaymentSettings from './PaymentSettings';
-import { portbe } from '../../../../backend/ngrokbackend';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 
 
 export interface PaymentChannel {
@@ -75,7 +74,7 @@ export default function ManagerSettingsPage() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await fetch(`${ipbe}:${portbe}/api/manager/settings`);
+        const response = await fetch(`${API_URL}/api/manager/settings`);
         const data = await response.json();
         setSettings(data);
         setLoading(false);

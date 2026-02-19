@@ -3,8 +3,7 @@ import { useLocation } from "react-router-dom";
 import MainLayout from '../../components/MainLayout';
 import Sidebar from "../componentUtama/Sidebar";
 import { customStyles } from '../CssHalamanUtama';
-import { portbe } from '../../../../backend/ngrokbackend';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
 
 import {  
   Eye, 
@@ -81,9 +80,9 @@ interface ApiResponse {
   riwayat: PesananAPI[];
 }
 
-const API_URL = `${ipbe}:${portbe}/api/users/history`;
-const SETTINGS_URL = `${ipbe}:${portbe}/api/admin/settings`;
-const BIAYA_LAYANAN_URL = `${ipbe}:${portbe}/api/admin/biaya-layanan`;
+const API_URL_HISTORY = `${API_URL}/api/users/history`;
+const SETTINGS_URL = `${API_URL}/api/admin/settings`;
+const BIAYA_LAYANAN_URL = `${API_URL}/api/admin/biaya-layanan`;
 
 const StatusPesananPage = () => {
   const [filterStatus, setFilterStatus] = useState<string>("semua");
@@ -188,7 +187,7 @@ const StatusPesananPage = () => {
   const fetchKasirById = async (kasirId: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${ipbe}:${portbe}/api/kasir/${kasirId}`, {
+      const response = await fetch(`${API_URL}/api/kasir/${kasirId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
-import { portbe } from '../../../../../../backend/ngrokbackend';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../../../config/api';
 import type {Bahan, ProdukBahan} from '../index';
 
 interface EditBahanBakuFormProps {
@@ -44,7 +43,7 @@ const EditBahanBakuForm: React.FC<EditBahanBakuFormProps> = ({
   useEffect(() => {
     const fetchSatuan = async () => {
       try {
-        const res = await fetch(`${ipbe}:${portbe}/api/admin/data-satuan`);
+        const res = await fetch(`${API_URL}/api/admin/data-satuan`);
         if (!res.ok) return;
         const json = await res.json();
         if (Array.isArray(json)) {
@@ -90,7 +89,7 @@ const EditBahanBakuForm: React.FC<EditBahanBakuFormProps> = ({
 
       // Logging untuk debugging
       const produkId = produk._id || '';
-      const apiUrl = `${ipbe}:${portbe}/api/admin/bahan-baku/${produkId}`;
+      const apiUrl = `${API_URL}/api/admin/bahan-baku/${produkId}`;
       console.log('API URL:', apiUrl);
       console.log('Request data:', {
         nama_produk: produk.nama_produk,

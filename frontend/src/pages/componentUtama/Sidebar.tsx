@@ -1,7 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AuthContext from '../../auth/context/AuthContext';
-import { portbe } from '../../../../backend/ngrokbackend';
 import { 
   Home, 
   FileText, 
@@ -10,7 +9,7 @@ import {
   LogIn, 
   X
 } from 'lucide-react';
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../config/api';
   
 interface MenuItem {
   id: string;
@@ -73,7 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
       if (user) {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`${ipbe}:${portbe}/api/update-profile`, {
+          const response = await fetch(`${API_URL}/api/update-profile`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -103,7 +102,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
     const fetchStoreLogo = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${ipbe}:${portbe}/api/admin/settings`, {
+        const response = await fetch(`${API_URL}/api/admin/settings`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -115,7 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
           if (settingsData.storeLogo) {
             const logoUrl = settingsData.storeLogo.startsWith('http') 
               ? settingsData.storeLogo 
-              : `${ipbe}:${portbe}${settingsData.storeLogo}`;
+              : `${API_URL}${settingsData.storeLogo}`;
             setStoreLogo(logoUrl);
           }
         } else {
@@ -158,7 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
       return profilePicture;
     }
     
-    return `${ipbe}:${portbe}${profilePicture}`;
+    return `${API_URL}${profilePicture}`;
   };
 
   return (

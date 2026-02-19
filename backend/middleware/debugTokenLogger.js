@@ -1,37 +1,102 @@
 // middleware/debugTokenLogger.js
+import jwt from "jsonwebtoken";
 
 export const debugTokenLogger = (req, res, next) => {
+  const start = Date.now();
+
   const authHeader = req.headers.authorization;
-  const userAgent = req.headers['user-agent'] || '';
+  const userAgent = req.headers["user-agent"] || "";
   const url = req.originalUrl;
+  const ip = req.ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+
   const RED = "\x1b[31m";
   const GREEN = "\x1b[32m";
   const YELLOW = "\x1b[33m";
+  const CYAN = "\x1b[36m";
   const RESET = "\x1b[0m";
   const BOLD = "\x1b[1m";
-  const suspiciousKeywords = ['nmap', 'gobuster', 'sqlmap', 'dirbuster', 'nikto', 'python-requests'];
-  const isScanned = suspiciousKeywords.some(keyword => 
-    userAgent.toLowerCase().includes(keyword) || url.toLowerCase().includes(keyword)
+
+  const suspiciousKeywords = [
+    "nmap",
+    "gobuster",
+    "sqlmap",
+    "dirbuster",
+    "nikto",
+    "python-requests",
+    "curl",
+    "wget"
+  ];
+
+  const isScanned = suspiciousKeywords.some(keyword =>
+    userAgent.toLowerCase().includes(keyword) ||
+    url.toLowerCase().includes(keyword)
   );
 
+  console.log(`${CYAN}${BOLD}━━━━━━━━━━ REQUEST ━━━━━━━━━━${RESET}`);
+  console.log(`${GREEN}${req.method}${RESET} ${url}`);
+  console.log(`IP        : ${ip}`);
+  console.log(`UserAgent : ${userAgent}`);
+
   if (isScanned) {
-    console.log(`${RED}${BOLD}!!! [WARNING] POTENTIAL SCAN DETECTED !!!${RESET}`);
-    console.log(`${RED}[SCANNER]: ${userAgent}${RESET}`);
-    console.log(`${RED}[TARGET]: ${req.method} ${url}${RESET}`);
-    console.log(`${RED}-------------------------------------------${RESET}`);
-  } else {
-    console.log(`${GREEN}[DEBUG] Incoming Request:${RESET}`, req.method, url);
+    console.log(`${RED}${BOLD}⚠ POTENTIAL SCANNER DETECTED${RESET}`);
   }
 
+  // tampilkan query (kalau ada)
+  if (Object.keys(req.query || {}).length > 0) {
+    console.log(`Query     :`, req.query);
+  }
+
+  // tampilkan body (dipotong supaya nggak berat)
+  if (req.body && Object.keys(req.body).length > 0) {
+    const safeBody = JSON.stringify(req.body).substring(0, 300);
+    console.log(`Body      : ${safeBody}${safeBody.length >= 300 ? "..." : ""}`);
+  }
+
+  // TOKEN DEBUG
   if (!authHeader) {
-    console.log(`${YELLOW}[[-]DEBUG] Tidak ada Authorization header.${RESET}`);
+    console.log(`${YELLOW}Auth      : No Authorization header${RESET}`);
   } else {
     const token = authHeader.split(" ")[1];
-    if (token) {
-      console.log(`${GREEN}[[+]DEBUG] Authorization header ditemukan:${RESET}`);
-      console.log(`Token: ${token.substring(0, 40)}...`);
+
+    if (!token) {
+      console.log(`${YELLOW}Auth      : Bearer tanpa token${RESET}`);
+    } else {
+      try {
+        // decode TANPA verify (biar cepat & aman untuk debug)
+        const decoded = jwt.decode(token);
+
+        console.log(`${GREEN}Auth      : Token received${RESET}`);
+        console.log(`UserID    : ${decoded?.id}`);
+        console.log(`Role      : ${decoded?.role}`);
+        console.log(`Expire    : ${decoded?.exp ? new Date(decoded.exp * 1000) : "?"}`);
+      } catch (e) {
+        console.log(`${RED}Auth      : Token decode failed${RESET}`);
+      }
     }
   }
+
+  // intercept response
+  const originalSend = res.send;
+  res.send = function (body) {
+    const duration = Date.now() - start;
+
+    console.log(`${CYAN}━━━━━━━━━━ RESPONSE ━━━━━━━━━${RESET}`);
+    console.log(`Status    : ${res.statusCode}`);
+    console.log(`Time      : ${duration} ms`);
+
+    if (res.statusCode >= 400) {
+      console.log(`${RED}❌ ERROR RESPONSE${RESET}`);
+      console.log(`Response  :`, typeof body === "string"
+        ? body.substring(0, 300)
+        : body);
+    } else {
+      console.log(`${GREEN}✔ Success${RESET}`);
+    }
+
+    console.log(`${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n`);
+
+    return originalSend.call(this, body);
+  };
 
   next();
 };

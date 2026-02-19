@@ -1,7 +1,6 @@
 // src/pages/transaksi/proses-transaksi/components/VirtualAccountPayment.tsx
 import { useState } from "react";
-import { portbe } from "../../../../../../backend/ngrokbackend";
-const ipbe = import.meta.env.VITE_IPBE;
+import { API_URL } from '../../../config/api';
 
 
 interface BarangDibeli {
@@ -142,7 +141,7 @@ const VirtualAccountPayment = ({ transaksi, onPaymentSuccess, onPaymentCancel }:
       formData.append('transaction_id', transaksi?._id || "");
       
       // Upload bukti pembayaran
-      const uploadResponse = await fetch(`${ipbe}:${portbe}/api/transaksi/upload-proof`, {
+      const uploadResponse = await fetch(`${API_URL}/api/transaksi/upload-proof`, {
         method: 'POST',
         body: formData,
       });
@@ -152,7 +151,7 @@ const VirtualAccountPayment = ({ transaksi, onPaymentSuccess, onPaymentCancel }:
       }
       
       // Update status transaksi di backend
-      const updateResponse = await fetch(`${ipbe}:${portbe}/api/transaksi/${transaksi?._id}`, {
+      const updateResponse = await fetch(`${API_URL}/api/transaksi/${transaksi?._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
