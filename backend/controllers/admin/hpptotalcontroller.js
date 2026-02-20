@@ -117,26 +117,39 @@ export const getHppSummary = async (req, res) => {
 
 export const addTransaksiToHpp = async (req, res) => {
   try {
+    // Keep backward-compatible HTTP handler: delegate to helper
     const { nama_produk, jumlah_terjual } = req.body;
+    const hppHarian = await upsertHppForSale(nama_produk, jumlah_terjual);
+    return res.json({ success: true, data: hppHarian });
+
+  } catch (err) {
+    console.error("Error addTransaksiToHpp:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Helper: update HPP harian given product name and sold quantity
+export const upsertHppForSale = async (nama_produk, jumlah_terjual) => {
+  try {
     const today = new Date().toISOString().slice(0, 10);
 
     const modalUtama = await ModalUtama.findOne();
     if (!modalUtama) {
-      return res.status(404).json({ message: "Data modal utama tidak ditemukan" });
+      throw new Error("Data modal utama tidak ditemukan");
     }
 
-    // Cari produk
+    // Cari produk di modal utama
     const produkData = modalUtama.bahan_baku.find(
-      p => p.nama_produk.toLowerCase().trim() === nama_produk.toLowerCase().trim()
+      p => p.nama_produk.toLowerCase().trim() === String(nama_produk).toLowerCase().trim()
     );
 
     if (!produkData) {
-      return res.status(404).json({ message: `Produk ${nama_produk} tidak ditemukan.` });
+      throw new Error(`Produk ${nama_produk} tidak ditemukan.`);
     }
 
-    const jumlah = Number(jumlah_terjual);
-    const hpp_per_porsi = produkData.modal_per_porsi;
-    const harga_jual = produkData.harga_jual;
+    const jumlah = Number(jumlah_terjual) || 0;
+    const hpp_per_porsi = produkData.modal_per_porsi || 0;
+    const harga_jual = produkData.harga_jual || 0;
 
     const hpp_total = hpp_per_porsi * jumlah;
     const pendapatan = harga_jual * jumlah;
@@ -157,14 +170,14 @@ export const addTransaksiToHpp = async (req, res) => {
 
     // Update atau tambah item produk
     const index = hppHarian.produk.findIndex(
-      p => p.nama_produk.toLowerCase().trim() === nama_produk.toLowerCase().trim()
+      p => p.nama_produk.toLowerCase().trim() === String(nama_produk).toLowerCase().trim()
     );
 
     if (index !== -1) {
-      hppHarian.produk[index].jumlah_terjual += jumlah;
-      hppHarian.produk[index].hpp_total += hpp_total;
-      hppHarian.produk[index].pendapatan += pendapatan;
-      hppHarian.produk[index].laba_kotor += laba_kotor;
+      hppHarian.produk[index].jumlah_terjual = (hppHarian.produk[index].jumlah_terjual || 0) + jumlah;
+      hppHarian.produk[index].hpp_total = (hppHarian.produk[index].hpp_total || 0) + hpp_total;
+      hppHarian.produk[index].pendapatan = (hppHarian.produk[index].pendapatan || 0) + pendapatan;
+      hppHarian.produk[index].laba_kotor = (hppHarian.produk[index].laba_kotor || 0) + laba_kotor;
     } else {
       hppHarian.produk.push({
         nama_produk,
@@ -177,16 +190,15 @@ export const addTransaksiToHpp = async (req, res) => {
     }
 
     // Update total harian (TANPA BEBAN!)
-    hppHarian.total_hpp += hpp_total;
-    hppHarian.total_pendapatan += pendapatan;
-    hppHarian.total_laba_kotor += laba_kotor;
+    hppHarian.total_hpp = (hppHarian.total_hpp || 0) + hpp_total;
+    hppHarian.total_pendapatan = (hppHarian.total_pendapatan || 0) + pendapatan;
+    hppHarian.total_laba_kotor = (hppHarian.total_laba_kotor || 0) + laba_kotor;
 
     await hppHarian.save();
 
-    res.json({ success: true, data: hppHarian });
-
+    return hppHarian;
   } catch (err) {
-    console.error("Error addTransaksiToHpp:", err);
-    res.status(500).json({ message: err.message });
+    console.error("Error upsertHppForSale:", err);
+    throw err;
   }
 };

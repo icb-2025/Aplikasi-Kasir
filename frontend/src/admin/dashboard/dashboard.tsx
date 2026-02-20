@@ -23,6 +23,32 @@ interface TopBarangResponse {
   }[];
 }
 
+// HPP record product item
+interface HppProduct {
+  nama_produk: string;
+  jumlah_terjual: number;
+  hpp_per_porsi: number;
+  hpp_total: number;
+  pendapatan: number;
+  laba_kotor: number;
+  _id: string;
+}
+
+// HPP total record (single document)
+interface HppRecord {
+  _id: string;
+  tanggal: string;
+  produk: HppProduct[];
+  total_hpp: number;
+  total_pendapatan: number;
+  total_laba_kotor: number;
+  total_beban: number;
+  laba_bersih: number;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
 // Update interface untuk mencocokkan dengan struktur API /hpp-total/summary
 interface HppTotalSummaryResponse {
   success: boolean;
@@ -137,7 +163,7 @@ const AdminDashboard: React.FC = () => {
         ] = await Promise.all([
           fetch(`${ipbe}/api/admin/users`),
           fetch(`${ipbe}/api/admin/dashboard/top-barang?filter=bulan`),
-          fetch(`${ipbe}/api/admin/hpp-total/summary`), // PERBAIKAN: Gunakan endpoint /summary
+          fetch(`${ipbe}/api/admin/hpp-total`),
           fetch(`${ipbe}/api/admin/dashboard/transaksi/terakhir`),
           fetch(`${ipbe}/api/admin/settings`)
         ]);
@@ -151,7 +177,10 @@ const AdminDashboard: React.FC = () => {
         // Parse responses
         const usersData: User[] = await usersResponse.json();
         const topBarangData: TopBarangResponse = await topBarangResponse.json();
-        const hppTotalData: HppTotalSummaryResponse = await hppTotalResponse.json(); // Update interface
+        // hppTotalResponse may return list of records or a summary object
+        const hppTotalDataRaw = await hppTotalResponse.json();
+        // Try to handle both summary and full data shapes
+        const hppTotalData = hppTotalDataRaw as HppTotalSummaryResponse | HppRecord[];
         const transaksiData: Transaksi[] = await transaksiResponse.json();
         const settingsData: SettingsResponse = await settingsResponse.json();
 
@@ -164,32 +193,92 @@ const AdminDashboard: React.FC = () => {
         const totalTransactions = transaksiData.length;
         const completedTransactions = transaksiData.filter(t => t.status === 'selesai').length;
         
-        // PERBAIKAN: Ambil total revenue dari summary
-        let totalRevenue = 0;
-        if (hppTotalData && hppTotalData.success && hppTotalData.summary) {
-          if (typeof hppTotalData.summary.total_pendapatan === 'number') {
-            totalRevenue = hppTotalData.summary.total_pendapatan;
-          } else if (typeof hppTotalData.summary.total_pendapatan === 'string') {
-            totalRevenue = parseFloat(hppTotalData.summary.total_pendapatan) || 0;
-          } else {
-            console.warn('total_pendapatan is not a number or string:', hppTotalData.summary.total_pendapatan);
-            totalRevenue = 0;
+        // PERBAIKAN: Ambil total pendapatan untuk periode BULAN INI dari raw hpp-total data
+        const safeNumber = (v: unknown): number => {
+          if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+          if (typeof v === 'string') {
+            const n = parseFloat(v);
+            return Number.isFinite(n) ? n : 0;
           }
+          return 0;
+        };
+
+        let totalRevenue = 0;
+        try {
+          // jika backend mengembalikan { success, data: [...] } atau langsung array
+          const records: HppRecord[] = Array.isArray((hppTotalData as HppTotalSummaryResponse).data)
+            ? (hppTotalData as HppTotalSummaryResponse).data as HppRecord[]
+            : (Array.isArray(hppTotalData) ? (hppTotalData as HppRecord[]) : []);
+
+          const today = new Date();
+          const monthAgo = new Date(today);
+          monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+          const monthRecords = records.filter((item: HppRecord) => {
+            const d = new Date(item.tanggal);
+            return d >= monthAgo && d <= today;
+          });
+
+          totalRevenue = monthRecords.reduce((sum: number, item: HppRecord) => sum + safeNumber(item.total_pendapatan), 0);
+        } catch (e) {
+          console.warn('Failed to compute monthly revenue from hppTotalData:', e);
+          totalRevenue = 0;
         }
         
         // Calculate total products sold
-        const totalProductsSold = topBarangData.barang_terlaris.reduce(
-          (sum: number, item) => sum + item.jumlah, 0
-        );
+        // Prefer counting from hpp-total records (jumlah_terjual per product). Fall back to topBarangData if needed.
+        let totalProductsSold = 0;
+        try {
+          const records: HppRecord[] = Array.isArray((hppTotalData as HppTotalSummaryResponse).data)
+            ? (hppTotalData as HppTotalSummaryResponse).data as HppRecord[]
+            : (Array.isArray(hppTotalData) ? (hppTotalData as HppRecord[]) : []);
+
+          const today = new Date();
+          const monthAgo = new Date(today);
+          monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+          const monthRecords = records.filter((item: HppRecord) => {
+            const d = new Date(item.tanggal);
+            return d >= monthAgo && d <= today;
+          });
+
+          totalProductsSold = monthRecords.reduce((total: number, rec: HppRecord) => {
+            if (rec.produk && Array.isArray(rec.produk)) {
+              return total + rec.produk.reduce((s: number, p: HppProduct) => s + (Number.isFinite(p.jumlah_terjual) ? p.jumlah_terjual : safeNumber(p.jumlah_terjual)), 0);
+            }
+            return total;
+          }, 0);
+
+          // Fallback: if still zero and topBarangData provides jumlah or jumlah_terjual
+          if (!totalProductsSold && topBarangData && (topBarangData as TopBarangResponse).barang_terlaris) {
+            const list = (topBarangData as TopBarangResponse).barang_terlaris;
+            totalProductsSold = list.reduce((sum: number, item: { nama_barang: string; jumlah: number }) => {
+              if (Number.isFinite(item.jumlah)) return sum + item.jumlah;
+              return sum;
+            }, 0);
+          }
+        } catch (e) {
+          console.warn('Failed to compute totalProductsSold:', e);
+          // fallback to previous method if available
+          if (topBarangData && (topBarangData as TopBarangResponse).barang_terlaris) {
+            totalProductsSold = (topBarangData as TopBarangResponse).barang_terlaris.reduce((sum: number, item: { nama_barang: string; jumlah: number }) => sum + (item.jumlah || 0), 0);
+          } else {
+            totalProductsSold = 0;
+          }
+        }
         
         // Count active payment methods from settings
         const activePaymentMethods = settingsData.payment_methods.filter(
           method => method.isActive
         ).length;
         
-        // Calculate average transaction value
-        const averageTransactionValue = totalTransactions > 0 
-          ? transaksiData.reduce((sum, t) => sum + t.total_harga, 0) / totalTransactions 
+        // Calculate average transaction value (guard NaN)
+        const averageTransactionValue = totalTransactions > 0
+          ? (() => {
+              const sum = transaksiData.reduce((sum, t) => sum + safeNumber((t as unknown as { total_harga: unknown }).total_harga), 0);
+              const avg = sum / totalTransactions;
+              return Number.isFinite(avg) ? avg : 0;
+            })()
           : 0;
 
         console.log('Total Revenue:', totalRevenue); // Debug log
@@ -370,12 +459,12 @@ const AdminDashboard: React.FC = () => {
               <p className={`text-2xl font-bold text-white mt-1 ${stats.totalRevenue < 0 ? 'text-red-100' : ''}`}>
                 {formatRupiah(stats.totalRevenue)}
               </p>
-              {/* <p className="text-xs text-white mt-2 flex items-center">
+              {/* { <p className="text-xs text-white mt-2 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
                 </svg>
                 Rata-rata: <span className="text-sm font-bold text-white ml-2">{formatRupiah(stats.averageTransactionValue)}</span>
-              </p> */}
+              </p>} */}
             </div>
             <div className="p-3 rounded-full bg-white bg-opacity-20">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -1,5 +1,6 @@
 import Transaksi from "../../models/datatransaksi.js";
 import {addTransaksiToLaporan} from "../datatransaksiController.js"
+import { upsertHppForSale } from "./hpptotalcontroller.js";
 /**
  * Ambil semua pesanan berdasarkan status
  * Contoh: GET /status?status=pending
@@ -31,9 +32,14 @@ export const updateStatusPesanan = async (req, res) => {
       });
     }
 
+    const updateObj = { status };
+    if (status === 'selesai') {
+      updateObj.tanggal_transaksi = new Date();
+    }
+
     const pesanan = await Transaksi.findByIdAndUpdate(
       id,
-      { status },
+      updateObj,
       { new: true }
     );
 
@@ -61,12 +67,26 @@ export const approvePesanan = async (req, res) => {
       return res.status(400).json({ message: "Hanya pesanan pending yang bisa di-ACC" });
     }
 
-    // Update jadi selesai
+    // Update jadi selesai dan set tanggal_transaksi jika belum ada
     pesanan.status = "selesai";
+    if (!pesanan.tanggal_transaksi) {
+      pesanan.tanggal_transaksi = new Date();
+    }
     await pesanan.save();
 
     // Masukkan ke laporan penjualan
     await addTransaksiToLaporan(pesanan);
+
+    // Update HPP harian agar endpoint /api/admin/hpp-total termasuk transaksi baru
+    try {
+      for (const item of pesanan.barang_dibeli) {
+        const nama = item.nama_barang || item.nama_produk || item.nama;
+        const jumlah = item.jumlah || item.qty || 1;
+        await upsertHppForSale(nama, jumlah);
+      }
+    } catch (err) {
+      console.error('Error updating HPP harian for approved pesanan:', err);
+    }
 
     res.json({ message: "Pesanan berhasil di-ACC", pesanan });
   } catch (error) {
