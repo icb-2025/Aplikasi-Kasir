@@ -124,11 +124,33 @@ export const getLaba = async (req, res) => {
     }
     const currentLaporan = laporan[0];
     const detail = currentLaporan.laba.detail || [];
-    const totalLabaKotor = detail.reduce((acc, item) => acc + (item.laba || 0), 0);
+
+    const computedDetail = (detail || []).map(item => {
+      const hpp = item.hpp || 0;
+      const harga_produk = item.harga_produk || 0;
+      const jumlah = item.jumlah || 0;
+      const subtotal_produk = item.subtotal_produk || (harga_produk * jumlah);
+      const subtotal_final = item.subtotal_final || 0;
+
+      const labaPerItem = harga_produk - hpp;
+      const totalLaba = labaPerItem * jumlah;
+
+      return {
+        produk: item.produk,
+        kode_barang: item.kode_barang,
+        harga_jual: harga_produk,
+        harga_beli: hpp,
+        labaPerItem,
+        jumlahTerjual: jumlah,
+        totalLaba,
+        subtotal_produk,
+        subtotal_final
+      };
+    });
+
+    const totalLabaKotor = computedDetail.reduce((acc, it) => acc + (it.totalLaba || 0), 0);
     const totalBiayaOperasional = currentLaporan.biaya_operasional_id?.total || 0;
     const totalLabaBersih = totalLabaKotor - totalBiayaOperasional;
-    currentLaporan.laba.total_laba = totalLabaBersih;
-    await currentLaporan.save();
 
     res.json({
       ringkasan: {
@@ -136,7 +158,7 @@ export const getLaba = async (req, res) => {
         total_biaya_operasional: totalBiayaOperasional,
         total_laba_bersih: totalLabaBersih
       },
-      detail_laba: detail,
+      detail_laba: computedDetail,
       biaya_operasional: currentLaporan.biaya_operasional_id || {}
     });
 

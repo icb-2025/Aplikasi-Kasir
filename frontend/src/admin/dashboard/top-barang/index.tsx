@@ -12,32 +12,10 @@ interface ProdukApi {
   pendapatan: number;
   laba_kotor: number;
   _id: string;
+  harga_jual?: number;
 }
 
-// Interface untuk response dari API /hpp-total/summary
-interface ApiResponse {
-  success: boolean;
-  summary: {
-    total_hpp: number;
-    total_pendapatan: number;
-    total_laba_kotor: number;
-    total_beban: number;
-    total_laba_bersih: number;
-  };
-  data?: {
-    _id: string;
-    tanggal: string;
-    produk: ProdukApi[];
-    total_hpp: number;
-    total_pendapatan: number;
-    total_laba_kotor: number;
-    total_beban: number;
-    laba_bersih: number;
-    createdAt: string;
-    updatedAt: string;
-    __v: number;
-  }[];
-}
+// (Removed unused ApiResponse type)
 
 // Tambahkan interface untuk produk item
 interface ProdukItem {
@@ -68,58 +46,60 @@ const TopBarang: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // PERBAIKAN: Gunakan endpoint /summary
-        const endpoint = `${ipbe}/api/admin/hpp-total/summary`;
-        
+        // Fetch top-barang from dashboard endpoint (server-side aggregation)
+        const endpoint = `${ipbe}/api/admin/dashboard/top-barang`;
+
         const response = await fetch(endpoint);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result: ApiResponse = await response.json();
-        
-        // Validasi data
-        if (!result || !result.success) {
-          throw new Error('Data tidak valid atau tidak lengkap');
-        }
-        
-        // PERBAIKAN: Ambil total pendapatan dari summary
-        if (result.summary && result.summary.total_pendapatan) {
-          setTotalPendapatan(result.summary.total_pendapatan);
-        }
-        
-        // Jika ada data produk, ambil dari result.data
-        if (result.data && result.data.length > 0) {
-          // Ambil semua produk dari semua data
-          const semuaProduk: ProdukApi[] = [];
-          result.data.forEach(item => {
-            if (item.produk && Array.isArray(item.produk)) {
-              semuaProduk.push(...item.produk);
-            }
-          });
-          
-          // Urutkan produk berdasarkan pendapatan tertinggi
-          const sortedProduk = [...semuaProduk].sort((a, b) => b.pendapatan - a.pendapatan);
-          
-          // PERBAIKAN: Ambil hanya 5 produk terlaris
-          const top5Produk = sortedProduk.slice(0, 5);
-          
-          setData(top5Produk);
-          
-          // Set produk pertama sebagai produk yang dipilih
-          if (top5Produk.length > 0) {
-            setSelectedProduct(top5Produk[0]);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const raw = await response.json();
+
+        // Normalize server response: { barang_terlaris: [...] } or top_barang
+        const list = (raw && (raw.barang_terlaris || raw.top_barang))
+          ? (raw.barang_terlaris || raw.top_barang)
+          : (Array.isArray(raw) ? raw : []);
+
+        // safe number parser
+        const safeNumber = (v: unknown): number => {
+          if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+          if (typeof v === 'string') {
+            const n = parseFloat(v);
+            return Number.isFinite(n) ? n : 0;
           }
-          
-          // Hitung total penjualan
-          const total = top5Produk.reduce((sum, item) => sum + item.jumlah_terjual, 0);
-          setTotalPenjualan(total);
-        } else {
-          // Jika tidak ada data produk, set ke array kosong
-          setData([]);
-          setTotalPenjualan(0);
-        }
+          return 0;
+        };
+
+        // Map server items to ProdukApi-compatible shape (avoid `any` by using unknown)
+        const items = Array.isArray(list) ? (list as unknown[]) : [];
+        const mapped: ProdukApi[] = items.map((raw) => {
+          const item = raw as Record<string, unknown>;
+          const getStr = (k: string) => (typeof item[k] === 'string' ? (item[k] as string) : '');
+          const id = getStr('_id') || getStr('nama_barang') || getStr('nama_produk') || String(getStr('nama')).replace(/\s+/g, '-').toLowerCase() || '';
+          const jumlahVal = safeNumber(item['jumlah']);
+          const jumlahTerjualVal = safeNumber(item['jumlah_terjual']);
+
+          return {
+            _id: id,
+            nama_produk: getStr('nama_barang') || getStr('nama_produk') || getStr('nama') || 'Unknown',
+            jumlah_terjual: jumlahVal || jumlahTerjualVal || 0,
+            hpp_per_porsi: safeNumber(item['hpp_per_porsi'] ?? item['hpp_per_porsi']),
+            hpp_total: safeNumber(item['hpp_total'] ?? item['hpp_total']),
+            pendapatan: safeNumber(item['pendapatan'] ?? item['subtotal'] ?? 0),
+            laba_kotor: safeNumber(item['laba_kotor'] ?? 0),
+            harga_jual: safeNumber(item['harga_jual'] ?? item['harga_final'] ?? item['harga_satuan'] ?? 0),
+          };
+        });
+
+        // Sort by pendapatan desc and take top 5
+        const sortedProduk = mapped.sort((a, b) => safeNumber(b.pendapatan) - safeNumber(a.pendapatan));
+        const top5Produk = sortedProduk.slice(0, 5);
+        setData(top5Produk);
+        if (top5Produk.length > 0) setSelectedProduct(top5Produk[0]);
+
+        // totals
+        const totalPendapatanBulan = mapped.reduce((s, p) => s + safeNumber(p.pendapatan), 0);
+        setTotalPendapatan(totalPendapatanBulan);
+        const totalJual = mapped.reduce((s, p) => s + (Number.isFinite(p.jumlah_terjual) ? p.jumlah_terjual : 0), 0);
+        setTotalPenjualan(totalJual);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengambil data');
       } finally {
@@ -299,7 +279,7 @@ const TopBarang: React.FC = () => {
                       
                       return (
                         <div 
-                          key={barang.nama_produk} 
+                              key={barang._id || `${barang.nama_produk}-${index}`} 
                           className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
                             isSelected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
                           }`}
@@ -386,7 +366,7 @@ const TopBarang: React.FC = () => {
                             <span className="text-xs font-medium">Harga Jual</span>
                           </div>
                           <p className="text-lg font-bold text-gray-900">
-                            {formatRupiah(getProdukHargaJual(selectedProduct.nama_produk))}
+                            {formatRupiah(selectedProduct.harga_jual ?? getProdukHargaJual(selectedProduct.nama_produk))}
                           </p>
                         </div>
                         <div className="bg-white p-3 rounded-lg shadow-sm">
@@ -489,7 +469,7 @@ const TopBarang: React.FC = () => {
                 
                 return (
                   <tr 
-                    key={barang.nama_produk} 
+                    key={barang._id || `${barang.nama_produk}-${index}`} 
                     className={`transition-colors hover:bg-gray-50 ${
                       index % 2 === 0 ? 'bg-white' : 'bg-amber-50'
                     }`}

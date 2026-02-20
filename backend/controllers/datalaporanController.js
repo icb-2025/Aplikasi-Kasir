@@ -136,21 +136,43 @@ export const updateLaporanDenganTransaksi = async (trx) => {
     metode.total += trx.total_harga;
   }
 
-  // Update detail laba (tambahkan setiap item dari trx jika belum ada)
+  // Update detail laba snapshots (immutable economics). Do not store derived profit values.
   laporan.laba.detail = laporan.laba.detail || [];
   if (Array.isArray(trx.barang_dibeli)) {
-    trx.barang_dibeli.forEach(item => {
-      // tambahkan entri laba dengan nomor_transaksi untuk traceability
+    const Barang = (await import('../models/databarang.js')).default;
+    for (const item of trx.barang_dibeli) {
+      const jumlah = item.jumlah || 1;
+
+      let master = null;
+      try {
+        master = await Barang.findOne({
+          $or: [
+            (item.kode_barang ? { kode_barang: item.kode_barang } : null),
+            (item.nama_barang ? { nama_barang: item.nama_barang } : null)
+          ].filter(Boolean)
+        }).lean();
+      } catch (e) {
+        master = null;
+      }
+
+      const harga_produk = master?.harga_jual ?? item.harga_satuan ?? 0;
+      const hpp = master?.harga_beli ?? (typeof item.harga_beli === 'number' ? item.harga_beli : 0);
+      const harga_final = master?.hargaFinal ?? (typeof item.harga_final === 'number' ? item.harga_final : (typeof item.subtotal === 'number' && jumlah > 0 ? item.subtotal / jumlah : harga_produk));
+
+      const subtotal_produk = harga_produk * jumlah;
+      const subtotal_final = (typeof item.subtotal === 'number') ? item.subtotal : harga_final * jumlah;
+
       laporan.laba.detail.push({
         kode_barang: item.kode_barang,
         produk: item.nama_barang,
-        harga_jual: item.harga_satuan || item.harga_jual || 0,
-        harga_beli: item.harga_beli || 0,
-        jumlah: item.jumlah || 1,
-        subtotal: item.subtotal || (item.harga_satuan || 0) * (item.jumlah || 1),
-        laba: (item.harga_satuan || 0) - (item.harga_beli || 0)
+        hpp,
+        harga_produk,
+        harga_final,
+        jumlah,
+        subtotal_produk,
+        subtotal_final
       });
-    });
+    }
   }
 
   await laporan.save();

@@ -78,23 +78,48 @@ export const getTopBarang = async (req, res) => {
       });
     }
 
-    const barangCounter = {};
+    // Aggregate per product using accounting fields from transaksi
+    const barangMap = {};
+
     transaksiSelesai.forEach(trx => {
+      if (!Array.isArray(trx.barang_dibeli)) return;
       trx.barang_dibeli.forEach(item => {
-        if (!barangCounter[item.nama_barang]) {
-          barangCounter[item.nama_barang] = 0;
+        const key = item.kode_barang || item.nama_barang || item._id || String(item.nama || item.kode || '');
+
+        if (!barangMap[key]) {
+          barangMap[key] = {
+            kode_barang: item.kode_barang || key,
+            nama_barang: item.nama_barang || item.nama || 'Unknown',
+            qty: 0,
+            pendapatan: 0,
+            modal: 0,
+            harga_jual_ref: item.harga_satuan || 0
+          };
         }
-        // Hitung berdasarkan pendapatan (subtotal)
-        barangCounter[item.nama_barang] += item.subtotal;
+
+        const qty = Number(item.jumlah) || 0;
+        const hargaFinal = Number(item.harga_satuan) || 0; // harga_final
+        const hpp = Number(item.harga_beli) || 0; // hpp per porsi
+
+        barangMap[key].qty += qty;
+        barangMap[key].pendapatan += hargaFinal * qty;
+        barangMap[key].modal += hpp * qty;
       });
     });
 
-    const barangTerlaris = Object.entries(barangCounter)
-      .map(([nama_barang, pendapatan]) => ({ nama_barang, pendapatan }))
+    const barangTerlaris = Object.values(barangMap)
+      .map(item => ({
+        kode_barang: item.kode_barang,
+        nama_barang: item.nama_barang,
+        jumlah_terjual: item.qty,
+        harga_jual: item.harga_jual_ref,
+        pendapatan: item.pendapatan,
+        laba_kotor: item.pendapatan - item.modal
+      }))
       .sort((a, b) => b.pendapatan - a.pendapatan)
       .slice(0, 5);
 
-    res.json({ 
+    res.json({
       barang_terlaris: barangTerlaris,
       mode: bulan === 'kumulatif' ? 'kumulatif' : 'bulan_ini'
     });

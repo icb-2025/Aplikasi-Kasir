@@ -485,47 +485,72 @@ export default function StokBarangManager({
 
       {/* Pagination */}
       {totalHalaman > 1 && (
-        <div className="flex justify-center mt-8">
-          <div className="flex items-center space-x-1">
+  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mt-6">
+    {/* Teks Informasi - Ganti dengan variabel yang sesuai */}
+    <div className="text-sm text-gray-600">
+      Menampilkan <span className="font-semibold text-gray-900">{indeksItemPertama + 1}-{Math.min(indeksItemTerakhir, barangTersaring.length)}</span> dari{' '}
+      <span className="font-semibold text-gray-900">{barangTersaring.length}</span> barang
+    </div>
+    
+    {/* Kontrol Pagination */}
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => paginasi(halamanAktif - 1)}
+        disabled={halamanAktif === 1}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+          halamanAktif === 1 
+            ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+            : 'bg-orange-50 text-orange-600 hover:bg-orange-100 hover:scale-105'
+        }`}
+      >
+        <ChevronLeft className="h-4 w-4" />
+        <span className="hidden sm:inline">Sebelumnya</span>
+      </button>
+      
+      <div className="flex items-center gap-1">
+        {Array.from({ length: Math.min(5, totalHalaman) }, (_, i) => {
+          let nomorHalaman;
+          if (totalHalaman <= 5) {
+            nomorHalaman = i + 1;
+          } else if (halamanAktif <= 3) {
+            nomorHalaman = i + 1;
+          } else if (halamanAktif >= totalHalaman - 2) {
+            nomorHalaman = totalHalaman - 4 + i;
+          } else {
+            nomorHalaman = halamanAktif - 2 + i;
+          }
+          
+          return (
             <button
-              onClick={() => paginasi(halamanAktif - 1)}
-              disabled={halamanAktif === 1}
-              className={`p-2 rounded-md ${halamanAktif === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+              key={nomorHalaman}
+              onClick={() => paginasi(nomorHalaman)}
+              className={`w-9 h-9 rounded-lg font-medium text-sm transition-all ${
+                halamanAktif === nomorHalaman 
+                  ? 'bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-md scale-105' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
             >
-              <ChevronLeft className="h-5 w-5" />
+              {nomorHalaman}
             </button>
-            {Array.from({ length: Math.min(5, totalHalaman) }, (_, i) => {
-              let nomorHalaman;
-              if (totalHalaman <= 5) {
-                nomorHalaman = i + 1;
-              } else if (halamanAktif <= 3) {
-                nomorHalaman = i + 1;
-              } else if (halamanAktif >= totalHalaman - 2) {
-                nomorHalaman = totalHalaman - 4 + i;
-              } else {
-                nomorHalaman = halamanAktif - 2 + i;
-              }
-              
-              return (
-                <button
-                  key={nomorHalaman}
-                  onClick={() => paginasi(nomorHalaman)}
-                  className={`w-10 h-10 rounded-md ${halamanAktif === nomorHalaman ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-                >
-                  {nomorHalaman}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => paginasi(halamanAktif + 1)}
-              disabled={halamanAktif === totalHalaman}
-              className={`p-2 rounded-md ${halamanAktif === totalHalaman ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
+      
+      <button
+        onClick={() => paginasi(halamanAktif + 1)}
+        disabled={halamanAktif === totalHalaman}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+          halamanAktif === totalHalaman 
+            ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+            : 'bg-orange-50 text-orange-600 hover:bg-orange-100 hover:scale-105'
+        }`}
+      >
+        <span className="hidden sm:inline">Selanjutnya</span>
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  </div>
+)}
 
       {/* Modal Detail Barang */}
       <DetailModal

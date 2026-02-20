@@ -114,6 +114,11 @@ export const createTransaksi = async (req, res) => {
     const { barang_dibeli, metode_pembayaran, total_harga } = req.body;
     const grossAmount = Math.round(Number(total_harga));
 
+    const toNumber = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+
     // Validasi metode pembayaran
     const settings = await Settings.findOne();
     const allowedMethods = settings ? settings.payment_methods.map(pm => pm.method) : ["Tunai"];
@@ -213,10 +218,22 @@ export const createTransaksi = async (req, res) => {
           ],
         });
 
+        if (!barangData) {
+          // safety: although we checked stock earlier, guard against missing DB row
+          throw new Error(`Barang ${item.nama_barang} tidak ditemukan saat building transaksi`);
+        }
+
+        const jumlah = toNumber(item.jumlah);
+        const hargaFinal = toNumber(barangData.hargaFinal || barangData.harga_jual || item.harga_satuan);
+        const hargaBeli = toNumber(barangData.harga_beli || item.harga_beli || barangData.harga_beli);
+
         return {
-          ...item,
-          kode_barang: barangData?.kode_barang || item.kode_barang,
-          subtotal: item.jumlah * item.harga_satuan,
+          kode_barang: barangData.kode_barang,
+          nama_barang: barangData.nama_barang,
+          jumlah,
+          harga_satuan: hargaFinal, // ambil dari DB
+          harga_beli: hargaBeli,     // ambil dari DB (WAJIB)
+          subtotal: jumlah * hargaFinal,
         };
       })
     );

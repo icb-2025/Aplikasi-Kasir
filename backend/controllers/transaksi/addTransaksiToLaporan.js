@@ -26,7 +26,7 @@ export const addTransaksiToLaporan = async (transaksi) => {
       laporan = new Laporan({
   periode: { start: startBulan, end: endBulan },
   laporan_penjualan: { harian: [], mingguan: [], bulanan: [] },
-  laba: { total_laba: 0, detail: [] },
+  laba: { detail: [] },
   rekap_metode_pembayaran: [],
   biaya_operasional_id: biayaTerbaru?._id,
   pengeluaran: totalPengeluaran
@@ -51,44 +51,50 @@ export const addTransaksiToLaporan = async (transaksi) => {
 
     let totalHargaFix = 0;
 
+    const Barang = (await import('../models/databarang.js')).default;
     transaksi.barang_dibeli = await Promise.all(
       transaksi.barang_dibeli.map(async (barang) => {
         const jumlah = barang.jumlah || 1;
-        const hargaJual = barang.harga_satuan || 0;
 
-        const produk = await Barang.findOne({
-          $or: [
-            (mongoose.Types.ObjectId.isValid(barang.kode_barang)
-              ? { _id: new mongoose.Types.ObjectId(barang.kode_barang) }
-              : null),
-            { kode_barang: barang.kode_barang },
-            { nama_barang: barang.nama_barang },
-          ].filter(Boolean),
-        });
+        // Try to use Data-Barang master values first
+        let master = null;
+        try {
+          master = await Barang.findOne({
+            $or: [
+              (barang.kode_barang ? { kode_barang: barang.kode_barang } : null),
+              (barang.nama_barang ? { nama_barang: barang.nama_barang } : null)
+            ].filter(Boolean)
+          }).lean();
+        } catch (e) {
+          master = null;
+        }
 
-        const hargaBeli = produk ? produk.harga_beli : 0;
+        const harga_produk = master?.harga_jual ?? barang.harga_satuan ?? 0;
+        const hpp = master?.harga_beli ?? (typeof barang.harga_beli === 'number' ? barang.harga_beli : 0);
+        const harga_final = master?.hargaFinal ?? (typeof barang.harga_final === 'number' ? barang.harga_final : (typeof barang.subtotal === 'number' && jumlah > 0 ? barang.subtotal / jumlah : harga_produk));
 
-        const subtotal = hargaJual * jumlah;
-        const labaItem = (hargaJual - hargaBeli) * jumlah;
+        const subtotal_produk = harga_produk * jumlah;
+        const subtotal_final = (typeof barang.subtotal === 'number') ? barang.subtotal : harga_final * jumlah;
 
-        totalHargaFix += subtotal;
+        totalHargaFix += subtotal_final;
 
         laporan.laba.detail.push({
           nomor_transaksi: transaksi.nomor_transaksi,
           kode_barang: barang.kode_barang,
           produk: barang.nama_barang,
-          harga_jual: hargaJual,
-          harga_beli: hargaBeli,
+          hpp,
+          harga_produk,
+          harga_final,
           jumlah,
-          subtotal,
-          laba: labaItem,
+          subtotal_produk,
+          subtotal_final
         });
 
         return {
           ...barang,
-          harga_satuan: hargaJual,
-          subtotal,
-          harga_beli: hargaBeli,
+          harga_satuan: harga_produk,
+          subtotal: subtotal_final,
+          harga_beli: hpp,
         };
       })
     );
@@ -117,14 +123,7 @@ export const addTransaksiToLaporan = async (transaksi) => {
       });
     }
 
-    const totalLabaKotor = laporan.laba.detail.reduce((acc, item) => acc + (item.laba || 0), 0);
-
-    const biayaOperasional = await BiayaOperasional.findById(laporan.biaya_operasional_id);
-    const totalBiayaOperasional = biayaOperasional?.total || 0;
-
-    laporan.laba.total_laba =
-      totalLabaKotor - totalBiayaOperasional - (laporan.pengeluaran || 0);
-
+    // Do not store derived profit values; reports will compute them dynamically from snapshots.
     await laporan.save();
 
     console.log("✅ Transaksi berhasil disimpan dan laporan diperbarui");

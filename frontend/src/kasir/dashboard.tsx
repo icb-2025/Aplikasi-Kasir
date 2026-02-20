@@ -762,49 +762,74 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
         ))}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center mt-8">
-          <div className="flex items-center space-x-1">
+      {/* AWAL: PERUBAAN PAGINATION */}
+        {/* Pagination */}
+      {filteredBarang.length > itemsPerPage && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mt-6">
+          <div className="text-sm text-gray-600">
+            Menampilkan <span className="font-semibold text-gray-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredBarang.length)}</span> dari{' '}
+            <span className="font-semibold text-gray-900">{filteredBarang.length}</span> barang
+          </div>
+          
+          <div className="flex items-center gap-2">
             <button
               onClick={() => paginate(currentPage - 1)}
               disabled={currentPage === 1}
-              className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+                currentPage === 1 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-orange-50 text-orange-600 hover:bg-orange-100 hover:scale-105'
+              }`}
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Sebelumnya</span>
             </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
-              }
-              
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => paginate(pageNum)}
-                  className={`w-10 h-10 rounded-md ${currentPage === pageNum ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => paginate(pageNum)}
+                    className={`w-9 h-9 rounded-lg font-medium text-sm transition-all ${
+                      currentPage === pageNum 
+                        ? 'bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-md scale-105' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            
             <button
               onClick={() => paginate(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className={`p-2 rounded-md ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+                currentPage === totalPages 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-orange-50 text-orange-600 hover:bg-orange-100 hover:scale-105'
+              }`}
             >
-              <ChevronRight className="h-5 w-5" />
+              <span className="hidden sm:inline">Selanjutnya</span>
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </div>
       )}
+      {/* AKHIR: PERUBAAN PAGINATION */}
 
       {/* Empty State */}
       {filteredBarang.length === 0 && !isLoading && (

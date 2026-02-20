@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import type { SweetAlertOptions } from 'sweetalert2';
-import { Package, ShoppingCart } from 'lucide-react';
+import { Package, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../auth/hooks/useAuth';
 
 interface BahanItem {
@@ -25,12 +25,21 @@ const BahanBakuTersedia: React.FC = () => {
   const [bahanBaku, setBahanBaku] = useState<BahanBaku[]>([]);
   const [loading, setLoading] = useState(true);
   const [ambilLoading, setAmbilLoading] = useState<string | null>(null);
+  // State untuk pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9; // 9 data per halaman
+  
   const navigate = useNavigate();
   const { user } = useAuth();
 
   useEffect(() => {
     fetchBahanBakuTersedia();
   }, []);
+
+  // Reset ke halaman pertama saat data berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [bahanBaku]);
 
   const fetchBahanBakuTersedia = async () => {
     try {
@@ -55,6 +64,15 @@ const BahanBakuTersedia: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Fungsi untuk pagination
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+  // Hitung data untuk halaman saat ini
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = bahanBaku.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(bahanBaku.length / itemsPerPage);
 
   const ambilBahanBaku = async (bahanBakuId: string, stokTersedia: number, namaBahan: string) => {
     const options: SweetAlertOptions = {
@@ -189,107 +207,176 @@ const BahanBakuTersedia: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {bahanBaku.map((item) => (
-              <div 
-                key={item._id} 
-                className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 hover:border-gray-300"
-              >
-                <div className="p-6 flex flex-col h-full">
-                  {/* Bagian Header */}
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center">
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900">{item.nama}</h3>
-                        <div className="flex items-center mt-1">
-                          <span className="text-sm text-gray-500 mr-2">Stok:</span>
-                          <span className="font-bold text-lg">
-                            {item.total_stok}
-                          </span>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {currentItems.map((item) => (
+                <div 
+                  key={item._id} 
+                  className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 hover:border-gray-300"
+                >
+                  <div className="p-6 flex flex-col h-full">
+                    {/* Bagian Header */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">{item.nama}</h3>
+                          <div className="flex items-center mt-1">
+                            <span className="text-sm text-gray-500 mr-2">Stok:</span>
+                            <span className="font-bold text-lg">
+                              {item.total_stok}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Status Badge */}
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs text-gray-500">Status Ketersediaan</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      item.total_stok > 10 
-                        ? 'bg-green-100 text-green-800' 
-                        : item.total_stok > 5 
-                          ? 'bg-yellow-100 text-yellow-800' 
-                          : 'bg-red-100 text-red-800'
-                    }`}>
-                      {item.total_stok > 10 
-                        ? 'Tersedia' 
-                        : item.total_stok > 5 
-                          ? 'Terbatas' 
-                          : 'Sedikit'
-                      }
-                    </span>
-                  </div>
+                    {/* Status Badge */}
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs text-gray-500">Status Ketersediaan</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        item.total_stok > 10 
+                          ? 'bg-green-100 text-green-800' 
+                          : item.total_stok > 5 
+                            ? 'bg-yellow-100 text-yellow-800' 
+                            : 'bg-red-100 text-red-800'
+                      }`}>
+                        {item.total_stok > 10 
+                          ? 'Tersedia' 
+                          : item.total_stok > 5 
+                            ? 'Terbatas' 
+                            : 'Sedikit'
+                        }
+                      </span>
+                    </div>
 
-                  {/* Detail Bahan - Container dengan flex untuk memastikan tombol tetap di bawah */}
-                  <div className="flex flex-col flex-grow">
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <h4 className="font-bold text-gray-700 mb-3 flex items-center">
-                        <span className="inline-flex items-center justify-center w-6 h-6 text-xl font-bold text-black rounded-full mr-1">
-                          {item.bahan.length}
-                        </span>
-                        Daftar Bahan
-                      </h4>
-                      {/* Container scroll untuk daftar bahan */}
-                      <div className="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2">
-                        {/* Render semua bahan, bukan hanya 2 pertama */}
-                        {item.bahan.map((bahan, index) => (
-                          <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                            <div className="flex justify-between items-start mb-1">
-                              <span className="font-medium text-gray-800">{bahan.nama}</span>
-                              <span className="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded">
-                                x{bahan.jumlah}
-                              </span>
+                    {/* Detail Bahan - Container dengan flex untuk memastikan tombol tetap di bawah */}
+                    <div className="flex flex-col flex-grow">
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <h4 className="font-bold text-gray-700 mb-3 flex items-center">
+                          <span className="inline-flex items-center justify-center w-6 h-6 text-xl font-bold text-black rounded-full mr-1">
+                            {item.bahan.length}
+                          </span>
+                          Daftar Bahan
+                        </h4>
+                        {/* Container scroll untuk daftar bahan */}
+                        <div className="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2">
+                          {/* Render semua bahan, bukan hanya 2 pertama */}
+                          {item.bahan.map((bahan, index) => (
+                            <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                              <div className="flex justify-between items-start mb-1">
+                                <span className="font-medium text-gray-800">{bahan.nama}</span>
+                                <span className="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded">
+                                  x{bahan.jumlah}
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                Harga: <span className="font-medium">Rp {bahan.harga.toLocaleString()}</span>
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-600">
-                              Harga: <span className="font-medium">Rp {bahan.harga.toLocaleString()}</span>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Tombol Ambil Bahan - SELALU DI BAWAH */}
-                  <div className="mt-auto pt-4">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        ambilBahanBaku(item._id, item.total_stok, item.nama);
-                      }}
-                      disabled={ambilLoading === item._id}
-                      className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center ${
-                        ambilLoading === item._id
-                          ? 'bg-gray-300 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
-                      }`}
-                    >
-                      {ambilLoading === item._id ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Memproses...
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingCart size={18} className="mr-2" />
-                          Ambil Bahan Baku
-                        </>
-                      )}
-                    </button>
+                    {/* Tombol Ambil Bahan - SELALU DI BAWAH */}
+                    <div className="mt-auto pt-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          ambilBahanBaku(item._id, item.total_stok, item.nama);
+                        }}
+                        disabled={ambilLoading === item._id}
+                        className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center ${
+                          ambilLoading === item._id
+                            ? 'bg-gray-300 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
+                        }`}
+                      >
+                        {ambilLoading === item._id ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Memproses...
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart size={18} className="mr-2" />
+                            Ambil Bahan Baku
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+            
+            {/* Pagination UI */}
+            {bahanBaku.length > itemsPerPage && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mt-6">
+                <div className="text-sm text-gray-600">
+                  Menampilkan <span className="font-semibold text-gray-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, bahanBaku.length)}</span> dari{' '}
+                  <span className="font-semibold text-gray-900">{bahanBaku.length}</span> bahan baku
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => paginate(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+                      currentPage === 1 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                        : 'bg-orange-50 text-orange-600 hover:bg-orange-100 hover:scale-105'
+                    }`}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline">Sebelumnya</span>
+                  </button>
+                  
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => paginate(pageNum)}
+                          className={`w-9 h-9 rounded-lg font-medium text-sm transition-all ${
+                            currentPage === pageNum 
+                              ? 'bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-md scale-105' 
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => paginate(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
+                      currentPage === totalPages 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                        : 'bg-orange-50 text-orange-600 hover:bg-orange-100 hover:scale-105'
+                    }`}
+                  >
+                    <span className="hidden sm:inline">Selanjutnya</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>

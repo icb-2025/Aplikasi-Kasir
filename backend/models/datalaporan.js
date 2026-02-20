@@ -55,16 +55,18 @@ const laporanSchema = new Schema({
   },
 
   laba: {
-    total_laba: { type: Number, default: 0 },
+    // Store immutable snapshots per transaksi. DO NOT store derived profit values.
     detail: [
       {
         kode_barang: { type: String },
         produk: { type: String },
-        harga_jual: { type: Number, default: 0 },
-        harga_beli: { type: Number, default: 0 },
+        hpp: { type: Number, default: 0 }, // modal per porsi saat transaksi
+        harga_produk: { type: Number, default: 0 }, // selling price (basis margin)
+        harga_final: { type: Number, default: 0 }, // price actually paid by customer
+
         jumlah: { type: Number, default: 0 },
-        subtotal: { type: Number, default: 0 },
-        laba: { type: Number, default: 0 } // harga_jual - harga_beli
+        subtotal_produk: { type: Number, default: 0 },
+        subtotal_final: { type: Number, default: 0 }
       }
     ]
   },

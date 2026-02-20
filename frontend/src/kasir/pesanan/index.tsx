@@ -544,7 +544,7 @@ const PesananKasirPage = () => {
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
                       currentPage === 1 
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                        : 'bg-orange-50 text-orange-600 hover:bg-orange-100 hover:scale-105'
                     }`}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -570,7 +570,7 @@ const PesananKasirPage = () => {
                           onClick={() => paginate(pageNum)}
                           className={`w-9 h-9 rounded-lg font-medium text-sm transition-all ${
                             currentPage === pageNum 
-                              ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md scale-105' 
+                              ? 'bg-gradient-to-r from-orange-500 to-yellow-400 text-white shadow-md scale-105' 
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           }`}
                         >
@@ -586,7 +586,7 @@ const PesananKasirPage = () => {
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
                       currentPage === totalPages 
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105'
+                        : 'bg-orange-50 text-orange-600 hover:bg-orange-100 hover:scale-105'
                     }`}
                   >
                     <span className="hidden sm:inline">Selanjutnya</span>

@@ -1,4 +1,5 @@
 import BahanBaku from "../../models/bahanbaku.js";
+import Barang from "../../models/databarang.js";
 
 // Get all bahan baku
 export const getAllBahanBaku = async (req, res) => {
@@ -78,6 +79,19 @@ export const createBahanBaku = async (req, res) => {
       // Jangan throw error, tetap response sukses karena BahanBaku sudah berhasil dibuat
     }
 
+    // Sinkronkan harga_beli pada Data-Barang: set harga_beli = modal_per_porsi
+    try {
+      const modalPerPorsi = bahanBaku.modal_per_porsi || 0;
+      if (modalPerPorsi > 0) {
+        await Barang.updateMany(
+          { nama_barang: { $regex: new RegExp(`^${bahanBaku.nama}$`, 'i') } },
+          { $set: { harga_beli: Math.round(modalPerPorsi) } }
+        );
+      }
+    } catch (err) {
+      console.warn('Gagal update harga_beli di Barang setelah buat BahanBaku:', err.message);
+    }
+
     res.json({ message: "Bahan baku berhasil ditambahkan", bahanBaku });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -155,6 +169,19 @@ export const updateBahanBaku = async (req, res) => {
     } catch (err) {
       console.warn("Gagal sinkronisasi ke ModalUtama:", err.message);
       // Jangan throw error, tetap response sukses
+    }
+
+    // Sinkronkan harga_beli pada Data-Barang untuk produk ini
+    try {
+      const modalPerPorsi = bahanBaku.modal_per_porsi || 0;
+      if (modalPerPorsi > 0) {
+        await Barang.updateMany(
+          { nama_barang: { $regex: new RegExp(`^${nama_produk}$`, 'i') } },
+          { $set: { harga_beli: Math.round(modalPerPorsi) } }
+        );
+      }
+    } catch (err) {
+      console.warn('Gagal update harga_beli di Barang setelah update BahanBaku:', err.message);
     }
 
     res.json({ message: "Bahan baku berhasil diperbarui", bahanBaku });
