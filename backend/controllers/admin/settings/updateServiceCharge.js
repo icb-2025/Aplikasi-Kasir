@@ -1,6 +1,7 @@
 import Settings from "../../../models/settings.js";
 import Barang from "../../../models/databarang.js";
 import BiayaOperasional from "../../../models/biayaoperasional.js";
+import PengeluaranBiaya from "../../../models/pengeluaranbiaya.js";
 import { calculateHargaFinal, updateAllBarangHargaFinal } from "../settings/utils/calculateHarga.js";
 
 export const updateServiceCharge = async (req, res) => {
@@ -10,16 +11,15 @@ export const updateServiceCharge = async (req, res) => {
       settings = await Settings.create({});
     }
 
-    // 🔹 Ambil nilai dari biaya operasional
-    const biayaOp = await BiayaOperasional.findOne();
-    if (!biayaOp) {
-      return res.json({
-        message: "Tidak ada data biaya operasional",
-        settings
-      });
-    }
-
-    const totalBiayaOperasional = biayaOp.total || 0;
+    // 🔹 Hitung total pengeluaran operasional untuk bulan berjalan dari collection pengeluaran_biaya
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23,59,59,999);
+    const agg = await PengeluaranBiaya.aggregate([
+      { $match: { tanggal: { $gte: startOfMonth, $lte: endOfMonth } } },
+      { $group: { _id: null, total: { $sum: "$jumlah" } } }
+    ]);
+    const totalBiayaOperasional = agg && agg[0] ? agg[0].total : 0;
 
     // 🔹 Hitung total nilai barang
     const allBarang = await Barang.find();

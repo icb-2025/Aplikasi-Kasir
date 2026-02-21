@@ -748,13 +748,6 @@ const handleCreateProduction = async (productionData: ProductionFormData) => {
                 >
                   Kategori
                 </button>
-                <button
-                  onClick={() => setShowModal(true)}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  disabled={actionLoading}
-                >
-                  Tambah Barang
-                </button>
               </div>
             </div>
           </div>
@@ -780,12 +773,10 @@ const handleCreateProduction = async (productionData: ProductionFormData) => {
           ) : loading && initialLoad ? (
             <div className="text-center py-8">
               <LoadingSpinner />
-              <p className="mt-4">Memuat data awal...</p>
             </div>
           ) : loading ? (
             <div className="text-center py-8">
               <LoadingSpinner />
-              <p className="mt-4">Mengupdate data...</p>
             </div>
           ) : (
             <>                     

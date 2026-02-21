@@ -3,548 +3,323 @@ import React, { useState, useEffect, useCallback } from 'react';
 import SweetAlert from '../../../../components/SweetAlert';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import { API_URL } from '../../../../config/api';
+import Tabs from './tab-2/tabs';
+import InputBiaya from './input-biaya';
+import { Edit, Trash2, Plus, X, FolderOpen } from 'lucide-react';
 
 const ApiKey = import.meta.env.VITE_API_KEY;
 
-export interface BiayaOperasionalItem {
+interface Kategori {
+  _id: string;
   nama: string;
-  jumlah: number;
-  _id?: string;
+  isActive: boolean;
+  createdAt?: string;
 }
 
-export interface BiayaOperasionalData {
-  _id?: string;
-  rincian_biaya: BiayaOperasionalItem[];
-  total: number;
-  createdAt?: string;
-  __v?: number;
-}
+const BASE = `${API_URL}/api/admin/biaya-operasional`;
 
 interface BiayaOperasionalProps {
-  onTotalChange: (total: number) => void;
-  onSaveBiayaOperasional: (data: BiayaOperasionalData) => Promise<void>;
-  saving: boolean;
-  refreshTrigger: number;
+  refreshTrigger?: number;
+  onTotalChange?: (n: number) => void;
 }
 
-const BiayaOperasional: React.FC<BiayaOperasionalProps> = ({ 
-  onTotalChange, 
-  onSaveBiayaOperasional,
-  saving,
-  refreshTrigger
+const BiayaOperasional: React.FC<BiayaOperasionalProps> = ({
+  refreshTrigger,
+  onTotalChange,
 }) => {
-  const [loading, setLoading] = useState<boolean>(true);
-  const [deletingItem, setDeletingItem] = useState<boolean>(false);
-  const [showAddModal, setShowAddModal] = useState<boolean>(false);
-  const [newItemName, setNewItemName] = useState<string>('');
-  const [newItemAmount, setNewItemAmount] = useState<number>(0);
-  const [biayaData, setBiayaData] = useState<BiayaOperasionalData>({
-    rincian_biaya: [],
-    total: 0,
-  });
+  const [categories, setCategories] = useState<Kategori[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>('daftar-biaya');
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [name, setName] = useState('');
 
-  const BASE_API_URL = `${API_URL}/api/admin/biaya-operasional`;
-  const API_KEY = `${ApiKey}`;
+  // 🔐 Helper header (biar gak ngulang)
+  const buildHeaders = (): HeadersInit => {
+    const token = localStorage.getItem('token');
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
 
-  // Fungsi untuk mendapatkan token dari localStorage
-  const getToken = () => {
-    return localStorage.getItem('token');
+    if (ApiKey) headers['x-api-key'] = ApiKey;
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    return headers;
   };
 
-  const fetchBiayaOperasional = useCallback(async () => {
+  const fetchCategories = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const token = getToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-        headers['x-api-key'] = API_KEY;
-      }
-
-      const response = await fetch(BASE_API_URL, { headers });
-      
-      if (!response.ok) {
-        throw new Error('Gagal mengambil data biaya operasional');
-      }
-      
-      const data = await response.json();
-      
-      if (data && data.rincian_biaya && Array.isArray(data.rincian_biaya)) {
-        setBiayaData(data);
-      } else {
-        setBiayaData({
-          rincian_biaya: [],
-          total: 0,
-        });
-      }
-    } catch (error) {
-      SweetAlert.error('Gagal memuat data biaya operasional');
-      console.error(error);
-      setBiayaData({
-        rincian_biaya: [],
-        total: 0,
+      const res = await fetch(BASE, {
+        headers: buildHeaders(),
       });
+
+      if (!res.ok) throw new Error('HTTP error');
+
+      const data = await res.json();
+      setCategories((data || []).filter((c: Kategori) => c.isActive));
+    } catch (err) {
+      console.error(err);
+      SweetAlert.error('Gagal memuat kategori');
     } finally {
       setLoading(false);
     }
-  }, [BASE_API_URL, API_KEY]);
+  }, []);
 
   useEffect(() => {
-    fetchBiayaOperasional();
-  }, [fetchBiayaOperasional, refreshTrigger]);
+    fetchCategories();
+  }, [fetchCategories, refreshTrigger]);
 
+  // nanti bisa diganti hitung real total biaya
   useEffect(() => {
-    if (biayaData.total !== undefined) {
-      onTotalChange(biayaData.total);
+    if (typeof onTotalChange === 'function') {
+      onTotalChange(0);
     }
-  }, [biayaData.total, onTotalChange]);
+  }, [categories, onTotalChange]);
 
-  const handleBiayaChange = (index: number, value: number) => {
-    setBiayaData(prev => {
-      const rincianBiaya = prev.rincian_biaya || [];
-      const updatedRincian = [...rincianBiaya];
-      
-      if (updatedRincian[index]) {
-        updatedRincian[index] = {
-          ...updatedRincian[index],
-          jumlah: value
-        };
-      }
-      
-      const total = updatedRincian.reduce((sum, item) => sum + (item.jumlah || 0), 0);
-      
-      return {
-        ...prev,
-        rincian_biaya: updatedRincian,
-        total
-      };
-    });
+  const openAdd = () => {
+    setEditId(null);
+    setName('');
+    setShowForm(true);
   };
 
-  const handleItemNameChange = (index: number, value: string) => {
-    setBiayaData(prev => {
-      const rincianBiaya = prev.rincian_biaya || [];
-      const updatedRincian = [...rincianBiaya];
-      
-      if (updatedRincian[index]) {
-        updatedRincian[index] = {
-          ...updatedRincian[index],
-          nama: value
-        };
-      }
-      
-      return {
-        ...prev,
-        rincian_biaya: updatedRincian
-      };
-    });
+  const openEdit = (c: Kategori) => {
+    setEditId(c._id);
+    setName(c.nama);
+    setShowForm(true);
   };
 
-  const handleAddItem = () => {
-    if (!newItemName.trim()) {
-      SweetAlert.error('Nama biaya tidak boleh kosong');
-      return;
-    }
+  const submit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
 
-    if (newItemAmount <= 0) {
-      SweetAlert.error('Jumlah biaya harus lebih dari 0');
-      return;
-    }
+    if (!name.trim()) return SweetAlert.error('Nama wajib diisi');
 
-    const newItem: BiayaOperasionalItem = {
-      nama: newItemName,
-      jumlah: newItemAmount
-    };
+    try {
+      await SweetAlert.loading(editId ? 'Menyimpan perubahan...' : 'Membuat kategori...');
 
-    setBiayaData(prev => {
-      const rincianBiaya = prev.rincian_biaya || [];
-      const updatedRincian = [...rincianBiaya, newItem];
-      const total = updatedRincian.reduce((sum, item) => sum + (item.jumlah || 0), 0);
-      
-      return {
-        ...prev,
-        rincian_biaya: updatedRincian,
-        total
-      };
-    });
+      const url = editId ? `${BASE}/${editId}` : BASE;
+      const method = editId ? 'PUT' : 'POST';
 
-    setNewItemName('');
-    setNewItemAmount(0);
-    setShowAddModal(false);
-  };
+      const res = await fetch(url, {
+        method,
+        headers: buildHeaders(),
+        body: JSON.stringify({ nama: name }),
+      });
 
-  const handleRemoveItem = async (itemId: string) => {
-    const result = await SweetAlert.fire({
-      title: 'Apakah Anda yakin?',
-      text: 'Biaya akan dihapus',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Ya, hapus!',
-      cancelButtonText: 'Batal'
-    });
+      if (!res.ok) throw new Error('HTTP error');
 
-    if (result.isConfirmed) {
-      try {
-        setDeletingItem(true);
-        SweetAlert.loading('Menghapus biaya...');
-        
-        const token = getToken();
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json'
-        };
-        
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-          headers['x-api-key'] = API_KEY;
-        }
-
-        const response = await fetch(`${BASE_API_URL}/${itemId}`, {
-          method: 'DELETE',
-          headers
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Server error:', errorData);
-          throw new Error(errorData.message || 'Gagal menghapus biaya');
-        }
-        
-        setBiayaData(prev => {
-          const rincianBiaya = prev.rincian_biaya || [];
-          const updatedRincian = rincianBiaya.filter(item => item._id !== itemId);
-          const total = updatedRincian.reduce((sum, item) => sum + (item.jumlah || 0), 0);
-          
-          return {
-            ...prev,
-            rincian_biaya: updatedRincian,
-            total
-          };
-        });
-        
-        SweetAlert.close();
-        SweetAlert.success('Biaya berhasil dihapus');
-      } catch (error) {
-        SweetAlert.close();
-        SweetAlert.error(error instanceof Error ? error.message : 'Gagal menghapus biaya');
-        console.error(error);
-      } finally {
-        setDeletingItem(false);
-      }
+      SweetAlert.close();
+      await fetchCategories();
+      setShowForm(false);
+      SweetAlert.success('Berhasil disimpan');
+    } catch (err) {
+      SweetAlert.close();
+      console.error(err);
+      SweetAlert.error('Gagal menyimpan kategori');
     }
   };
 
-  const handleSubmitBiaya = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const rincianBiaya = biayaData.rincian_biaya || [];
-    
-    const dataToSend: BiayaOperasionalData = {
-      ...biayaData,
-      rincian_biaya: rincianBiaya.map(item => {
-        if (item._id) {
-          return {
-            nama: item.nama,
-            jumlah: item.jumlah,
-            _id: item._id
-          };
-        } else {
-          return {
-            nama: item.nama,
-            jumlah: item.jumlah
-          };
-        }
-      })
-    };
-    
-    await onSaveBiayaOperasional(dataToSend);
+  const deleteCategory = async (id: string) => {
+    const ok = window.confirm('Yakin ingin menghapus kategori ini?');
+    if (!ok) return;
+
+    try {
+      await SweetAlert.loading('Menghapus...');
+
+      const res = await fetch(`${BASE}/${id}`, {
+        method: 'DELETE',
+        headers: buildHeaders(),
+      });
+
+      if (!res.ok) throw new Error('HTTP error');
+
+      SweetAlert.close();
+      SweetAlert.success('Kategori dihapus');
+      await fetchCategories();
+    } catch (err) {
+      SweetAlert.close();
+      console.error(err);
+      SweetAlert.error('Gagal menghapus kategori');
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  const rincianBiaya = biayaData.rincian_biaya || [];
+  if (loading) return <div className="p-6"><LoadingSpinner /></div>;
 
   return (
-    <>
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 lg:p-8">
-        {/* Header Section */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
-          <div className="mb-6 lg:mb-0">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Biaya Operasional</h2>
-            <p className="text-gray-600 text-lg">Kelola rincian biaya operasional perusahaan</p>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <button
-              type="button"
-              onClick={() => setShowAddModal(true)}
-              disabled={saving || deletingItem}
-              className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 flex items-center shadow-lg shadow-green-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100">
+        <div className="flex justify-between items-center">
+          <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
+          {activeTab === 'daftar-biaya' && (
+            <button 
+              onClick={openAdd} 
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-              </svg>
-              Tambah Biaya
+              <Plus className="w-4 h-4" />
+              <span>Tambah Kategori</span>
             </button>
-          </div>
+          )}
         </div>
-
-        {/* Content Section */}
-        {rincianBiaya.length === 0 ? (
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-l-4 border-blue-500 p-8 rounded-2xl mb-8 text-center">
-            <div className="max-w-md mx-auto">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Belum ada data biaya operasional</h3>
-              <p className="text-gray-600 mb-6">
-                Mulai dengan menambahkan biaya operasional pertama Anda.
-              </p>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
-              >
-                Tambah Biaya Pertama
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {/* Items Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              {rincianBiaya.map((item, index) => (
-                <div 
-                  key={item._id || index} 
-                  className="group relative bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:border-blue-200"
+      </div>
+      
+      <div className="p-6">
+        {activeTab === 'daftar-biaya' && (
+          <>
+            {categories.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full mb-6">
+                  <FolderOpen className="w-10 h-10 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Belum ada kategori</h3>
+                <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+                  Mulai dengan menambahkan kategori biaya operasional untuk mengelola pengeluaran Anda
+                </p>
+                <button 
+                  onClick={openAdd} 
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                 >
-                  {/* Delete Button */}
-                  {item._id && (
+                  <Plus className="w-5 h-5" />
+                  <span>Tambah Kategori Pertama</span>
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                        <th className="px-6 py-4 text-left">
+                          <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Nama Kategori</span>
+                        </th>
+                        <th className="px-6 py-4 text-right">
+                          <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Aksi</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {categories.map((c, index) => (
+                        <tr 
+                          key={c._id} 
+                          className={`transition-all duration-200 ${
+                            index % 2 === 0 
+                              ? 'bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50' 
+                              : 'bg-gradient-to-r from-orange-25 to-amber-25 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50'
+                          } group`}
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center mr-4 group-hover:from-blue-200 group-hover:to-indigo-200 transition-colors duration-200">
+                                <FolderOpen className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">{c.nama}</div>
+                                <div className="text-xs text-gray-500 mt-0.5">Kategori Biaya Operasional</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => openEdit(c)}
+                                className="inline-flex items-center justify-center w-9 h-9 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-lg border border-blue-200 hover:border-blue-600 transition-all duration-200 group"
+                                title="Edit"
+                              >
+                                <Edit className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteCategory(c._id)}
+                                className="inline-flex items-center justify-center w-9 h-9 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg border border-red-200 hover:border-red-600 transition-all duration-200 group"
+                                title="Hapus"
+                              >
+                                <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Footer dengan informasi tambahan */}
+                <div className="px-6 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-t border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      Menampilkan {categories.length} kategori
+                    </span>
+                    <span className="text-xs font-medium text-gray-700">
+                      Total Kategori Aktif
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {showForm && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all">
+                  <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {editId ? 'Edit Kategori' : 'Tambah Kategori Baru'}
+                    </h3>
                     <button
                       type="button"
-                      onClick={() => handleRemoveItem(item._id!)}
-                      disabled={deletingItem || saving}
-                      className="absolute -top-3 -right-3 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200 shadow-lg opacity-0 group-hover:opacity-100 transform group-hover:scale-100 scale-90"
-                      title="Hapus biaya"
+                      onClick={() => setShowForm(false)}
+                      className="inline-flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-all duration-200"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
+                      <X className="w-4 h-4" />
                     </button>
-                  )}
+                  </div>
                   
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide text-xs">
-                        Nama Biaya
-                      </label>
-                      <input
-                        type="text"
-                        value={item.nama || ''}
-                        onChange={(e) => handleItemNameChange(index, e.target.value)}
-                        className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border bg-white transition-all duration-200"
-                        placeholder="Masukkan nama biaya..."
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide text-xs">
-                        Jumlah Biaya
+                  <form onSubmit={submit} className="p-6">
+                    <div className="mb-6">
+                      <label htmlFor="nama" className="block text-sm font-medium text-gray-700 mb-2">
+                        Nama Kategori
                       </label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <span className="text-gray-500 sm:text-sm font-medium">Rp</span>
+                          <FolderOpen className="h-5 w-5 text-gray-400" />
                         </div>
                         <input
-                          type="number"
-                          value={item.jumlah || 0}
-                          onChange={(e) => handleBiayaChange(index, parseFloat(e.target.value) || 0)}
-                          className="pl-12 block w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border bg-white transition-all duration-200"
-                          min="0"
-                          step="1000"
+                          id="nama"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                          placeholder="Masukkan nama kategori"
+                          autoFocus
                         />
                       </div>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
 
-            {/* Total Section */}
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-8 text-white shadow-lg">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                <div className="mb-4 lg:mb-0">
-                  <h3 className="text-2xl font-bold mb-2">Total Biaya Operasional</h3>
-                  <p className="text-blue-100 opacity-90">Total dari semua biaya operasional</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl lg:text-4xl font-bold">
-                    Rp {biayaData.total?.toLocaleString('id-ID') || '0'}
-                  </div>
-                  <p className="text-blue-100 opacity-90 mt-1">
-                    {rincianBiaya.length} item biaya
-                  </p>
+                    <div className="flex justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowForm(false)}
+                        className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+                      >
+                        {editId ? 'Simpan Perubahan' : 'Tambah Kategori'}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
 
-        {/* Footer Actions */}
-        {rincianBiaya.length > 0 && (
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-8 pt-8 border-t border-gray-200">
-            <div className="text-sm text-gray-500 mb-4 sm:mb-0">
-              <div className="flex items-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Pastikan semua data sudah benar sebelum menyimpan</span>
-              </div>
-            </div>
-            
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={handleSubmitBiaya}
-                disabled={saving}
-                className="px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200 flex items-center justify-center shadow-lg shadow-blue-500/25"
-              >
-                {saving ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    Menyimpan...
-                  </>
-                ) : (
-                  <>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Simpan Perubahan
-                  </>
-                )}
-              </button>
-            </div>
+        {activeTab === 'input-biaya' && (
+          <div className="mt-6">
+            <InputBiaya />
           </div>
         )}
       </div>
-
-      {/* Modern Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            {/* Background Overlay dengan Animasi */}
-            <div 
-              className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm"
-              onClick={() => {
-                setShowAddModal(false);
-                setNewItemName('');
-                setNewItemAmount(0);
-              }}
-            ></div>
-
-            {/* Modal Panel */}
-            <div className="relative inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl">
-              
-              {/* Header Modal */}
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900">Tambah Biaya Baru</h3>
-                  <p className="text-gray-600 mt-1">Tambahkan biaya operasional baru</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setNewItemName('');
-                    setNewItemAmount(0);
-                  }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              {/* Form Modal */}
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Nama Biaya
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newItemName}
-                    onChange={(e) => setNewItemName(e.target.value)}
-                    placeholder="Contoh: Biaya Listrik, Internet, dll."
-                    className="block w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-4 border bg-gray-50 focus:bg-white transition-all duration-200"
-                    autoFocus
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Jumlah Biaya
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm font-medium">Rp</span>
-                    </div>
-                    <input
-                      type="number"
-                      value={newItemAmount}
-                      onChange={(e) => setNewItemAmount(parseFloat(e.target.value) || 0)}
-                      className="pl-12 block w-full rounded-xl border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-4 border bg-gray-50 focus:bg-white transition-all duration-200"
-                      min="0"
-                      step="1000"
-                      placeholder="0"
-                    />
-                  </div>
-                  <p className="text-gray-500 text-xs mt-2">
-                    Masukkan jumlah biaya dalam Rupiah
-                  </p>
-                </div>
-                
-                {/* Action Buttons */}
-                <div className="flex space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddModal(false);
-                      setNewItemName('');
-                      setNewItemAmount(0);
-                    }}
-                    className="flex-1 px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 font-medium"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddItem}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-medium shadow-lg shadow-blue-500/25"
-                  >
-                    Tambah Biaya
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 };
 

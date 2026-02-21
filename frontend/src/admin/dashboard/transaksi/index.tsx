@@ -289,16 +289,7 @@ const Transaksi: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4">
-        <div className="flex justify-center items-center h-96">
-          <div className="text-center">
-            <LoadingSpinner />
-            <p className="text-gray-600 mt-4">Memuat data transaksi...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (error) {

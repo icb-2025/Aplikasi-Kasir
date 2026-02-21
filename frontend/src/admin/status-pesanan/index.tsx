@@ -324,7 +324,6 @@ const StatusPesananAdmin: React.FC = () => {
           {loading ? (
             <div className="text-center py-8">
               <LoadingSpinner />
-              <p className="mt-4">Memuat data pesanan...</p>
             </div>
           ) : (
             <PesananTable

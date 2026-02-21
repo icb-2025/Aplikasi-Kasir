@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import MainLayout from "../layout";
 import { getSocket } from "../../utils/socket";
+import LoadingSpinner from "../../components/LoadingSpinner";
 import { Landmark, Wallet, TrendingUp, CreditCard, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
 import { API_URL } from '../../config/api';
 const ApiKey = import.meta.env.VITE_API_KEY;
@@ -356,9 +357,7 @@ const PesananKasirPage = () => {
   if (loadingKasir || loadingProduk) {
     return (
       <MainLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
+        <LoadingSpinner />
       </MainLayout>
     );
   }
@@ -399,9 +398,7 @@ const PesananKasirPage = () => {
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
+          <LoadingSpinner />
         ) : pesananList.length === 0 ? (
           <div className="bg-white shadow-sm rounded-lg border border-gray-200 p-8 text-center">
             <p className="text-gray-500 text-lg">Belum ada pesanan untuk kasir ini</p>

@@ -20,8 +20,6 @@ export const addTransaksiToLaporan = async (transaksi) => {
     });
 
     if (!laporan) {
-      const biayaTerbaru = await BiayaOperasional.findOne().sort({ createdAt: -1 });
-
       const semuaBarang = await Barang.find();
       const totalPengeluaran = semuaBarang.reduce((acc, b) => acc + (b.harga_beli * b.stok), 0);
 
@@ -31,7 +29,7 @@ export const addTransaksiToLaporan = async (transaksi) => {
         // store immutable snapshots in laba.detail; do NOT store derived profit values
         laba: { detail: [] },
         rekap_metode_pembayaran: [],
-        biaya_operasional_id: biayaTerbaru?._id,
+        biaya_operasional_id: null,
         pengeluaran: totalPengeluaran
       });
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ChevronLeft, ChevronRight, Wallet, TrendingUp, CreditCard, Package, ShoppingCart, TrendingDown } from 'lucide-react';
 import { API_URL } from '../../../config/api';
+import LoadingSpinner from '../../../components/LoadingSpinner';
 import { exportToExcel, exportToPDF } from './utils';
 import type { ModalUtama, AddModalResponse } from './types';
 
@@ -166,11 +167,7 @@ const PenjualanPage: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="p-6 flex justify-center items-center h-screen">
-        <div className="text-lg">Memuat data...</div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (error) {

@@ -18,19 +18,18 @@ export const addTransaksiToLaporan = async (transaksi) => {
     });
 
     if (!laporan) {
-      const biayaTerbaru = await BiayaOperasional.findOne().sort({ createdAt: -1 });
-
       const semuaBarang = await Barang.find();
       const totalPengeluaran = semuaBarang.reduce((acc, b) => acc + (b.harga_beli * b.stok), 0);
 
       laporan = new Laporan({
-  periode: { start: startBulan, end: endBulan },
-  laporan_penjualan: { harian: [], mingguan: [], bulanan: [] },
-  laba: { detail: [] },
-  rekap_metode_pembayaran: [],
-  biaya_operasional_id: biayaTerbaru?._id,
-  pengeluaran: totalPengeluaran
-});
+        periode: { start: startBulan, end: endBulan },
+        laporan_penjualan: { harian: [], mingguan: [], bulanan: [] },
+        laba: { detail: [] },
+        rekap_metode_pembayaran: [],
+        biaya_operasional_id: null,
+        pengeluaran: totalPengeluaran
+      });
+    }
     }
 
     const tanggalHarian = tanggal.toISOString().split("T")[0];

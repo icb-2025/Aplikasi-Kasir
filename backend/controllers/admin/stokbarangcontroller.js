@@ -5,7 +5,6 @@ import db from "../../config/firebaseAdmin.js";
 import { io } from "../../server.js";
 import mongoose from "mongoose";
 import cloudinary from "../../config/cloudinary.js";
-import BiayaOperasional from "../../models/biayaoperasional.js";
 import { kurangiModalUtama } from "./utils/updatemodalutama.js";
 import Production from "../../models/production.js";
 

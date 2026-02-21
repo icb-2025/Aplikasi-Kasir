@@ -1,4 +1,4 @@
-// src/admin/biaya/biaya-layanan/components/tabs.tsx
+// src/admin/biaya/biaya-layanan/components/tab-2/tabs.tsx
 import React from 'react';
 
 interface TabsProps {
@@ -8,9 +8,8 @@ interface TabsProps {
 
 const Tabs: React.FC<TabsProps> = ({ activeTab, setActiveTab }) => {
   const tabs = [
-    { id: 'operasional', label: 'Biaya Operasional' },
-    { id: 'layanan', label: 'Biaya Layanan' },
-    { id: 'service', label: 'Biaya Service' }
+    { id: 'daftar-biaya', label: 'Daftar Biaya' },
+    { id: 'input-biaya', label: 'Input Biaya' },
   ];
 
   return (

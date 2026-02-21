@@ -140,7 +140,6 @@ const StokCard = ({ item, onSelect }: StokCardProps) => {
           </div>
           <div className="text-right">
             <p className="text-xs text-gray-500 flex items-center justify-end gap-1">
-              <DollarSign className="h-3 w-3" />
               Harga
             </p>
             <p className="text-lg font-bold text-blue-600">
@@ -688,7 +687,6 @@ const KasirDashboard = ({ dataBarang: initialDataBarang }: DashboardProps) => {
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
             <LoadingSpinner />
-            <p className="mt-4 text-gray-600">Memuat data barang...</p>
           </div>
         </div>
       </MainLayout>

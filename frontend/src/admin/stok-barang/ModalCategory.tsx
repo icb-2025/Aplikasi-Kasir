@@ -24,7 +24,6 @@ interface ModalCategoryProps {
   onKategoriChange: () => void;
 }
 
-const API_URL_KATEGORI = `${API_URL}/api/admin/kategori`;
 
 const ModalCategory: React.FC<ModalCategoryProps> = ({ visible, onClose, onKategoriChange }) => {
   const [categories, setCategories] = useState<KategoriAPI[]>([]);
@@ -44,7 +43,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({ visible, onClose, onKateg
     setServerError(false);
     try {
       console.log("Fetching categories...");
-      const res = await fetch(API_URL);
+      const res = await fetch(`${API_URL}/api/admin/kategori`);
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data: KategoriAPI[] = await res.json();
       console.log("Categories fetched:", data);
@@ -106,7 +105,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({ visible, onClose, onKateg
       if (result.isConfirmed) {
         await SweetAlert.loading("Menghapus kategori...");
         
-        const res = await fetch(`${API_URL}/${id}`, {
+        const res = await fetch(`${API_URL}/api/admin/kategori/${id}`, {
           method: "DELETE"
         });
         
@@ -151,7 +150,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({ visible, onClose, onKateg
 
       let res: Response;
       if (isEditing && editId) {
-        res = await fetch(`${API_URL}/${editId}`, {
+        res = await fetch(`${API_URL}/api/admin/kategori/${editId}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -159,7 +158,7 @@ const ModalCategory: React.FC<ModalCategoryProps> = ({ visible, onClose, onKateg
           body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch(API_URL, {
+        res = await fetch(`${API_URL}/api/admin/kategori`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

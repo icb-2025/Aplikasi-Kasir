@@ -2,6 +2,7 @@ import ModalUtama from "../../models/modalutama.js";
 import HppHarian from "../../models/hpptotal.js";
 import BiayaLayanan from "../../models/biayalayanan.js";
 import BiayaOperasional from "../../models/biayaoperasional.js";
+import PengeluaranBiaya from "../../models/pengeluaranbiaya.js";
 
 // =======================================================
 // OTOMATIS UPDATE HPP HARIAN SAAT ADA TRANSAKSI
@@ -73,10 +74,18 @@ export const getHppSummary = async (req, res) => {
 
     // Ambil biaya
     const biayaLayanan = await BiayaLayanan.findOne();
-    const biayaOperasional = await BiayaOperasional.findOne();
-
     const persenLayanan = biayaLayanan?.persen || 0;
-    const biayaOperasionalBulanan = biayaOperasional?.total || 0;
+
+    // Hitung pengeluaran operasional bulan ini dari collection pengeluaran_biaya
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23,59,59,999);
+    const agg = await PengeluaranBiaya.aggregate([
+      { $match: { tanggal: { $gte: startOfMonth, $lte: endOfMonth } } },
+      { $group: { _id: null, total: { $sum: "$jumlah" } } }
+    ]);
+
+    const biayaOperasionalBulanan = agg && agg[0] ? agg[0].total : 0;
 
     // Akumulasi harian
     let totalPendapatan = 0;

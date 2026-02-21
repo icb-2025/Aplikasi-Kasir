@@ -6,7 +6,6 @@ import Tabs from './components/tabs';
 import BiayaOperasional from './components/biaya-operasional';
 import BiayaLanjutan from './components/biaya-lanjutan';
 import BiayaService from './components/biaya-service';
-import type { BiayaOperasionalData } from './components/biaya-operasional';
 import { API_URL } from '../../../config/api';
 
 const ApiKey = import.meta.env.VITE_API_KEY;
@@ -19,12 +18,11 @@ const BiayaLayanan: React.FC = () => {
   const [globalDiscount, setGlobalDiscount] = useState<number>(0);
   const [serviceCharge, setServiceCharge] = useState<number>(0);
   const [lowStockAlert, setLowStockAlert] = useState<number>(0);
-  const [totalBiayaOperasional, setTotalBiayaOperasional] = useState<number>(0);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
   const BASE_API_URL = `${API_URL}/api/admin/settings`;
-  const BIAYA_OPERASIONAL_API_URL = `${API_URL}/api/admin/biaya-operasional`;
   const API_KEY = `${ApiKey}`;
+  const [totalBiayaOperasional, setTotalBiayaOperasional] = useState<number>(0);
 
   // Fungsi untuk mendapatkan token dari localStorage
   const getToken = () => {
@@ -89,46 +87,9 @@ const BiayaLayanan: React.FC = () => {
     }
   };
 
-  const handleSaveBiayaOperasional = async (data: BiayaOperasionalData) => {
-    try {
-      setSaving(true);
-      SweetAlert.loading('Menyimpan biaya operasional...');
-      
-      const token = getToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-        headers['x-api-key'] = API_KEY;
-      }
-      
-      const response = await fetch(BIAYA_OPERASIONAL_API_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(data)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Server error:', errorData);
-        throw new Error(errorData.message || 'Gagal menyimpan biaya operasional');
-      }
-      
-      SweetAlert.close();
-      SweetAlert.success('Biaya operasional berhasil disimpan');
-      
-      // Trigger refresh data di komponen BiayaOperasional
-      setRefreshTrigger(prev => prev + 1);
-    } catch (error) {
-      SweetAlert.close();
-      SweetAlert.error(error instanceof Error ? error.message : 'Gagal menyimpan biaya operasional');
-      console.error(error);
-    } finally {
-      setSaving(false);
-    }
-  };
+  // BiayaOperasional component manages its own CRUD; parent no longer needs
+  // to directly save biaya operasional. We keep `refreshTrigger` and
+  // `setRefreshTrigger` for child refresh coordination.
 const handleSaveSettings = async () => {
   try {
     setSaving(true);
@@ -203,6 +164,7 @@ const handleSaveSettings = async () => {
     
     // Refresh data setelah penyimpanan berhasil
     fetchSettings();
+    setRefreshTrigger((p) => p + 1);
   } catch (error) {
     SweetAlert.close();
     SweetAlert.error(error instanceof Error ? error.message : 'Gagal menyimpan pengaturan');
@@ -225,12 +187,7 @@ const handleSaveSettings = async () => {
         
         <div className="p-6">
           {activeTab === 'operasional' && (
-            <BiayaOperasional 
-              onSaveBiayaOperasional={handleSaveBiayaOperasional}
-              saving={saving}
-              refreshTrigger={refreshTrigger}
-              onTotalChange={setTotalBiayaOperasional}
-            />
+            <BiayaOperasional refreshTrigger={refreshTrigger} onTotalChange={setTotalBiayaOperasional} />
           )}
           
           {activeTab === 'layanan' && (

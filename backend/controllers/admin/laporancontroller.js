@@ -1,5 +1,6 @@
 import Laporan from "../../models/datalaporan.js";
 import BiayaOperasional from "../../models/biayaoperasional.js"; 
+import PengeluaranBiaya from "../../models/pengeluaranbiaya.js";
 
 
 // Ambil semua laporan
@@ -111,7 +112,24 @@ export const getLaba = async (req, res) => {
     });
 
     const totalLabaKotor = computedDetail.reduce((acc, it) => acc + (it.totalLaba || 0), 0);
-    const totalBiayaOperasional = currentLaporan.biaya_operasional_id?.total || 0;
+
+    // Hitung total pengeluaran biaya untuk periode laporan dari collection pengeluaran_biaya
+    let totalBiayaOperasional = 0;
+    try {
+      const start = currentLaporan.periode.start ? new Date(currentLaporan.periode.start) : null;
+      const end = currentLaporan.periode.end ? new Date(currentLaporan.periode.end) : null;
+      const match = {};
+      if (start && end) match.tanggal = { $gte: start, $lte: end };
+      const agg = await PengeluaranBiaya.aggregate([
+        { $match: match },
+        { $group: { _id: null, total: { $sum: "$jumlah" } } }
+      ]);
+      totalBiayaOperasional = agg && agg[0] ? agg[0].total : 0;
+    } catch (e) {
+      console.warn("Gagal menghitung total biaya operasional untuk laporan:", e.message);
+      totalBiayaOperasional = 0;
+    }
+
     const totalLabaBersih = totalLabaKotor - totalBiayaOperasional;
 
     // Do NOT persist derived profit values to DB. Return computed summary instead.

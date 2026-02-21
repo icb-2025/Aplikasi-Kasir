@@ -12,23 +12,32 @@ import ModalUtama from "../../models/modalutama.js";
 import HppHarian from "../../models/hpptotal.js";
 import BiayaLayanan from "../../models/biayalayanan.js";
 import BiayaOperasional from "../../models/biayaoperasional.js";
+import PengeluaranBiaya from "../../models/pengeluaranbiaya.js";
 
 const updateHppOtomatis = async (barang_dibeli) => {
-  const today = new Date().toISOString().slice(0, 10);
+  const todayString = new Date().toISOString().slice(0, 10);
   console.log(`[HPP] Memulai proses update HPP untuk ${barang_dibeli.length} item.`);
 
   // Ambil SEMUA data yang dibutuhkan di awal
   const modalUtama = await ModalUtama.findOne();
   const biayaLayanan = await BiayaLayanan.findOne();
-  const biayaOperasional = await BiayaOperasional.findOne();
+  // compute today's pengeluaran total from pengeluaran_biaya
+  const today = new Date();
+  const startDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const endDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23,59,59,999);
+  const agg = await PengeluaranBiaya.aggregate([
+    { $match: { tanggal: { $gte: startDay, $lte: endDay } } },
+    { $group: { _id: null, total: { $sum: "$jumlah" } } }
+  ]);
+  const biayaOperasionalToday = agg && agg[0] ? agg[0].total : 0;
 
   if (!modalUtama) {
     console.error("[HPP] ERROR: Data modal utama tidak ditemukan.");
     throw new Error("Data modal utama tidak ditemukan.");
   }
-  if (!biayaLayanan || !biayaOperasional) {
-    console.error("[HPP] ERROR: Data biaya tidak lengkap.");
-    throw new Error("Data biaya layanan atau operasional tidak ditemukan.");
+  if (!biayaLayanan) {
+    console.error("[HPP] ERROR: Data biaya layanan tidak ditemukan.");
+    throw new Error("Data biaya layanan tidak ditemukan.");
   }
 
   let hppHarian = await HppHarian.findOne({ tanggal: today });
@@ -92,7 +101,7 @@ const updateHppOtomatis = async (barang_dibeli) => {
   // --- TAMBAHKAN LOGIKA INI DI AKHIR SEBELUM SAVE ---
   // Hitung total beban dan laba bersih berdasarkan total yang sudah terakumulasi
   const biayaLayananHariIni = (biayaLayanan.persen / 100) * hppHarian.total_pendapatan;
-  const totalBebanHariIni = biayaLayananHariIni + biayaOperasional.total;
+  const totalBebanHariIni = biayaLayananHariIni + (Number(biayaOperasionalToday) || 0);
   const labaBersihHariIni = hppHarian.total_laba_kotor - totalBebanHariIni;
 
   hppHarian.total_beban = totalBebanHariIni;
